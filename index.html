@@ -141,12 +141,15 @@
 
   <!-- ================= BULLETIN VIEW ================= -->
   <section id="view-bulletin" class="view space-y-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-bold text-slate-100">📋 Floor Dispatch Control Bulletin</h2>
         <p class="text-xs text-slate-400">Live broadcast of all logged tasks within the active 05:00–04:59 operational window</p>
       </div>
-      <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded">● LIVE</span>
+      <div class="flex items-center gap-2">
+        <input type="text" id="bulletin-search" oninput="renderBulletinBoard()" placeholder="Search OBD, Customer, or Picker..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-emerald-500">
+        <span class="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded whitespace-nowrap">● LIVE</span>
+      </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bulletin-container"></div>
   </section>
@@ -288,6 +291,7 @@ let allPersonnel = [];
 window.addEventListener('DOMContentLoaded', async () => {
   calculateOperationalDayWindow();
   setInterval(calculateOperationalDayWindow, 30000);
+  setInterval(updateBulletinCountdowns, 1000);
   setView('workbench');
   await setRole('Picker');
   await refreshConfiguredBreaks();
@@ -868,6 +872,9 @@ async function sidePanelUnassign(id) {
 }
 
 // --- FLOOR DISPATCH BULLETIN (read-only broadcast, realtime) ---
+let bulletinRawData = [];
+let bulletinShipMap = {};
+
 async function refreshBulletinBoard() {
   const { startOfOpDay, endOfOpDay } = calculateOperationalDayWindow();
   const { data, error } = await supabaseClient.from('activity_logs').select('*')
@@ -875,18 +882,37 @@ async function refreshBulletinBoard() {
     .order('start_time', { ascending: false });
   if (error) return console.error(error);
 
+  bulletinRawData = data || [];
+
+  // Look up OBD number + customer for every SO number referenced, since activity_logs only stores so_number
+  const soNumbers = [...new Set(bulletinRawData.map(l => l.so_number).filter(Boolean))];
+  bulletinShipMap = {};
+  if (soNumbers.length) {
+    const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number,sold_to_party_name').in('so_number', soNumbers);
+    (shipRows || []).forEach(s => { bulletinShipMap[s.so_number] = s; });
+  }
+  renderBulletinBoard();
+}
+
+// Separate search from the Shipment ID lookup on the Workbench — this one filters
+// the bulletin by OBD Number, Customer name, or Picker (personnel) name.
+function renderBulletinBoard() {
   const container = document.getElementById('bulletin-container');
-  if (!data.length) {
-    container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">No tracked execution steps for the current window.</div>`;
-    return;
+  const searchText = (document.getElementById('bulletin-search')?.value || '').trim().toLowerCase();
+
+  let data = bulletinRawData;
+  if (searchText) {
+    data = data.filter(log => {
+      const ship = bulletinShipMap[log.so_number] || {};
+      return (ship.obd_number || '').toLowerCase().includes(searchText)
+        || (ship.sold_to_party_name || '').toLowerCase().includes(searchText)
+        || (log.personnel_name || '').toLowerCase().includes(searchText);
+    });
   }
 
-  // Look up OBD numbers for every SO number referenced, since activity_logs only stores so_number
-  const soNumbers = [...new Set(data.map(l => l.so_number).filter(Boolean))];
-  let obdMap = {};
-  if (soNumbers.length) {
-    const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number').in('so_number', soNumbers);
-    (shipRows || []).forEach(s => { obdMap[s.so_number] = s.obd_number; });
+  if (!data.length) {
+    container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">${searchText ? 'No OBD, Customer, or Picker match found.' : 'No tracked execution steps for the current window.'}</div>`;
+    return;
   }
 
   // Group lines under their Dispatch (shipment_no) — the main reference
@@ -903,26 +929,77 @@ async function refreshBulletinBoard() {
 
   container.innerHTML = Object.entries(groups).map(([shipmentNo, logs]) => {
     const totalQty = logs.reduce((s, l) => s + (l.total_qty || 0), 0);
-    const anyOverdue = logs.some(l => {
-      const target = projectedTargetCompletion(new Date(l.start_time), l.target_hours || 0);
-      return l.status !== 'Completed' && new Date() > target;
+
+    // Sub-group into the batches started together in one confirmation — that's the
+    // real unit of work: one Picker, one collapsible card, one Pause/Complete action.
+    const batches = {};
+    logs.forEach(log => {
+      const bKey = `${log.personnel_name}||${log.role}||${log.start_time}`;
+      if (!batches[bKey]) batches[bKey] = [];
+      batches[bKey].push(log);
+    });
+    const batchList = Object.values(batches);
+
+    const anyOverdue = batchList.some(members => {
+      const rep = members[0];
+      const target = projectedTargetCompletion(new Date(rep.start_time), rep.target_hours || 0);
+      return rep.status !== 'Completed' && new Date() > target;
     });
 
-    const lines = logs.map(log => {
-      const startLocal = new Date(log.start_time);
-      const targetCompTime = projectedTargetCompletion(startLocal, log.target_hours || 0);
-      const isOverdue = new Date() > targetCompTime && log.status !== 'Completed';
+    const batchCardsHtml = batchList.map((members, bi) => {
+      const rep = members[0];
+      const batchQty = members.reduce((s, m) => s + (m.total_qty || 0), 0);
+      const customers = [...new Set(members.map(m => (bulletinShipMap[m.so_number] || {}).sold_to_party_name).filter(Boolean))];
+      const obdCount = new Set(members.map(m => (bulletinShipMap[m.so_number] || {}).obd_number).filter(Boolean)).size;
+      const target = projectedTargetCompletion(new Date(rep.start_time), rep.target_hours || 0);
+      const isOverdue = rep.status !== 'Completed' && new Date() > target;
+      const panelId = `bulletin-batch-${shipmentNo}-${bi}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      const lineDetails = members.map(log => {
+        const ship = bulletinShipMap[log.so_number] || {};
+        return `
+          <div class="flex justify-between items-start py-1.5 border-b border-slate-900 last:border-0">
+            <div>
+              <div class="font-mono text-[11px] text-slate-200 font-semibold">${log.so_number || '—'}</div>
+              <div class="text-[10px] text-slate-500 font-mono">OBD: ${ship.obd_number || '—'}</div>
+              <div class="text-[10px] text-slate-500 truncate max-w-[160px]" title="${ship.sold_to_party_name || ''}">${ship.sold_to_party_name || '—'}</div>
+            </div>
+            <div class="font-mono text-amber-400 text-[11px] font-bold">${log.total_qty ?? 0}</div>
+          </div>`;
+      }).join('');
+
+      // Picker name is the primary reference — front and center on the collapsed card.
       return `
-        <div class="flex justify-between items-start py-2 border-b border-slate-900 last:border-0">
-          <div>
-            <div class="font-mono text-xs text-slate-200 font-semibold">${log.so_number || '—'}</div>
-            <div class="text-[10px] text-slate-500 font-mono">OBD: ${obdMap[log.so_number] || '—'}</div>
-            <div class="text-[10px] text-slate-500">${log.role} · ${log.personnel_name}</div>
+        <div class="bg-slate-900 border ${isOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-3 space-y-2">
+          <div class="flex justify-between items-start cursor-pointer" onclick="toggleBulletinDetail('${panelId}')">
+            <div>
+              <div class="text-[9px] uppercase tracking-wider text-slate-500">${rep.role}</div>
+              <div class="text-sm font-black text-emerald-400 leading-tight">👤 ${rep.personnel_name}</div>
+            </div>
+            <span class="text-[9px] px-1.5 py-0.5 rounded font-mono shrink-0 ${statusColor(rep.status, isOverdue)}">${rep.status}${isOverdue ? ' ⚠' : ''}</span>
           </div>
-          <div class="text-right">
-            <div class="font-mono text-amber-400 text-xs font-bold">${log.total_qty ?? 0}</div>
-            <span class="text-[9px] px-1.5 py-0.5 rounded font-mono ${statusColor(log.status, isOverdue)}">${log.status}${isOverdue ? ' ⚠' : ''}</span>
+          <div class="grid grid-cols-3 gap-2 text-center bg-slate-950 border border-slate-800/60 rounded-lg py-2">
+            <div>
+              <div class="text-[9px] text-slate-500 uppercase">Qty</div>
+              <div class="text-xs font-black text-amber-400 font-mono">${batchQty}</div>
+            </div>
+            <div>
+              <div class="text-[9px] text-slate-500 uppercase">Customer${customers.length > 1 ? 's' : ''}</div>
+              <div class="text-[10px] text-slate-300 truncate px-1" title="${customers.join(', ')}">${customers.length ? (customers.length > 1 ? customers.length + ' custs' : customers[0]) : '—'}</div>
+            </div>
+            <div>
+              <div class="text-[9px] text-slate-500 uppercase">OBDs</div>
+              <div class="text-xs font-black text-blue-400 font-mono">${obdCount}</div>
+            </div>
           </div>
+          <div class="flex justify-between items-center text-[10px]">
+            <span class="text-slate-500">Target <span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-blue-400'} font-mono font-semibold">${target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></span>
+            ${rep.status !== 'Completed'
+              ? `<span class="countdown-timer font-mono font-bold ${isOverdue ? 'text-rose-400' : 'text-teal-400'}" data-target="${target.getTime()}"></span>`
+              : `<span class="text-emerald-500 font-semibold">✓ Done</span>`}
+          </div>
+          <button onclick="event.stopPropagation(); toggleBulletinDetail('${panelId}')" class="w-full text-[10px] text-slate-400 hover:text-emerald-400 font-semibold text-left">▾ ${members.length} line${members.length > 1 ? 's' : ''}</button>
+          <div id="${panelId}" class="hidden space-y-0.5 pt-1 border-t border-slate-800">${lineDetails}</div>
         </div>`;
     }).join('');
 
@@ -933,15 +1010,42 @@ async function refreshBulletinBoard() {
             <span class="text-[10px] font-bold tracking-wider text-slate-400 block uppercase">Dispatch</span>
             <span class="text-base font-black text-emerald-400 font-mono">${shipmentNo}</span>
           </div>
-          <span class="text-[10px] text-slate-500">${logs.length} line${logs.length > 1 ? 's' : ''}</span>
+          <span class="text-[10px] text-slate-500">${batchList.length} task${batchList.length > 1 ? 's' : ''}</span>
         </div>
-        <div class="divide-y divide-slate-900">${lines}</div>
+        <div class="space-y-2">${batchCardsHtml}</div>
         <div class="flex justify-between items-center pt-2 border-t border-slate-800">
           <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Total Qty</span>
           <span class="text-lg font-black text-amber-400 font-mono">${totalQty}</span>
         </div>
       </div>`;
   }).join('');
+
+  updateBulletinCountdowns();
+}
+
+function toggleBulletinDetail(panelId) {
+  const el = document.getElementById(panelId);
+  if (el) el.classList.toggle('hidden');
+}
+
+// Ticks every second while the bulletin is visible, counting down (or up, once overdue)
+// to each task's break-aware target completion time.
+function updateBulletinCountdowns() {
+  const now = Date.now();
+  document.querySelectorAll('#bulletin-container .countdown-timer').forEach(el => {
+    const target = parseInt(el.getAttribute('data-target'), 10);
+    if (!target) { el.textContent = ''; return; }
+    let diff = target - now;
+    const overdue = diff < 0;
+    diff = Math.abs(diff);
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    const pad = n => String(n).padStart(2, '0');
+    el.textContent = `${overdue ? '-' : ''}${pad(h)}:${pad(m)}:${pad(s)}`;
+    el.classList.toggle('text-rose-400', overdue);
+    el.classList.toggle('text-teal-400', !overdue);
+  });
 }
 
 function subscribeRealtime() {
