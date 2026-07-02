@@ -46,6 +46,7 @@
         <button class="tab-btn px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition" data-view="bulletin" onclick="setView('bulletin')">Dispatch Bulletin</button>
         <button class="tab-btn px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
+        <button class="tab-btn px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition" data-view="export" onclick="setView('export')">Data Export</button>
       </nav>
     </div>
     <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
@@ -226,6 +227,48 @@
     </div>
   </section>
 
+  <!-- ================= DATA EXPORT VIEW ================= -->
+  <section id="view-export" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">📤 Data Export</h2>
+        <p class="text-xs text-slate-400">Full milestone timeline per Sales Order — Picker, Staging, Pulled, and Check start/end times</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="text" id="export-search" oninput="renderExportTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-emerald-500">
+        <button onclick="loadExportData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
+        <button onclick="exportDataToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th class="p-3 text-left" rowspan="2">Sales Order</th>
+            <th class="p-3 text-left" rowspan="2">Shipment</th>
+            <th class="p-3 text-left" rowspan="2">OBD</th>
+            <th class="p-3 text-left" rowspan="2">Customer</th>
+            <th class="p-3 text-right" rowspan="2">Qty</th>
+            <th class="p-2 text-center border-l border-slate-800" colspan="2">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-cyan-400" colspan="2">Staging</th>
+            <th class="p-2 text-center border-l border-slate-800 text-purple-400" colspan="2">Pulled</th>
+            <th class="p-2 text-center border-l border-slate-800 text-emerald-400" colspan="2">Check</th>
+          </tr>
+          <tr class="text-[10px]">
+            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
+            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
+            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
+            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
+          </tr>
+        </thead>
+        <tbody id="export-rows" class="divide-y divide-slate-800/50">
+          <tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="export-count" class="text-[10px] text-slate-600"></p>
+  </section>
+
 </main>
 
 <!-- ================= STICKY SIDE PANEL ================= -->
@@ -363,6 +406,7 @@ function setView(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
+  if (name === 'export') loadExportData();
 }
 
 // --- OPERATIONAL DAY WINDOW (05:00 -> 04:59 next day) ---
@@ -1378,6 +1422,129 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, () => {
       if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
     }).subscribe();
+}
+
+// --- DATA EXPORT ---
+// Full milestone timeline per SO: one row per shipments line, with the most
+// recent Completed start/end pair for each of the four roles in the chain.
+let exportRawRows = [];
+
+async function loadExportData() {
+  const tbody = document.getElementById('export-rows');
+  tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+
+  const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false });
+  if (shipErr) {
+    console.error(shipErr);
+    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
+    return;
+  }
+
+  const soNumbers = (shipRows || []).map(r => r.so_number).filter(Boolean);
+  let logs = [];
+  if (soNumbers.length) {
+    // Chunk the IN() filter so very large datasets don't hit request-size limits.
+    const chunkSize = 300;
+    for (let i = 0; i < soNumbers.length; i += chunkSize) {
+      const chunk = soNumbers.slice(i, i + chunkSize);
+      const { data, error } = await supabaseClient.from('activity_logs')
+        .select('so_number,role,start_time,end_time,status')
+        .in('so_number', chunk).eq('status', 'Completed');
+      if (!error) logs.push(...(data || []));
+      else console.error(error);
+    }
+  }
+
+  // Keep the most recently completed log per SO+role as that milestone's record.
+  const logMap = {}; // `${so_number}||${role}` -> log
+  logs.forEach(l => {
+    const key = `${l.so_number}||${l.role}`;
+    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
+  });
+
+  exportRawRows = (shipRows || []).map(row => {
+    const pick = logMap[`${row.so_number}||Picker`];
+    const stage = logMap[`${row.so_number}||Staging Checker`];
+    const pull = logMap[`${row.so_number}||Puller`];
+    const check = logMap[`${row.so_number}||Outbound Checker`];
+    return {
+      so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
+      customer: row.sold_to_party_name, qty: rowQtySum(row),
+      pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+      stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+      pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+      check_start: check?.start_time || null, check_end: check?.end_time || null
+    };
+  });
+
+  renderExportTable();
+}
+
+function fmtExportDT(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function filteredExportRows() {
+  const searchText = (document.getElementById('export-search').value || '').trim().toLowerCase();
+  if (!searchText) return exportRawRows;
+  return exportRawRows.filter(r =>
+    (r.so_number || '').toLowerCase().includes(searchText) ||
+    (r.shipment_no || '').toLowerCase().includes(searchText) ||
+    (r.obd_number || '').toLowerCase().includes(searchText) ||
+    (r.customer || '').toLowerCase().includes(searchText)
+  );
+}
+
+function renderExportTable() {
+  const tbody = document.getElementById('export-rows');
+  const rows = filteredExportRows();
+  document.getElementById('export-count').innerText = `${rows.length} line(s)`;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr class="hover:bg-slate-900/60 transition">
+      <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.shipment_no || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
+      <td class="p-3 max-w-[180px] truncate text-slate-400" title="${r.customer || ''}">${r.customer || '—'}</td>
+      <td class="p-3 text-right font-mono text-amber-400">${r.qty}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
+    </tr>`).join('');
+}
+
+function exportDataToExcel() {
+  const rows = filteredExportRows();
+  if (!rows.length) return showToast("No rows to export.", "error");
+
+  const excelRows = rows.map(r => ({
+    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
+    'Customer': r.customer || '', 'Qty': r.qty,
+    'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
+    'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
+    'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
+    'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end)
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(excelRows);
+  ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 8 },
+    { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Timeline');
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `dispatch-timeline-${stamp}.xlsx`);
+  showToast(`Exported ${rows.length} line(s) to Excel.`, "success");
 }
 
 // --- DATA INGESTION ---
