@@ -39,11 +39,20 @@
             </div>
 
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
-                <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">⏱️ Operational Break Configs</h2>
-                <form id="break-form" onsubmit="addBreakRule(event)" class="flex gap-2">
-                    <input type="text" id="break-name" placeholder="Break Identifier" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-                    <input type="number" id="break-duration" placeholder="Mins" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-20 text-center focus:outline-none focus:border-emerald-500">
-                    <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">+</button>
+                <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">⏱️ Admin Fixed Break Schedule</h2>
+                <form id="break-form" onsubmit="addBreakRule(event)" class="space-y-2">
+                    <input type="text" id="break-name" placeholder="e.g., Lunch Break" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase font-bold mb-0.5">Start Time</label>
+                            <input type="time" id="break-start" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full text-slate-300 focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-500 uppercase font-bold mb-0.5">End Time</label>
+                            <input type="time" id="break-end" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full text-slate-300 focus:outline-none focus:border-emerald-500">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 text-xs font-bold rounded-lg transition">+ Establish Break Schedule Window</button>
                 </form>
                 <div class="max-h-[110px] overflow-y-auto space-y-1 structure-scroll" id="break-list-container">
                     </div>
@@ -127,11 +136,11 @@
                     <span id="summary-total-qty" class="text-2xl font-black text-amber-400">0.00</span> <span class="text-xs text-slate-400">Units Selected</span>
                 </div>
                 <div>
-                    <span class="text-xs text-slate-400 block mb-0.5">Calculated Static Allocation</span>
+                    <span class="text-xs text-slate-400 block mb-0.5">Calculated Net Task Time</span>
                     <span id="summary-target-hours" class="text-2xl font-black text-emerald-400">0.00</span> <span class="text-xs text-slate-400">Hours</span>
                 </div>
                 <div>
-                    <span class="text-xs text-slate-400 block mb-0.5">Target with Operational Breaks</span>
+                    <span class="text-xs text-slate-400 block mb-0.5">Adjusted SLA Target (With Breaks)</span>
                     <span id="summary-final-hours" class="text-2xl font-black text-blue-400">0.00</span> <span class="text-xs text-slate-400">Hours</span>
                 </div>
                 <div>
@@ -156,7 +165,6 @@
         const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
         
-        // Initializing with distinctive variable name to safely handle namespace global collisions
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- APPLICATION STATE CONTAINER ---
@@ -173,7 +181,6 @@
             await refreshBulletinBoard();
         });
 
-        // Compute specialized logistics windows (05:00:00 Current to 04:59:59 Next-day)
         function calculateOperationalDayWindow() {
             const now = new Date();
             let startOfOpDay = new Date(now);
@@ -193,7 +200,6 @@
             return { startOfOpDay, endOfOpDay };
         }
 
-        // CONTROL WORKFLOW ROLE SETTINGS
         async function setRole(roleName) {
             currentRole = roleName;
             document.querySelectorAll('.role-btn').forEach(btn => {
@@ -214,7 +220,6 @@
             document.getElementById('target-summary-card').classList.add('hidden');
         }
 
-        // LOAD FILTERED ASSOCIATES BY DESIGNATED TASK ROLE
         async function populatePersonnelListByRole(role) {
             const { data, error } = await supabaseClient.from('personnel').select('*').eq('role', role);
             if(error) return console.error(error);
@@ -226,7 +231,7 @@
             });
         }
 
-        // REFRESH ADMIN BREAK CONFIG LISTINGS FROM DB
+        // REFRESH ADMIN BREAK CONFIG LISTINGS FROM DB (WITH START/END FIELDS)
         async function refreshConfiguredBreaks() {
             const { data, error } = await supabaseClient.from('break_settings').select('*');
             if (error) return console.error(error);
@@ -235,11 +240,13 @@
             const container = document.getElementById('break-list-container');
             container.innerHTML = '';
             data.forEach(b => {
+                // If break fields contain time values, display them nicely
+                const timeString = (b.start_time && b.end_time) ? `${b.start_time} - ${b.end_time}` : `${b.duration_minutes}m`;
                 container.innerHTML += `
                     <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
                         <span class="text-slate-300 font-medium">${b.break_name}</span>
                         <div class="flex items-center gap-3">
-                            <span class="font-mono text-amber-400 font-semibold">${b.duration_minutes}m</span>
+                            <span class="font-mono text-amber-400 font-semibold text-[11px]">${timeString}</span>
                             <button onclick="deleteBreakRule(${b.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
                         </div>
                     </div>`;
@@ -249,21 +256,35 @@
         async function addBreakRule(e) {
             e.preventDefault();
             const name = document.getElementById('break-name').value;
-            const duration = parseInt(document.getElementById('break-duration').value);
+            const startTime = document.getElementById('break-start').value;
+            const endTime = document.getElementById('break-end').value;
+
+            // Compute total minutes from input timestamps
+            const [sh, sm] = startTime.split(':').map(Number);
+            const [eh, em] = endTime.split(':').map(Number);
+            let diffMins = (eh * 60 + em) - (sh * 60 + sm);
+            if (diffMins < 0) diffMins += 24 * 60; // Support overnight crossings gracefully
             
-            const { error } = await supabaseClient.from('break_settings').insert([{ break_name: name, duration_minutes: duration }]);
+            const { error } = await supabaseClient.from('break_settings').insert([{ 
+                break_name: name, 
+                duration_minutes: diffMins,
+                start_time: startTime,
+                end_time: endTime
+            }]);
+            
             if(!error) {
                 document.getElementById('break-form').reset();
                 await refreshConfiguredBreaks();
+                recalculateCalculatedWorkflowMetrics();
             }
         }
 
         async function deleteBreakRule(id) {
             await supabaseClient.from('break_settings').delete().eq('id', id);
             await refreshConfiguredBreaks();
+            recalculateCalculatedWorkflowMetrics();
         }
 
-        // PARSE EXCEL AND INSERT/UPSERT DIRECT TO DATA LAYER
         async function processUploads() {
             const shipmentFile = document.getElementById('shipment-file').files[0];
             const truckFile = document.getElementById('truck-file').files[0];
@@ -293,7 +314,6 @@
                 });
             }
 
-            // Clean format variables to push to DB
             const formattedShipments = rawShipments.map(s => {
                 const soNum = String(s["SO Number"] || "").trim();
                 return {
@@ -311,11 +331,10 @@
                     try_qty: parseFloat(s["TRY"] || 0),
                     pc: parseFloat(s["PC"] || 0),
                     kg: parseFloat(s["KG"] || 0),
-                    truck_type: truckMapping[soNum] || "4W" // Defaulting to standard 4W if unmapped
+                    truck_type: truckMapping[soNum] || "4W"
                 };
             });
 
-            // Upsert transaction payload block inside Supabase
             const { error } = await supabaseClient.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
             
             if(error) {
@@ -325,7 +344,6 @@
             }
         }
 
-        // RETRIEVE MANIFEST FOR WORKBENCH DISPLAY
         async function fetchShipmentManifest() {
             const shipmentNo = document.getElementById('target-shipment-no').value.trim();
             if(!shipmentNo) return alert("Provide a target context Shipment Number to parse matrix lines.");
@@ -370,7 +388,7 @@
             });
         }
 
-        // COMPUTE ALGORITHMIC DURATION ALLOCATIONS
+        // EVALUATE WINDOW INTERSECTIONS FOR TIME BLOCK AND SLA TARGET EXTENSION
         function recalculateCalculatedWorkflowMetrics() {
             let totalQtySelected = 0;
             let netTargetHours = 0;
@@ -388,9 +406,43 @@
                 netTargetHours += (rowQtySum / speedRate);
             });
 
-            const totalBreakMinutes = configuredBreaks.reduce((sum, b) => sum + b.duration_minutes, 0);
-            const totalBreakHours = totalBreakMinutes / 60;
-            const finalizedTargetTime = netTargetHours > 0 ? (netTargetHours + totalBreakHours) : 0;
+            // Dynamically analyze if the execution timeline windows cross established break blocks
+            const now = new Date();
+            const estimatedNetCompletionDate = new Date(now.getTime() + (netTargetHours * 60 * 60 * 1000));
+            
+            let totalBreakHoursToApply = 0;
+
+            configuredBreaks.forEach(b => {
+                if (b.start_time && b.end_time) {
+                    // Turn configured times into absolute timestamps relative to today
+                    const [sHours, sMins] = b.start_time.split(':').map(Number);
+                    const [eHours, eMins] = b.end_time.split(':').map(Number);
+
+                    const breakStartDate = new Date(now);
+                    breakStartDate.setHours(sHours, sMins, 0, 0);
+
+                    const breakEndDate = new Date(now);
+                    breakEndDate.setHours(eHours, eMins, 0, 0);
+
+                    // Adjust break window forward if ending time rolls into the following calendar date
+                    if (breakEndDate < breakStartDate) {
+                        breakEndDate.setDate(breakEndDate.getDate() + 1);
+                    }
+
+                    // CONDITION: If task processing cross-sects or hits any point within the configured shift break timeframe
+                    const jobStartsBeforeBreakEnds = now < breakEndDate;
+                    const jobEndsAfterBreakStarts = estimatedNetCompletionDate > breakStartDate;
+
+                    if (jobStartsBeforeBreakEnds && jobEndsAfterBreakStarts) {
+                        totalBreakHoursToApply += (b.duration_minutes / 60);
+                    }
+                } else {
+                    // Fallback to static rules additions if time ranges aren't specified
+                    totalBreakHoursToApply += (b.duration_minutes / 60);
+                }
+            });
+
+            const finalizedTargetTime = netTargetHours > 0 ? (netTargetHours + totalBreakHoursToApply) : 0;
 
             document.getElementById('summary-total-qty').innerText = totalQtySelected.toFixed(2);
             document.getElementById('summary-target-hours').innerText = netTargetHours.toFixed(2);
@@ -401,7 +453,6 @@
             else displayCard.classList.add('hidden');
         }
 
-        // SUBMIT AND ENGAGE SYSTEM ENGINE RUNTIME
         async function commitJobTransaction() {
             const operatorName = document.getElementById('personnel-selector').value;
             const shipmentNo = document.getElementById('target-shipment-no').value.trim();
@@ -430,7 +481,6 @@
             }
         }
 
-        // RENDER ACTIVE BULLETIN MONITORS
         async function refreshBulletinBoard() {
             const { startOfOpDay, endOfOpDay } = calculateOperationalDayWindow();
 
@@ -497,7 +547,6 @@
             if(!error) await refreshBulletinBoard();
         }
 
-        // GLOBAL HEADER FILTERS FOR GENERAL LOOKUP MAPPING
         async function runSearchFilter() {
             const query = document.getElementById('search-query').value.trim();
             const minQty = parseFloat(document.getElementById('min-qty').value) || 0;
