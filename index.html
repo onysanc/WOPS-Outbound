@@ -432,7 +432,6 @@
                 return;
             }
 
-            // Fallback lookup: Find batch activity log for entire shipment if explicit row assignment doesn't exist
             const batchShipmentLog = activeRowActivityLogs.find(l => !l.so_number && l.role === currentRole);
 
             rows.forEach((row, i) => {
@@ -846,12 +845,11 @@
 
             if(error) return console.error(error);
             
-            // 1. Sync Bottom Floor Dispatch Bulletin Board
             const container = document.getElementById('bulletin-container');
             if(container) {
                 container.innerHTML = '';
                 if(data.length === 0) {
-                    container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">No batch dispatches loaded for this shift window.</div>`;
+                    container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">No dispatches loaded for this shift window.</div>`;
                 } else {
                     data.forEach(log => {
                         container.innerHTML += `
@@ -872,7 +870,6 @@
                 }
             }
 
-            // 2. Sync Right-Hand Side Sticky Panel Component Real-Time Action List
             const sidePanel = document.getElementById('side-panel-task-container');
             if(sidePanel) {
                 const ongoingTasks = data.filter(l => l.status === 'Ongoing' || l.status === 'Paused');
