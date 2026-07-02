@@ -13,6 +13,7 @@
   .tab-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .role-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .staging-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
+  .staging-area-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .view{display:none}
   .view.active{display:block}
   @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(244,63,94,.45)}100%{box-shadow:0 0 0 8px rgba(244,63,94,0)}}
@@ -177,7 +178,7 @@
   </section>
 
   <!-- ================= ADMIN VIEW ================= -->
-  <section id="view-admin" class="view grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <section id="view-admin" class="view grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
       <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">👤 Personnel Roster</h2>
       <form id="personnel-form" onsubmit="addPersonnel(event)" class="flex gap-2">
@@ -191,6 +192,16 @@
         <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">+</button>
       </form>
       <div id="personnel-list-container" class="space-y-3 max-h-[420px] overflow-y-auto"></div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+      <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">📍 Staging Area Masterlist</h2>
+      <form id="staging-area-form" onsubmit="addStagingArea(event)" class="flex gap-2">
+        <input type="text" id="staging-area-name-input" placeholder="e.g. Bay 1, Dock A" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">+</button>
+      </form>
+      <div id="staging-area-list-container" class="space-y-1 max-h-[420px] overflow-y-auto"></div>
+      <p class="text-[10px] text-slate-600 border-t border-slate-800/60 pt-3">This is the masterlist a Staging Checker picks from when confirming a check — at least one area is required per completion.</p>
     </div>
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -242,14 +253,14 @@
 
 <!-- ================= STAGING CHECK COMPLETION MODAL ================= -->
 <div id="staging-complete-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4 max-h-[90vh] overflow-y-auto">
     <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Confirm Staging Check</h3>
     <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-0.5">
       <span class="text-[10px] uppercase tracking-wider text-slate-500 block">Picked By</span>
       <span id="staging-modal-picker-name" class="text-sm font-black text-emerald-400">—</span>
     </div>
     <div>
-      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Any picking discrepancy?</label>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Any picking discrepancy? <span class="text-slate-600 normal-case font-normal">(select any that apply)</span></label>
       <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
         <button type="button" data-choice="None" onclick="setStagingDiscrepancyChoice('None')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">None</button>
         <button type="button" data-choice="Over Pick" onclick="setStagingDiscrepancyChoice('Over Pick')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Over Pick</button>
@@ -260,6 +271,13 @@
     <div id="staging-qty-wrap" class="hidden">
       <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Discrepancy Qty</label>
       <input type="number" id="staging-discrepancy-qty" min="0" step="any" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Staging Area <span class="text-rose-400">*</span> <span class="text-slate-600 normal-case font-normal">(select at least 1)</span></label>
+      <div id="staging-area-choice-container" class="grid grid-cols-2 gap-2 text-xs font-semibold">
+        <p class="col-span-2 text-[11px] text-slate-600 italic">Loading staging areas...</p>
+      </div>
+      <p id="staging-area-required-warning" class="hidden text-[10px] text-rose-400 mt-1.5">Select at least one Staging Area to continue.</p>
     </div>
     <div class="flex gap-2 pt-2">
       <button onclick="closeStagingCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
@@ -315,6 +333,7 @@ let currentRole = 'Picker';
 let currentManifestData = [];
 let configuredBreaks = [];
 let allPersonnel = [];
+let allStagingAreas = [];
 
 // --- INIT ---
 window.addEventListener('DOMContentLoaded', async () => {
@@ -324,6 +343,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setView('workbench');
   await setRole('Picker');
   await refreshConfiguredBreaks();
+  await refreshStagingAreas();
   await refreshBulletinBoard();
   await refreshShipmentDatalist();
   subscribeRealtime();
@@ -335,7 +355,7 @@ function setView(name) {
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'bulletin') refreshBulletinBoard();
-  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); }
+  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
 }
 
 // --- OPERATIONAL DAY WINDOW (05:00 -> 04:59 next day) ---
@@ -781,20 +801,60 @@ function closeDispatchModal() { document.getElementById('dispatch-modal').classL
 
 // --- STAGING CHECK COMPLETION MODAL ---
 let stagingCompleteMembers = null;
-let stagingDiscrepancyChoice = 'None';
+let stagingDiscrepancyChoices = new Set(); // 'None' is represented by an empty set
+let stagingAreaChoices = new Set();
 
+// Discrepancy is a genuine multi-select: a line can be Short Pick AND Wrong Pick
+// at once. "None" is exclusive with everything else — picking it clears other
+// choices, and picking any real discrepancy clears "None".
 function setStagingDiscrepancyChoice(choice) {
-  stagingDiscrepancyChoice = choice;
+  if (choice === 'None') {
+    stagingDiscrepancyChoices.clear();
+  } else {
+    if (stagingDiscrepancyChoices.has(choice)) stagingDiscrepancyChoices.delete(choice);
+    else stagingDiscrepancyChoices.add(choice);
+  }
+  const noneActive = stagingDiscrepancyChoices.size === 0;
   document.querySelectorAll('.staging-choice-btn').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-choice') === choice);
+    const c = b.getAttribute('data-choice');
+    b.classList.toggle('active', c === 'None' ? noneActive : stagingDiscrepancyChoices.has(c));
   });
-  document.getElementById('staging-qty-wrap').classList.toggle('hidden', choice === 'None');
+  document.getElementById('staging-qty-wrap').classList.toggle('hidden', noneActive);
+}
+
+// Staging Area is also multi-select, but required: at least one must be chosen
+// before the completion can be confirmed.
+function toggleStagingAreaChoice(name, btn) {
+  if (stagingAreaChoices.has(name)) stagingAreaChoices.delete(name);
+  else stagingAreaChoices.add(name);
+  btn.classList.toggle('active', stagingAreaChoices.has(name));
+  if (stagingAreaChoices.size > 0) {
+    document.getElementById('staging-area-required-warning').classList.add('hidden');
+  }
+}
+
+function renderStagingAreaChoices() {
+  const container = document.getElementById('staging-area-choice-container');
+  if (!allStagingAreas.length) {
+    container.innerHTML = '<p class="col-span-2 text-[11px] text-rose-400 italic">No staging areas configured yet — add one under Personnel &amp; Breaks first.</p>';
+    return;
+  }
+  container.innerHTML = allStagingAreas.map(a => {
+    const safe = a.name.replace(/'/g, "\\'");
+    return `<button type="button" onclick="toggleStagingAreaChoice('${safe}', this)" class="staging-area-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">${a.name}</button>`;
+  }).join('');
 }
 
 async function openStagingCompleteModal(members) {
   stagingCompleteMembers = members;
   document.getElementById('staging-discrepancy-qty').value = '';
+  stagingDiscrepancyChoices.clear();
   setStagingDiscrepancyChoice('None');
+
+  stagingAreaChoices.clear();
+  await refreshStagingAreas();
+  renderStagingAreaChoices();
+  document.getElementById('staging-area-required-warning').classList.add('hidden');
 
   // Show who originally picked this SO — pulled from the completed Picker-role log.
   const soNumbers = [...new Set(members.map(m => m.so_number).filter(Boolean))];
@@ -817,19 +877,29 @@ async function confirmStagingComplete() {
   const members = stagingCompleteMembers;
   if (!members) return closeStagingCompleteModal();
 
-  const choice = stagingDiscrepancyChoice;
+  // Staging Area is required — at least one selection, no exceptions.
+  if (stagingAreaChoices.size === 0) {
+    document.getElementById('staging-area-required-warning').classList.remove('hidden');
+    return showToast("Select at least one Staging Area before confirming.", "error");
+  }
+
+  const choices = [...stagingDiscrepancyChoices]; // empty array = no discrepancy
   let qty = null;
-  if (choice !== 'None') {
+  if (choices.length > 0) {
     qty = parseFloat(document.getElementById('staging-discrepancy-qty').value);
     if (isNaN(qty) || qty <= 0) return showToast("Enter a valid discrepancy quantity.", "error");
   }
 
-  const extra = { discrepancy_type: choice === 'None' ? null : choice, discrepancy_qty: choice === 'None' ? null : qty };
+  const extra = {
+    discrepancy_type: choices.length ? choices : null,
+    discrepancy_qty: choices.length ? qty : null,
+    staging_areas: [...stagingAreaChoices]
+  };
   for (const m of members) {
     await completeLogById(m.id, m, extra);
   }
   closeStagingCompleteModal();
-  showToast(choice === 'None' ? "Staging check completed." : `Staging check completed — ${choice} (${qty}) logged.`, "success");
+  showToast(choices.length ? `Staging check completed — ${choices.join(', ')} (${qty}) logged.` : "Staging check completed.", "success");
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -1294,6 +1364,38 @@ async function processUploads() {
     statusEl.innerHTML = `<span class="text-emerald-400">Upserted ${formattedShipments.length} rows successfully.</span>`;
     await refreshShipmentDatalist();
   }
+}
+
+// --- ADMIN: STAGING AREAS ---
+async function addStagingArea(e) {
+  e.preventDefault();
+  const name = document.getElementById('staging-area-name-input').value.trim();
+  if (!name) return;
+  const { error } = await supabaseClient.from('staging_areas').insert([{ name }]);
+  if (!error) { document.getElementById('staging-area-form').reset(); await refreshStagingAreaAdminList(); await refreshStagingAreas(); }
+  else showToast(error.message, "error");
+}
+async function deleteStagingArea(id) {
+  await supabaseClient.from('staging_areas').delete().eq('id', id);
+  await refreshStagingAreaAdminList();
+  await refreshStagingAreas();
+}
+async function refreshStagingAreaAdminList() {
+  const { data, error } = await supabaseClient.from('staging_areas').select('*').order('name');
+  if (error) return console.error(error);
+  const container = document.getElementById('staging-area-list-container');
+  container.innerHTML = data.length ? data.map(a => `
+    <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
+      <span class="text-slate-300 font-medium">${a.name}</span>
+      <button onclick="deleteStagingArea(${a.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
+    </div>`).join('') : '<p class="text-[11px] text-slate-600 italic">None yet — add at least one so Staging Checkers can complete tasks.</p>';
+}
+// Keeps the in-memory masterlist (used to render the required multi-select in the
+// Staging Check completion modal) in sync with the DB.
+async function refreshStagingAreas() {
+  const { data, error } = await supabaseClient.from('staging_areas').select('*').order('name');
+  if (error) return console.error(error);
+  allStagingAreas = data || [];
 }
 
 // --- ADMIN: PERSONNEL ---
