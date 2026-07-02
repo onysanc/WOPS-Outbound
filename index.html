@@ -153,9 +153,11 @@
 
     <script>
         // --- SUPABASE CLIENT CONFIGURATION SETUP ---
-        const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co/rest/v1/"; 
+        const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Initializing with distinctive variable name to safely handle namespace global collisions
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- APPLICATION STATE CONTAINER ---
         let currentRole = 'Picker';
@@ -214,7 +216,7 @@
 
         // LOAD FILTERED ASSOCIATES BY DESIGNATED TASK ROLE
         async function populatePersonnelListByRole(role) {
-            const { data, error } = await supabase.from('personnel').select('*').eq('role', role);
+            const { data, error } = await supabaseClient.from('personnel').select('*').eq('role', role);
             if(error) return console.error(error);
             
             const selector = document.getElementById('personnel-selector');
@@ -226,7 +228,7 @@
 
         // REFRESH ADMIN BREAK CONFIG LISTINGS FROM DB
         async function refreshConfiguredBreaks() {
-            const { data, error } = await supabase.from('break_settings').select('*');
+            const { data, error } = await supabaseClient.from('break_settings').select('*');
             if (error) return console.error(error);
             configuredBreaks = data;
             
@@ -249,7 +251,7 @@
             const name = document.getElementById('break-name').value;
             const duration = parseInt(document.getElementById('break-duration').value);
             
-            const { error } = await supabase.from('break_settings').insert([{ break_name: name, duration_minutes: duration }]);
+            const { error } = await supabaseClient.from('break_settings').insert([{ break_name: name, duration_minutes: duration }]);
             if(!error) {
                 document.getElementById('break-form').reset();
                 await refreshConfiguredBreaks();
@@ -257,7 +259,7 @@
         }
 
         async function deleteBreakRule(id) {
-            await supabase.from('break_settings').delete().eq('id', id);
+            await supabaseClient.from('break_settings').delete().eq('id', id);
             await refreshConfiguredBreaks();
         }
 
@@ -314,7 +316,7 @@
             });
 
             // Upsert transaction payload block inside Supabase
-            const { error } = await supabase.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
+            const { error } = await supabaseClient.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
             
             if(error) {
                 alert("Database communication execution failure: " + error.message);
@@ -328,7 +330,7 @@
             const shipmentNo = document.getElementById('target-shipment-no').value.trim();
             if(!shipmentNo) return alert("Provide a target context Shipment Number to parse matrix lines.");
 
-            const { data, error } = await supabase.from('shipments').select('*').eq('shipment_no', shipmentNo);
+            const { data, error } = await supabaseClient.from('shipments').select('*').eq('shipment_no', shipmentNo);
             if(error) return console.error(error);
 
             currentManifestData = data;
@@ -345,7 +347,6 @@
             }
 
             rows.forEach((row, i) => {
-                // Evaluates step validation logic rules explicitly asked by structural requirements
                 const isPicked = row.pgi_date !== null;
                 const isDisabled = (currentRole === 'Picker' && isPicked);
 
@@ -380,21 +381,17 @@
                 const idx = parseInt(cb.getAttribute('data-index'));
                 const item = currentManifestData[idx];
 
-                // CV, BX, PAC, TRY, PC, KG are parsed as numeric data structures
                 const rowQtySum = item.cv + item.bx + item.pac + item.try_qty + item.pc + item.kg;
                 totalQtySelected += rowQtySum;
 
-                // Computational speed metrics: AUV/4W/6W/10W/20F/40
                 const speedRate = ["AUV", "4W", "6W", "10W", "20F", "40"].includes(item.truck_type?.toUpperCase()) ? 180 : 110;
                 netTargetHours += (rowQtySum / speedRate);
             });
 
-            // Aggregate accumulated break times configured by system admin
             const totalBreakMinutes = configuredBreaks.reduce((sum, b) => sum + b.duration_minutes, 0);
             const totalBreakHours = totalBreakMinutes / 60;
             const finalizedTargetTime = netTargetHours > 0 ? (netTargetHours + totalBreakHours) : 0;
 
-            // Render output matrices UI
             document.getElementById('summary-total-qty').innerText = totalQtySelected.toFixed(2);
             document.getElementById('summary-target-hours').innerText = netTargetHours.toFixed(2);
             document.getElementById('summary-final-hours').innerText = finalizedTargetTime.toFixed(2);
@@ -414,7 +411,7 @@
             const totalQty = parseFloat(document.getElementById('summary-total-qty').innerText);
             const targetHours = parseFloat(document.getElementById('summary-final-hours').innerText);
 
-            const { error } = await supabase.from('activity_logs').insert([{
+            const { error } = await supabaseClient.from('activity_logs').insert([{
                 shipment_no: shipmentNo,
                 role: currentRole,
                 personnel_name: operatorName,
@@ -437,8 +434,7 @@
         async function refreshBulletinBoard() {
             const { startOfOpDay, endOfOpDay } = calculateOperationalDayWindow();
 
-            // Filters logs within the 5am to 4:59am operational day limits
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('activity_logs')
                 .select('*')
                 .gte('start_time', startOfOpDay.toISOString())
@@ -497,7 +493,7 @@
         }
 
         async function markJobAsComplete(id) {
-            const { error } = await supabase.from('activity_logs').update({ status: 'Completed' }).eq('id', id);
+            const { error } = await supabaseClient.from('activity_logs').update({ status: 'Completed' }).eq('id', id);
             if(!error) await refreshBulletinBoard();
         }
 
@@ -507,7 +503,7 @@
             const minQty = parseFloat(document.getElementById('min-qty').value) || 0;
             const qtyField = document.getElementById('qty-type-filter').value;
 
-            let queryBuilder = supabase.from('shipments').select('*');
+            let queryBuilder = supabaseClient.from('shipments').select('*');
 
             if(query) {
                 queryBuilder = queryBuilder.or(`shipment_no.ilike.%${query}%,sold_to_party_name.ilike.%${query}%,route_description.ilike.%${query}%`);
@@ -516,7 +512,6 @@
             const { data, error } = await queryBuilder;
             if(error) return console.error(error);
 
-            // Filter out quantities client side for dynamic field matching blocks
             const clientFilteredRows = data.filter(row => {
                 if (minQty > 0) {
                     if (qtyField === 'all') {
