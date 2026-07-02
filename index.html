@@ -466,10 +466,44 @@ function totalConfiguredBreakHours() {
   return configuredBreaks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0) / 60;
 }
 
+// Projected completion time for a baseline (no-break) duration starting at startDate.
+// Break time is only added if a configured break window actually overlaps the
+// [startDate, rawEnd] span — a break that already ended before startDate, or hasn't
+// been reached yet by the projected window, contributes nothing.
+function projectedTargetCompletion(startDate, baselineHours) {
+  const rawEnd = new Date(startDate.getTime() + (baselineHours || 0) * 3600000);
+  const overlapMinutes = computeBreakOverlapMinutes(startDate, rawEnd);
+  return overlapMinutes > 0 ? new Date(rawEnd.getTime() + overlapMinutes * 60000) : rawEnd;
+}
+
+// --- GROUPING: rows dispatched together (same confirmation) share personnel_name +
+// role + start_time, so they act — and complete — as a single unified task.
+async function getGroupMembers(log) {
+  const { data, error } = await supabaseClient.from('activity_logs').select('*')
+    .eq('personnel_name', log.personnel_name)
+    .eq('role', log.role)
+    .eq('start_time', log.start_time)
+    .neq('status', 'Completed');
+  if (error) { console.error(error); return [log]; }
+  return (data && data.length) ? data : [log];
+}
+
+// A picker (or any role) cannot pick up a new task while they already have one
+// Ongoing, unless it has been Paused or Completed first.
+async function personnelHasOngoing(personnelName, role, excludeIds = []) {
+  const { data, error } = await supabaseClient.from('activity_logs').select('id')
+    .eq('personnel_name', personnelName).eq('role', role).eq('status', 'Ongoing');
+  if (error) { console.error(error); return false; }
+  return (data || []).some(r => !excludeIds.includes(r.id));
+}
+
 // --- ROW STATE MACHINE ACTIONS ---
 async function startRow(i) {
   const operator = document.getElementById('operator-input').value.trim();
   if (!operator) return showToast("Select a personnel name first.", "error");
+  if (await personnelHasOngoing(operator, currentRole)) {
+    return showToast(`${operator} already has an ongoing task. Pause or complete it before starting another.`, "error");
+  }
   const row = currentManifestData[i];
   const qty = rowQtySum(row);
   const targetHours = qty / speedRateFor(row.truck_type);
@@ -486,10 +520,11 @@ async function startRow(i) {
 
 async function pauseRow(i) {
   const log = currentManifestData[i]._log;
-  // end_time is temporarily repurposed to store the pause timestamp while status = 'Paused'
+  const members = await getGroupMembers(log);
+  const pauseTime = new Date().toISOString();
   const { error } = await supabaseClient.from('activity_logs')
-    .update({ status: 'Paused', end_time: new Date().toISOString() })
-    .eq('id', log.id);
+    .update({ status: 'Paused', end_time: pauseTime })
+    .in('id', members.map(m => m.id));
   if (error) return showToast("Could not pause: " + error.message, "error");
   await fetchShipmentManifest();
   await refreshSidePanel();
@@ -498,12 +533,20 @@ async function pauseRow(i) {
 
 async function resumeRow(i) {
   const log = currentManifestData[i]._log;
-  const pausedAt = new Date(log.end_time);
-  const pauseSeconds = Math.max(0, Math.floor((new Date() - pausedAt) / 1000));
-  const { error } = await supabaseClient.from('activity_logs')
-    .update({ status: 'Ongoing', end_time: null, accumulated_seconds: (log.accumulated_seconds || 0) + pauseSeconds })
-    .eq('id', log.id);
-  if (error) return showToast("Could not resume: " + error.message, "error");
+  const members = await getGroupMembers(log);
+  const memberIds = members.map(m => m.id);
+  if (await personnelHasOngoing(log.personnel_name, log.role, memberIds)) {
+    return showToast(`${log.personnel_name} already has another ongoing task. Pause or complete it first.`, "error");
+  }
+  for (const m of members) {
+    if (m.status !== 'Paused') continue;
+    const pausedAt = new Date(m.end_time);
+    const pauseSeconds = Math.max(0, Math.floor((new Date() - pausedAt) / 1000));
+    const { error } = await supabaseClient.from('activity_logs')
+      .update({ status: 'Ongoing', end_time: null, accumulated_seconds: (m.accumulated_seconds || 0) + pauseSeconds })
+      .eq('id', m.id);
+    if (error) return showToast("Could not resume: " + error.message, "error");
+  }
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -511,8 +554,12 @@ async function resumeRow(i) {
 
 async function unassignRow(i) {
   const log = currentManifestData[i]._log;
-  if (!(await showConfirm("Unassign this row? This deletes the in-progress log."))) return;
-  const { error } = await supabaseClient.from('activity_logs').delete().eq('id', log.id);
+  const members = await getGroupMembers(log);
+  const msg = members.length > 1
+    ? `Unassign this task? This deletes all ${members.length} grouped lines started together.`
+    : "Unassign this row? This deletes the in-progress log.";
+  if (!(await showConfirm(msg))) return;
+  const { error } = await supabaseClient.from('activity_logs').delete().in('id', members.map(m => m.id));
   if (error) return showToast("Could not unassign: " + error.message, "error");
   await fetchShipmentManifest();
   await refreshSidePanel();
@@ -521,7 +568,10 @@ async function unassignRow(i) {
 
 async function completeRow(i) {
   const log = currentManifestData[i]._log;
-  await completeLogById(log.id, log);
+  const members = await getGroupMembers(log);
+  for (const m of members) {
+    await completeLogById(m.id, m);
+  }
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -572,16 +622,28 @@ function recalcSummary() {
     totalQty += qty;
     netHours += qty / speedRateFor(row.truck_type);
   });
-  const finalHours = netHours > 0 ? netHours + totalConfiguredBreakHours() : 0;
+  // Final hours = baseline (net) hours, plus break time ONLY if a configured break
+  // window actually overlaps the projected [now, now+netHours] task window. A break
+  // that already ended before the task starts is not included.
+  let finalHours = 0;
+  if (netHours > 0) {
+    const now = new Date();
+    const rawEnd = new Date(now.getTime() + netHours * 3600000);
+    const overlapMinutes = computeBreakOverlapMinutes(now, rawEnd);
+    finalHours = netHours + overlapMinutes / 60;
+  }
   document.getElementById('summary-total-qty').innerText = totalQty.toFixed(2);
   document.getElementById('summary-target-hours').innerText = netHours.toFixed(2);
   document.getElementById('summary-final-hours').innerText = finalHours.toFixed(2);
   document.getElementById('target-summary-card').classList.toggle('hidden', checkboxes.length === 0);
 }
 
-function openDispatchModal() {
+async function openDispatchModal() {
   const operator = document.getElementById('operator-input').value.trim();
   if (!operator) return showToast("Select a personnel name first.", "error");
+  if (await personnelHasOngoing(operator, currentRole)) {
+    return showToast(`${operator} already has an ongoing task. Pause or complete it before starting another.`, "error");
+  }
   const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:checked');
   if (checkboxes.length === 0) return showToast("Select at least one pending row.", "error");
   const totalQty = document.getElementById('summary-total-qty').innerText;
@@ -598,16 +660,26 @@ function closeDispatchModal() { document.getElementById('dispatch-modal').classL
 
 async function commitJobTransaction() {
   const operator = document.getElementById('operator-input').value.trim();
+  if (await personnelHasOngoing(operator, currentRole)) {
+    closeDispatchModal();
+    return showToast(`${operator} already has an ongoing task. Pause or complete it before starting another.`, "error");
+  }
   const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:checked');
   const selectedRows = Array.from(checkboxes).map(cb => currentManifestData[parseInt(cb.getAttribute('data-index'))]);
 
-  // One row per SO number so every line is individually lockable — no aggregate/batch log.
+  // Rows started within the same confirmation share one start_time, which groups
+  // them as a single task (they pause/resume/complete together). Target hours is
+  // computed off the TOTAL qty of the whole group (not each row individually), so
+  // every line in the group carries the same, group-wide target completion time.
+  const groupNetHours = selectedRows.reduce((s, row) => s + rowQtySum(row) / speedRateFor(row.truck_type), 0);
+  const batchStartIso = new Date().toISOString();
+
   const payload = selectedRows.map(row => {
     const qty = rowQtySum(row);
     return {
       shipment_no: row.shipment_no, so_number: row.so_number, role: currentRole,
-      personnel_name: operator, total_qty: qty, target_hours: qty / speedRateFor(row.truck_type),
-      status: 'Ongoing', start_time: new Date().toISOString(), accumulated_seconds: 0
+      personnel_name: operator, total_qty: qty, target_hours: groupNetHours,
+      status: 'Ongoing', start_time: batchStartIso, accumulated_seconds: 0
     };
   });
 
@@ -615,7 +687,7 @@ async function commitJobTransaction() {
 
   closeDispatchModal();
   if (error) return showToast("Failed to dispatch batch: " + error.message, "error");
-  showToast(`Dispatched ${payload.length} line(s) to the floor bulletin.`, "success");
+  showToast(`Dispatched ${payload.length} line(s) as one grouped task.`, "success");
   document.getElementById('target-summary-card').classList.add('hidden');
   await fetchShipmentManifest();
   await refreshBulletinBoard();
@@ -652,7 +724,7 @@ async function refreshSidePanel() {
 
   container.innerHTML = Object.entries(groups).map(([shipmentNo, logs]) => {
     const totalQty = logs.reduce((s, l) => s + (l.total_qty || 0), 0);
-    const targetCompleteTimes = logs.map(l => new Date(new Date(l.start_time).getTime() + (l.target_hours || 0) * 3600000));
+    const targetCompleteTimes = logs.map(l => projectedTargetCompletion(new Date(l.start_time), l.target_hours || 0));
     const latestTarget = new Date(Math.max(...targetCompleteTimes));
     const anyOverdue = logs.some((l, idx) => l.status !== 'Completed' && new Date() > targetCompleteTimes[idx]);
 
@@ -704,23 +776,40 @@ async function refreshSidePanel() {
 }
 
 async function sidePanelPause(id) {
-  await supabaseClient.from('activity_logs').update({ status: 'Paused', end_time: new Date().toISOString() }).eq('id', id);
+  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const members = await getGroupMembers(log);
+  const pauseTime = new Date().toISOString();
+  await supabaseClient.from('activity_logs').update({ status: 'Paused', end_time: pauseTime }).in('id', members.map(m => m.id));
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelResume(id) {
-  const { data } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
-  const pauseSeconds = Math.max(0, Math.floor((new Date() - new Date(data.end_time)) / 1000));
-  await supabaseClient.from('activity_logs').update({ status: 'Ongoing', end_time: null, accumulated_seconds: (data.accumulated_seconds || 0) + pauseSeconds }).eq('id', id);
+  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const members = await getGroupMembers(log);
+  const memberIds = members.map(m => m.id);
+  if (await personnelHasOngoing(log.personnel_name, log.role, memberIds)) {
+    return showToast(`${log.personnel_name} already has another ongoing task. Pause or complete it first.`, "error");
+  }
+  for (const m of members) {
+    if (m.status !== 'Paused') continue;
+    const pauseSeconds = Math.max(0, Math.floor((new Date() - new Date(m.end_time)) / 1000));
+    await supabaseClient.from('activity_logs').update({ status: 'Ongoing', end_time: null, accumulated_seconds: (m.accumulated_seconds || 0) + pauseSeconds }).eq('id', m.id);
+  }
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelComplete(id) {
-  const { data } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
-  await completeLogById(id, data);
+  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const members = await getGroupMembers(log);
+  for (const m of members) await completeLogById(m.id, m);
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelUnassign(id) {
-  if (!(await showConfirm("Unassign this line?"))) return;
-  await supabaseClient.from('activity_logs').delete().eq('id', id);
+  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const members = await getGroupMembers(log);
+  const msg = members.length > 1
+    ? `Unassign this task? This deletes all ${members.length} grouped lines started together.`
+    : "Unassign this line?";
+  if (!(await showConfirm(msg))) return;
+  await supabaseClient.from('activity_logs').delete().in('id', members.map(m => m.id));
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 
@@ -761,13 +850,13 @@ async function refreshBulletinBoard() {
   container.innerHTML = Object.entries(groups).map(([shipmentNo, logs]) => {
     const totalQty = logs.reduce((s, l) => s + (l.total_qty || 0), 0);
     const anyOverdue = logs.some(l => {
-      const target = new Date(new Date(l.start_time).getTime() + (l.target_hours || 0) * 3600000);
+      const target = projectedTargetCompletion(new Date(l.start_time), l.target_hours || 0);
       return l.status !== 'Completed' && new Date() > target;
     });
 
     const lines = logs.map(log => {
       const startLocal = new Date(log.start_time);
-      const targetCompTime = new Date(startLocal.getTime() + (log.target_hours || 0) * 3600000);
+      const targetCompTime = projectedTargetCompletion(startLocal, log.target_hours || 0);
       const isOverdue = new Date() > targetCompTime && log.status !== 'Completed';
       return `
         <div class="flex justify-between items-start py-2 border-b border-slate-900 last:border-0">
