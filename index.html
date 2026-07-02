@@ -271,7 +271,6 @@
         let configuredBreaks = [];
         let globalShipmentNumbers = [];
 
-        // Dynamic parameters calculated on checkbox triggers
         let computedMetricsSummary = {
             truckTypes: [],
             totalQty: 0,
@@ -324,13 +323,15 @@
         function setWorkbenchRole(roleName) {
             currentRole = roleName;
             document.querySelectorAll('.wb-role-btn').forEach(btn => {
-                btn.classList.remove('bg-emerald-600', 'border-emerald-500', 'text-white shadow-lg');
+                // FIXED: Class names separated individually into strings to prevent DOMTokenList crash
+                btn.classList.remove('bg-emerald-600', 'border-emerald-500', 'text-white', 'shadow-lg');
                 btn.classList.add('bg-slate-900/40', 'border-slate-800', 'text-slate-300');
             });
             
             const tgtBtn = document.getElementById(`role-select-${roleName}`);
             tgtBtn.classList.remove('bg-slate-900/40', 'border-slate-800', 'text-slate-300');
-            tgtBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white shadow-lg');
+            // FIXED: Separated class names inside classList.add()
+            tgtBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white', 'shadow-lg');
 
             const rowPanel = document.getElementById('hidden-inputs-container');
             rowPanel.classList.remove('opacity-40', 'pointer-events-none');
@@ -425,7 +426,6 @@
             });
         }
 
-        // TIME FORMATTER HELPER: Converts decimal hours to dynamic HH:MM notation string
         function formatHoursToHHMM(decimalHours) {
             if (isNaN(decimalHours) || decimalHours <= 0) return "00:00";
             const totalMinutes = Math.round(decimalHours * 60);
@@ -484,7 +484,6 @@
             const finalizedTargetTime = netTargetHours > 0 ? (netTargetHours + totalBreakHoursToApply) : 0;
             const absoluteCompletionTime = new Date(now.getTime() + (finalizedTargetTime * 60 * 60 * 1000));
 
-            // Map computed scope to global variable
             computedMetricsSummary = {
                 truckTypes: [...new Set(targetTrucks)],
                 totalQty: totalQtySelected,
@@ -511,7 +510,6 @@
             document.getElementById('modal-val-truck').innerText = computedMetricsSummary.truckTypes.join(', ') || 'N/A';
             document.getElementById('modal-val-qty').innerText = computedMetricsSummary.totalQty.toFixed(2) + " Units";
             
-            // Render intervals cleanly in standardized HH:MM notation formats
             document.getElementById('modal-val-net-time').innerText = formatHoursToHHMM(computedMetricsSummary.netHours) + " (HH:MM)";
             document.getElementById('modal-val-total-rendered').innerText = formatHoursToHHMM(computedMetricsSummary.finalHours);
             document.getElementById('modal-val-completion-time').innerText = computedMetricsSummary.estimatedCompletion;
@@ -654,16 +652,19 @@
             let diffMins = (eh * 60 + em) - (sh * 60 + sm);
             if (diffMins < 0) diffMins += 24 * 60; 
             
+            // FIXED: Payload values explicitly parsed to match target column typing definitions
             const { error } = await supabaseClient.from('break_settings').insert([{ 
                 break_name: name, 
-                duration_minutes: diffMins,
-                start_time: startTime,
-                end_time: endTime
+                duration_minutes: parseInt(diffMins),
+                start_time: startTime || null,
+                end_time: endTime || null
             }]);
             
             if(!error) {
                 document.getElementById('break-form').reset();
                 await refreshConfiguredBreaks();
+            } else {
+                alert("Database write error: " + error.message);
             }
         }
 
