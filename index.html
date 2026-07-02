@@ -370,7 +370,36 @@ async function populatePersonnelDatalist(role) {
   dl.innerHTML = allPersonnel.map(p => `<option value="${p.name}">`).join('');
 }
 
-function onOperatorChange() { renderManifestTable(); refreshSidePanel(); }
+// Roster is the single source of truth for who may be assigned to a role — the
+// datalist is just a typing convenience, so we always re-check membership before
+// any DB write. Match is case-insensitive/trim-tolerant to survive stray spacing.
+function isValidPersonnel(name) {
+  const n = (name || '').trim().toLowerCase();
+  if (!n) return false;
+  return allPersonnel.some(p => (p.name || '').trim().toLowerCase() === n);
+}
+
+function onOperatorChange() {
+  const input = document.getElementById('operator-input');
+  const val = input.value.trim();
+  const ok = !val || isValidPersonnel(val);
+  input.classList.toggle('border-rose-500', !ok);
+  input.classList.toggle('focus:border-rose-500', !ok);
+  let warn = document.getElementById('operator-roster-warning');
+  if (!ok) {
+    if (!warn) {
+      warn = document.createElement('p');
+      warn.id = 'operator-roster-warning';
+      warn.className = 'text-[10px] text-rose-400 mt-1';
+      input.parentElement.appendChild(warn);
+    }
+    warn.innerText = `"${val}" is not on the ${currentRole} roster. Add them under Personnel & Breaks first.`;
+  } else if (warn) {
+    warn.remove();
+  }
+  renderManifestTable();
+  refreshSidePanel();
+}
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
 async function refreshShipmentDatalist() {
@@ -419,7 +448,11 @@ async function fetchShipmentManifest() {
   currentManifestData = data.map(row => ({
     ...row,
     _log: logs.find(l => l.so_number === row.so_number) || null,
-    _pickReady: currentRole !== 'Staging Checker' || !!row.pgi_date || pickerCompletedSet.has(row.so_number)
+    // Ready for Staging Checker once ANY of: source system already set a PGI date,
+    // the shipments row itself carries the persisted status='PICKED' flag (set the
+    // moment a Picker completes), or (fallback for rows not yet backfilled) the
+    // Picker-role activity_logs entry for this SO is Completed.
+    _pickReady: currentRole !== 'Staging Checker' || !!row.pgi_date || row.status === 'PICKED' || pickerCompletedSet.has(row.so_number)
   }));
   renderManifestTable();
 }
@@ -428,7 +461,7 @@ async function fetchShipmentManifest() {
 // auto-locks the row away from the Picker themselves; for later stages (Staging
 // Checker, etc.) it's read via row._pickReady as an eligibility signal instead.
 function rowStatusLabel(row, log, role) {
-  if (role === 'Picker' && row.pgi_date) return 'PICKED';
+  if (role === 'Picker' && (row.pgi_date || row.status === 'PICKED')) return 'PICKED';
   if (!log) return 'PENDING';
   if (log.status === 'Ongoing') return 'ONGOING';
   if (log.status === 'Paused') return 'PAUSED';
@@ -454,7 +487,7 @@ function renderManifestTable() {
   rows.forEach((row, i) => {
     const log = row._log;
     const status = rowStatusLabel(row, log, currentRole);
-    const isPickedSource = currentRole === 'Picker' && !!row.pgi_date;
+    const isPickedSource = currentRole === 'Picker' && (!!row.pgi_date || row.status === 'PICKED');
     const isAssignedActive = log && (log.status === 'Ongoing' || log.status === 'Paused');
     // Locked to someone else the moment ANY same-role log is active, whether or not an operator name has been typed yet
     const isMine = isAssignedActive && operator && log.personnel_name === operator;
@@ -565,6 +598,9 @@ async function personnelHasOngoing(personnelName, role, excludeIds = []) {
 async function startRow(i) {
   const operator = document.getElementById('operator-input').value.trim();
   if (!operator) return showToast("Select a personnel name first.", "error");
+  if (!isValidPersonnel(operator)) {
+    return showToast(`"${operator}" is not on the ${currentRole} roster. Add them under Personnel & Breaks first.`, "error");
+  }
   if (await personnelHasOngoing(operator, currentRole)) {
     return showToast(`${operator} already has an ongoing task. Pause or complete it before starting another.`, "error");
   }
@@ -663,7 +699,17 @@ async function completeLogById(logId, log, extra = {}) {
     rendered_minutes: renderedMinutes,
     ...extra
   }).eq('id', logId);
-  if (error) showToast("Could not complete: " + error.message, "error");
+  if (error) return showToast("Could not complete: " + error.message, "error");
+
+  // A Picker finishing a line means it's ready for Staging — persist that onto the
+  // shipments row itself (not just derived from activity_logs) so Staging Checkers,
+  // reports, and any other consumer of the shipments table see it immediately,
+  // whether or not a PGI date has landed from the source system yet.
+  if (log.role === 'Picker' && log.so_number) {
+    const { error: shipErr } = await supabaseClient.from('shipments')
+      .update({ status: 'PICKED' }).eq('so_number', log.so_number);
+    if (shipErr) console.error('Could not flag shipment as PICKED:', shipErr.message);
+  }
 }
 
 // Overlap (minutes) between [start,end] and each configured break's time-of-day window
@@ -712,6 +758,9 @@ function recalcSummary() {
 async function openDispatchModal() {
   const operator = document.getElementById('operator-input').value.trim();
   if (!operator) return showToast("Select a personnel name first.", "error");
+  if (!isValidPersonnel(operator)) {
+    return showToast(`"${operator}" is not on the ${currentRole} roster. Add them under Personnel & Breaks first.`, "error");
+  }
   if (await personnelHasOngoing(operator, currentRole)) {
     return showToast(`${operator} already has an ongoing task. Pause or complete it before starting another.`, "error");
   }
@@ -787,6 +836,10 @@ async function confirmStagingComplete() {
 
 async function commitJobTransaction() {
   const operator = document.getElementById('operator-input').value.trim();
+  if (!operator || !isValidPersonnel(operator)) {
+    closeDispatchModal();
+    return showToast(`"${operator}" is not on the ${currentRole} roster. Add them under Personnel & Breaks first.`, "error");
+  }
   if (await personnelHasOngoing(operator, currentRole)) {
     closeDispatchModal();
     return showToast(`${operator} already has an ongoing task. Pause or complete it before starting another.`, "error");
@@ -1223,7 +1276,12 @@ async function processUploads() {
       so_amount: parseFloat(String(s["SO Amount"] || "0").replace(/,/g, '')),
       cv: parseFloat(s["CV"] || 0), bx: parseFloat(s["BX"] || 0), pac: parseFloat(s["PAC"] || 0),
       try_qty: parseFloat(s["TRY"] || 0), pc: parseFloat(s["PC"] || 0), kg: parseFloat(s["KG"] || 0),
-      truck_type: truckMapping[soNum] || "4W"
+      truck_type: truckMapping[soNum] || "4W",
+      // If this fresh upload already carries a PGI date, it's picked — say so
+      // explicitly. Otherwise DON'T send a status at all: leave it out of the
+      // payload so upsert doesn't clobber a status='PICKED' flag that a Picker
+      // may have already set for this SO from inside the app.
+      ...(pgiDate ? { status: 'PICKED' } : {})
     };
   });
 
