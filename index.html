@@ -101,7 +101,7 @@
         <table class="w-full text-left text-xs border-collapse">
           <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
             <tr>
-              <th class="p-3 text-center w-10">Sel</th>
+              <th class="p-3 text-center w-10"><input type="checkbox" id="select-all-rows" onchange="toggleSelectAllRows(this)" class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500" title="Select/deselect all selectable rows"></th>
               <th class="p-3">SO Number</th>
               <th class="p-3">OBD Number</th>
               <th class="p-3">Customer</th>
@@ -513,6 +513,15 @@ function onOperatorChange() {
   refreshSidePanel();
 }
 
+// Resets the Personnel Name field after a task is successfully dispatched
+// (single-row Start or batch Confirm & Start Clock), so the next operator has
+// to be explicitly typed/picked rather than accidentally reused.
+function clearOperatorInput() {
+  const input = document.getElementById('operator-input');
+  input.value = '';
+  onOperatorChange();
+}
+
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
 async function refreshShipmentDatalist() {
   const { data, error } = await supabaseClient.from('shipments').select('shipment_no').limit(500);
@@ -602,6 +611,8 @@ function renderManifestTable() {
   const filterText = (document.getElementById('row-filter').value || '').toLowerCase();
   const operator = document.getElementById('operator-input').value.trim();
   tbody.innerHTML = '';
+  const selectAllCb = document.getElementById('select-all-rows');
+  if (selectAllCb) selectAllCb.checked = false; // rows are freshly rendered unchecked, keep header in sync
 
   const rows = currentManifestData.filter(r =>
     !filterText || JSON.stringify(r).toLowerCase().includes(filterText)
@@ -785,6 +796,7 @@ async function startRow(i) {
     status: 'Ongoing', start_time: new Date().toISOString(), accumulated_seconds: 0
   }]);
   if (error) return showToast("Could not start row: " + error.message, "error");
+  clearOperatorInput();
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -906,6 +918,14 @@ function computeBreakOverlapMinutes(start, end) {
 }
 
 // --- BATCH SELECTION SUMMARY + DISPATCH MODAL ---
+// Header "select all" checkbox — checks/unchecks every SELECTABLE row (skips
+// rows disabled because they're not PENDING / not ready for this stage yet).
+function toggleSelectAllRows(headerCb) {
+  const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:not(:disabled)');
+  checkboxes.forEach(cb => { cb.checked = headerCb.checked; });
+  recalcSummary();
+}
+
 function recalcSummary() {
   let totalQty = 0;
   const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:checked');
@@ -1189,6 +1209,7 @@ async function commitJobTransaction() {
   if (error) return showToast("Failed to dispatch batch: " + error.message, "error");
   showToast(`Dispatched ${payload.length} line(s) as one grouped task.`, "success");
   document.getElementById('target-summary-card').classList.add('hidden');
+  clearOperatorInput();
   await fetchShipmentManifest();
   await refreshBulletinBoard();
   await refreshSidePanel();
