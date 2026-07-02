@@ -1,4 +1,294 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logistics Operations Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen relative overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur p-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <h1 class="text-xl font-bold tracking-wider text-emerald-400">⚡ LOGI-FLOW SYSTEM</h1>
+                <span class="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-700" id="op-day-display">Loading...</span>
+            </div>
+            
+            <nav class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <button onclick="switchSystemTab('tab-workbench')" id="nav-tab-workbench" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer">Processing Workbench</button>
+                <button onclick="switchSystemTab('tab-masterdata')" id="nav-tab-masterdata" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 cursor-pointer">Master Data</button>
+                <button onclick="switchSystemTab('tab-personnel')" id="nav-tab-personnel" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 cursor-pointer">Personnel Pool</button>
+                <button onclick="switchSystemTab('tab-breaks')" id="nav-tab-breaks" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 cursor-pointer">Break Schedule</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+
+        <section id="tab-workbench" class="tab-content space-y-6">
+            
+            <div class="max-w-3xl mx-auto bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+                <div>
+                    <h2 class="text-base font-bold text-slate-200">Workflow Entry Manifest</h2>
+                    <p class="text-xs text-slate-500">Provide sequential operations attributes below to trace active item weights</p>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">Step 1: Choose Active Designation</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <button onclick="setWorkbenchRole('Picker')" id="role-select-Picker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">1. Picker</button>
+                        <button onclick="setWorkbenchRole('Staging Checker')" id="role-select-Staging Checker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">2. Staging Checker</button>
+                        <button onclick="setWorkbenchRole('Puller')" id="role-select-Puller" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">3. Puller</button>
+                        <button onclick="setWorkbenchRole('Outbound Checker')" id="role-select-Outbound Checker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">4. Outbound Checker</button>
+                    </div>
+                </div>
+
+                <div id="hidden-inputs-container" class="opacity-40 pointer-events-none transition-all duration-300 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="relative">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Step 2: Personnel Name</label>
+                        <input type="text" id="wb-personnel-input" list="autofill-personnel" placeholder="Type name to autofill..." oninput="evaluateWorkbenchState()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 font-medium">
+                        <datalist id="autofill-personnel"></datalist>
+                    </div>
+
+                    <div class="relative">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Step 3: Shipment ID Reference</label>
+                        <input type="text" id="wb-shipment-input" list="autofill-shipments" placeholder="Type shipment no. to filter..." oninput="evaluateWorkbenchState()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-emerald-400 font-mono tracking-wide focus:outline-none focus:border-emerald-500">
+                        <datalist id="autofill-shipments"></datalist>
+                    </div>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button id="wb-load-btn" onclick="executeManifestQuery()" disabled class="w-full md:w-auto px-6 py-3 bg-slate-800 text-slate-400 font-bold text-xs uppercase tracking-wider rounded-xl transition pointer-events-none">Load Dynamic Task Parameters</button>
+                </div>
+            </div>
+
+            <div id="workbench-matrix-viewport" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                
+                <div class="lg:col-span-3 space-y-6">
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Action Line Manifest Table</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="inline-search" oninput="runInlineMatrixFilter()" placeholder="Filter current manifest rows..." class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500 w-48 text-slate-200">
+                            <button onclick="clearInlineFilters()" class="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 bg-slate-900 rounded border border-slate-800 cursor-pointer">Reset</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+                                <tr>
+                                    <th class="p-3 text-center w-12">Select</th>
+                                    <th class="p-3">Shipment No</th>
+                                    <th class="p-3">SO Number</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Assigned Operator</th>
+                                    <th class="p-3">Time Analytics</th>
+                                    <th class="p-3">Route Track</th>
+                                    <th class="p-3 text-center">Truck</th>
+                                    <th class="p-3 text-right">CV</th>
+                                    <th class="p-3 text-right">BX</th>
+                                    <th class="p-3 text-right">PAC</th>
+                                    <th class="p-3 text-right">TRY</th>
+                                    <th class="p-3 text-right">PC</th>
+                                    <th class="p-3 text-right">KG</th>
+                                    <th class="p-3 text-center">Row Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manifest-rows" class="divide-y divide-slate-800/50"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="target-summary-card" class="hidden bg-slate-950 border border-emerald-500/20 rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-center shadow-lg">
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-0.5">Aggregated Job Volume</span>
+                            <span id="summary-total-qty" class="text-2xl font-black text-amber-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Units</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-0.5">Calculated Net Task Time</span>
+                            <span id="summary-target-hours" class="text-2xl font-black text-emerald-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Hours</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-0.5">Adjusted SLA Target (With Breaks)</span>
+                            <span id="summary-final-hours" class="text-2xl font-black text-blue-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Hours</span>
+                        </div>
+                        <div>
+                            <button onclick="openConfirmationModal()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg transition tracking-wider uppercase cursor-pointer">Dispatch Job & Start Clock</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-xl p-4 sticky top-24 space-y-4 shadow-2xl">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">⚡ My Ongoing Task Lines</h3>
+                        <p class="text-[11px] text-slate-500">Real-time controls to change execution logs</p>
+                    </div>
+                    <div id="side-panel-task-container" class="space-y-3">
+                        <div class="text-slate-500 text-xs italic text-center py-4">No ongoing task logs tracked.</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
+                <div>
+                    <h2 class="text-sm font-bold tracking-wider text-slate-300 uppercase">📋 Floor Dispatch Control Bulletin</h2>
+                    <p class="text-xs text-slate-500">Active deployments within the continuous operational window</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bulletin-container"></div>
+            </div>
+        </section>
+
+        <section id="tab-masterdata" class="tab-content hidden max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6 md:col-span-1 h-fit">
+                <div>
+                    <h2 class="text-base font-bold text-slate-200">📥 Master Spreadsheets Ingestion</h2>
+                    <p class="text-xs text-slate-400">Refresh master database schemas directly via excel ingestion rules</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
+                        <input type="file" id="shipment-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
+                        <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
+                    </div>
+                    <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2.5 px-4 rounded-lg transition cursor-pointer">Execute Mass Database Refresh</button>
+                </div>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 md:col-span-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-300 text-sm font-bold uppercase tracking-wider">🔍 Real-Time Global Search Filters</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="text" placeholder="Search Shipment No, Route Description..." class="sm:col-span-3 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
+                    <input type="number" placeholder="Min Qty" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
+                    <select class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-400 focus:outline-none focus:border-emerald-500">
+                        <option>Any Unit Type</option>
+                        <option>CV</option>
+                        <option>BX</option>
+                    </select>
+                    <button class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-4 rounded-lg transition cursor-pointer">Reset Filters</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="tab-personnel" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
+            <div>
+                <h2 class="text-base font-bold text-slate-200">👥 Personnel Roster Pool Configuration</h2>
+                <p class="text-xs text-slate-400">Manage names running across operational loops</p>
+            </div>
+            <form id="personnel-form" onsubmit="addPersonnelMember(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <div class="sm:col-span-1">
+                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">Full Name</label>
+                    <input type="text" id="new-personnel-name" placeholder="John Doe" required class="bg-slate-950 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500 text-slate-200">
+                </div>
+                <div class="sm:col-span-1">
+                    <label class="block text-[10px] text-slate-400 uppercase font-bold mb-1">Designation Stage</label>
+                    <select id="new-personnel-role" required class="bg-slate-950 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full text-slate-300 focus:outline-none focus:border-emerald-500">
+                        <option value="Picker">Picker</option>
+                        <option value="Staging Checker">Staging Checker</option>
+                        <option value="Puller">Puller</option>
+                        <option value="Outbound Checker">Outbound Checker</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 rounded-lg transition h-[34px] cursor-pointer">Add Roster Member</button>
+            </form>
+            <div class="space-y-1.5" id="personnel-list-container"></div>
+        </section>
+
+        <section id="tab-breaks" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
+            <div>
+                <h2 class="text-base font-bold text-slate-200">⏱️ Administrative Fixed Break Boundaries</h2>
+                <p class="text-xs text-slate-400">Construct fixed operational windows automatically deducted from calculations</p>
+            </div>
+            <form id="break-form" onsubmit="addBreakRule(event)" class="space-y-3 bg-slate-900 p-4 rounded-xl border border-slate-800">
+                <input type="text" id="break-name" placeholder="e.g., Lunch Break" required class="bg-slate-950 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500 text-slate-200">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase font-bold mb-0.5">Start Time</label>
+                        <input type="time" id="break-start" required class="bg-slate-950 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full text-slate-300 focus:outline-none focus:border-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-500 uppercase font-bold mb-0.5">End Time</label>
+                        <input type="time" id="break-end" required class="bg-slate-950 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full text-slate-300 focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2 text-xs font-bold rounded-lg transition cursor-pointer">+ Establish Break Window</button>
+            </form>
+            <div class="space-y-1.5" id="break-list-container"></div>
+        </section>
+
+    </main>
+
+    <div id="custom-confirm-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all">
+        <div class="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl p-6 space-y-6 transform scale-100 transition-transform">
+            <div class="flex items-center gap-3 border-b border-slate-800/60 pb-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-lg font-bold">📋</div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-200">Confirm Dispatch Allocation</h3>
+                    <p class="text-xs text-slate-500">Verify workflow configurations before task serialization</p>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/40">
+                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Operator Name</span>
+                        <strong id="modal-val-operator" class="text-slate-300 font-medium">-</strong>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/40">
+                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Designation / Role</span>
+                        <strong id="modal-val-role" class="text-emerald-400 font-medium">-</strong>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/40 text-xs flex justify-between items-center">
+                    <div>
+                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Shipment Reference ID</span>
+                        <strong id="modal-val-shipment" class="text-slate-200 font-mono tracking-wide">-</strong>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Mapped Trucks</span>
+                        <span id="modal-val-truck" class="px-2 py-0.5 rounded text-[10px] bg-slate-900 text-slate-300 border border-slate-800 font-mono inline-block mt-0.5">-</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/40 space-y-2.5 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Aggregated Load Quantity:</span>
+                        <strong id="modal-val-qty" class="text-amber-400 font-mono font-bold">-</strong>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Calculated Net Processing Time:</span>
+                        <strong id="modal-val-net-time" class="text-slate-300 font-mono">-</strong>
+                    </div>
+                    <div class="flex flex-col border-t border-slate-900 pt-2 gap-1">
+                        <span class="text-slate-400 block">Encountered Schedule Breaks:</span>
+                        <div id="modal-val-breaks-list" class="text-[11px] text-slate-500 font-mono pl-2 space-y-0.5">None</div>
+                    </div>
+                    <div class="flex justify-between border-t border-slate-800 pt-2 text-sm font-bold">
+                        <span class="text-slate-300">Total Target Time Rendered:</span>
+                        <span id="modal-val-total-rendered" class="text-blue-400 font-mono">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-2">
+                <button onclick="closeConfirmationModal()" class="px-4 py-2 bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-slate-300 text-xs font-bold rounded-xl border border-slate-800/80 transition cursor-pointer">Cancel</button>
+                <button onclick="commitJobTransaction()" class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer">Confirm & Deploy</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
         // --- SUPABASE CLIENT SETUP ---
         const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
@@ -130,16 +420,11 @@
             renderManifestTable(currentManifestData);
             document.getElementById('workbench-matrix-viewport').classList.remove('hidden');
             document.getElementById('target-summary-card').classList.add('hidden');
+            await refreshBulletinBoard();
         }
 
         function renderManifestTable(rows) {
             const tbody = document.getElementById('manifest-rows');
-            // Dynamically inject a Shipment No header if it doesn't exist
-            const theadTr = document.querySelector('#workbench-matrix-viewport table thead tr');
-            if (theadTr && !theadTr.innerHTML.includes('Shipment No')) {
-                theadTr.children[1].insertAdjacentHTML('beforebegin', '<th class="p-3">Shipment No</th>');
-            }
-
             tbody.innerHTML = '';
 
             if(rows.length === 0) {
@@ -147,12 +432,11 @@
                 return;
             }
 
-            // Find an overall active batch log for this entire shipment if it exists
-            const generalBatchLog = activeRowActivityLogs.find(l => !l.so_number && l.role === currentRole);
+            // Fallback lookup: Find batch activity log for entire shipment if explicit row assignment doesn't exist
+            const batchShipmentLog = activeRowActivityLogs.find(l => !l.so_number && l.role === currentRole);
 
             rows.forEach((row, i) => {
-                // Check for individual row track or fall back to general batch assignment 
-                const rowLog = activeRowActivityLogs.find(l => l.so_number === row.so_number && l.role === currentRole) || generalBatchLog;
+                const rowLog = activeRowActivityLogs.find(l => l.so_number === row.so_number && l.role === currentRole) || batchShipmentLog;
                 
                 let statusText = "PENDING";
                 let statusClass = "bg-slate-800 text-slate-400";
@@ -185,17 +469,20 @@
 
                 let actionButtonsHTML = "---";
                 if (!isLocked) {
-                    const trackingLog = rowLog || generalBatchLog;
-                    if (!trackingLog) {
+                    if (!rowLog) {
                         actionButtonsHTML = `<button onclick="initiateRowLevelTask(${i})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Start Row</button>`;
-                    } else if (trackingLog.status === 'Ongoing') {
+                    } else if (rowLog.status === 'Ongoing') {
                         actionButtonsHTML = `
                             <div class="flex gap-1 justify-center">
-                                <button onclick="pauseRowLevelTask(${trackingLog.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Pause</button>
-                                <button onclick="completeRowLevelTask(${trackingLog.id}, ${i})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Complete</button>
+                                <button onclick="pauseRowLevelTask(${rowLog.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Pause</button>
+                                <button onclick="completeRowLevelTask(${rowLog.id}, ${i})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Complete</button>
                             </div>`;
-                    } else if (trackingLog.status === 'Paused') {
-                        actionButtonsHTML = `<button onclick="resumeRowLevelTask(${trackingLog.id})" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Resume</button>`;
+                    } else if (rowLog.status === 'Paused') {
+                        actionButtonsHTML = `
+                            <div class="flex gap-1 justify-center">
+                                <button onclick="resumeRowLevelTask(${rowLog.id})" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Resume</button>
+                                <button onclick="unassignRowLevelTask(${rowLog.id})" class="bg-rose-600 hover:bg-rose-500 text-white text-[10px] px-1.5 py-1 rounded font-bold cursor-pointer">Unassign</button>
+                            </div>`;
                     }
                 }
 
@@ -204,7 +491,7 @@
                         <td class="p-3 text-center">
                             <input type="checkbox" data-index="${i}" onchange="recalculateCalculatedWorkflowMetrics()" ${isLocked ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500 cursor-pointer">
                         </td>
-                        <td class="p-3 font-mono text-slate-400 text-[11px]">${row.shipment_no}</td>
+                        <td class="p-3 font-mono text-emerald-400 text-[11px] font-bold">${row.shipment_no}</td>
                         <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
                         <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold font-sans tracking-wide uppercase ${statusClass}">${statusText}</span></td>
                         <td class="p-3 text-slate-400 font-medium">${assignedPersonnel}</td>
@@ -246,7 +533,7 @@
             const { data, error: fetchErr } = await logiFlowSupabase.from('activity_logs').select('*').eq('id', logId).single();
             if(fetchErr) return console.error(fetchErr);
 
-            const elapsedSeconds = Math.floor((new Date() - new Date(data.start_time)) / 1000);
+            const elapsedSeconds = data.start_time ? Math.floor((new Date() - new Date(data.start_time)) / 1000) : 0;
             const totalSecs = (data.accumulated_seconds || 0) + elapsedSeconds;
 
             const { error } = await logiFlowSupabase.from('activity_logs').update({
@@ -256,10 +543,7 @@
             }).eq('id', logId);
 
             if (error) alert("Mutation error: " + error.message);
-            else {
-                await executeManifestQuery();
-                await refreshBulletinBoard();
-            }
+            else await executeManifestQuery();
         }
 
         async function resumeRowLevelTask(logId) {
@@ -269,10 +553,14 @@
             }).eq('id', logId);
 
             if (error) alert("Mutation error: " + error.message);
-            else {
-                await executeManifestQuery();
-                await refreshBulletinBoard();
-            }
+            else await executeManifestQuery();
+        }
+
+        async function unassignRowLevelTask(logId) {
+            if(!confirm("Revert this operation cycle back to total unassigned?")) return;
+            const { error } = await logiFlowSupabase.from('activity_logs').delete().eq('id', logId);
+            if (error) alert("Deletion fault: " + error.message);
+            else await executeManifestQuery();
         }
 
         async function completeRowLevelTask(logId, rowIndex) {
@@ -314,10 +602,7 @@
             }).eq('id', logId);
 
             if (error) alert("Task save update exception: " + error.message);
-            else {
-                await executeManifestQuery();
-                await refreshBulletinBoard();
-            }
+            else await executeManifestQuery();
         }
 
         function recalculateCalculatedWorkflowMetrics() {
@@ -561,7 +846,7 @@
 
             if(error) return console.error(error);
             
-            // Render Bottom Floor Dispatch Control Bulletin Container
+            // 1. Sync Bottom Floor Dispatch Bulletin Board
             const container = document.getElementById('bulletin-container');
             if(container) {
                 container.innerHTML = '';
@@ -587,37 +872,37 @@
                 }
             }
 
-            // Sync actions to the "My Ongoing Task Lines" side panel component dynamically
-            const sidePanelContentContainer = document.querySelector('span[id^="op-day-display"]')?.closest('body')?.querySelector('.bg-slate-950\\/40')?.parentElement || document.querySelector('.bg-slate-950\\/50')?.parentElement;
-            const ongoingTargetBox = document.body.innerHTML.includes('My Ongoing Task Lines') ? Object.assign(document.createElement('div'), {innerHTML: 'found'}) : null;
-            
-            // Fallback strategy: Querying the explicit text area container matching your UI wrapper layout
-            const structuralSideBoxes = Array.from(document.querySelectorAll('div')).find(el => el.textContent.includes('My Ongoing Task Lines') && el.children.length > 0);
-            if (structuralSideBoxes) {
-                const targetListLayout = structuralSideBoxes.querySelector('.border') || structuralSideBoxes;
+            // 2. Sync Right-Hand Side Sticky Panel Component Real-Time Action List
+            const sidePanel = document.getElementById('side-panel-task-container');
+            if(sidePanel) {
                 const ongoingTasks = data.filter(l => l.status === 'Ongoing' || l.status === 'Paused');
-                
-                if (ongoingTasks.length === 0) {
-                    targetListLayout.innerHTML = `<div class="text-slate-500 text-xs italic p-4 text-center">No ongoing task loops open.</div>`;
+                if(ongoingTasks.length === 0) {
+                    sidePanel.innerHTML = `<div class="text-slate-500 text-xs italic text-center py-4">No ongoing task logs tracked.</div>`;
                 } else {
-                    targetListLayout.innerHTML = '<h3 class="text-xs font-bold text-slate-400 mb-3 px-2 uppercase tracking-wide">Real-Time Sync Processing Lines</h3>';
+                    sidePanel.innerHTML = '';
                     ongoingTasks.forEach(task => {
                         let actionButtons = '';
                         if (task.status === 'Ongoing') {
                             actionButtons = `
                                 <button onclick="pauseRowLevelTask(${task.id})" class="bg-amber-600 hover:bg-amber-500 text-[10px] text-white px-2 py-1 rounded font-bold cursor-pointer">Pause</button>
                                 <button onclick="completeRowLevelTask(${task.id}, 0)" class="bg-emerald-600 hover:bg-emerald-500 text-[10px] text-white px-2 py-1 rounded font-bold cursor-pointer">Complete</button>`;
-                        } else {
-                            actionButtons = `<button onclick="resumeRowLevelTask(${task.id})" class="bg-purple-600 hover:bg-purple-500 text-[10px] text-white px-2 py-1 rounded font-bold cursor-pointer">Resume</button>`;
+                        } else if (task.status === 'Paused') {
+                            actionButtons = `
+                                <button onclick="resumeRowLevelTask(${task.id})" class="bg-purple-600 hover:bg-purple-500 text-[10px] text-white px-2 py-1 rounded font-bold cursor-pointer">Resume</button>
+                                <button onclick="unassignRowLevelTask(${task.id})" class="bg-rose-600 hover:bg-rose-500 text-[10px] text-white px-1.5 py-1 rounded font-bold cursor-pointer">Unassign</button>`;
                         }
 
-                        targetListLayout.innerHTML += `
-                            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 mb-2 space-y-2 text-xs">
+                        sidePanel.innerHTML += `
+                            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 text-xs">
                                 <div class="flex justify-between items-center">
                                     <span class="font-mono text-emerald-400 font-bold">${task.shipment_no}</span>
-                                    <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${task.status === 'Ongoing' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}">${task.status}</span>
+                                    <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${task.status === 'Ongoing' ? 'bg-blue-500/20 text-blue-400 animate-pulse' : 'bg-amber-500/20 text-amber-400'}">${task.status}</span>
                                 </div>
-                                <div class="text-slate-400 font-mono text-[11px]">Op: <span class="text-slate-200 font-sans font-medium">${task.personnel_name}</span> | Vol: <span class="text-amber-400">${task.total_qty} units</span></div>
+                                <div class="text-[11px] text-slate-400 font-mono">
+                                    <div class="truncate">Op: <strong class="text-slate-200 font-sans">${task.personnel_name}</strong></div>
+                                    <div>Stage: <span class="text-slate-300">${task.role}</span></div>
+                                    ${task.so_number ? `<div>SO: <span class="text-blue-400">${task.so_number}</span></div>` : '<div>Mode: <span class="text-amber-500 font-sans text-[10px]">Batch Shipment</span></div>'}
+                                </div>
                                 <div class="flex gap-1 pt-1 justify-end">${actionButtons}</div>
                             </div>`;
                     });
@@ -638,3 +923,5 @@
             runInlineMatrixFilter(); 
         }
     </script>
+</body>
+</html>
