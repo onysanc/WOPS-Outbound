@@ -545,24 +545,26 @@ function closeDispatchModal() { document.getElementById('dispatch-modal').classL
 
 async function commitJobTransaction() {
   const operator = document.getElementById('operator-input').value.trim();
-  const shipmentNo = document.getElementById('target-shipment-no').value.trim();
   const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:checked');
   const selectedRows = Array.from(checkboxes).map(cb => currentManifestData[parseInt(cb.getAttribute('data-index'))]);
-  const totalQty = selectedRows.reduce((s, r) => s + rowQtySum(r), 0);
-  const netHours = selectedRows.reduce((s, r) => s + rowQtySum(r) / speedRateFor(r.truck_type), 0);
-  const finalHours = netHours + totalConfiguredBreakHours();
 
-  // Batch dispatch: one activity_logs row covering the whole selection (so_number left null = batch mode)
-  const { error } = await supabaseClient.from('activity_logs').insert([{
-    shipment_no: shipmentNo, so_number: null, role: currentRole, personnel_name: operator,
-    total_qty: totalQty, target_hours: finalHours, status: 'Ongoing',
-    start_time: new Date().toISOString(), accumulated_seconds: 0
-  }]);
+  // One row per SO number so every line is individually lockable — no aggregate/batch log.
+  const payload = selectedRows.map(row => {
+    const qty = rowQtySum(row);
+    return {
+      shipment_no: row.shipment_no, so_number: row.so_number, role: currentRole,
+      personnel_name: operator, total_qty: qty, target_hours: qty / speedRateFor(row.truck_type),
+      status: 'Ongoing', start_time: new Date().toISOString(), accumulated_seconds: 0
+    };
+  });
+
+  const { error } = await supabaseClient.from('activity_logs').insert(payload);
 
   closeDispatchModal();
   if (error) return alert("Failed to dispatch batch: " + error.message);
-  alert("Batch dispatched to the floor bulletin.");
+  alert(`Dispatched ${payload.length} line(s) to the floor bulletin.`);
   document.getElementById('target-summary-card').classList.add('hidden');
+  await fetchShipmentManifest();
   await refreshBulletinBoard();
   await refreshSidePanel();
 }
