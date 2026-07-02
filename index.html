@@ -28,6 +28,22 @@
 <!-- ================= TOASTS ================= -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end"></div>
 
+<!-- ================= TAB PASSWORD MODAL ================= -->
+<div id="tab-password-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+    <div>
+      <p class="text-sm font-semibold text-slate-200">Restricted Section</p>
+      <p id="tab-password-modal-message" class="text-xs text-slate-500 mt-1">Enter the password to open this tab.</p>
+    </div>
+    <input type="password" id="tab-password-input" placeholder="Password" autocomplete="off"
+      class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+      onkeydown="if(event.key==='Enter') submitTabPassword()">
+    <div class="flex gap-2">
+      <button onclick="closeTabPasswordModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="submitTabPassword()" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-xs font-bold py-2 rounded-lg text-white">Unlock</button>
+    </div>
+  </div>
+</div>
 <!-- ================= CUSTOM CONFIRM MODAL ================= -->
 <div id="confirm-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
   <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
@@ -435,13 +451,64 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 // --- TAB NAVIGATION ---
+// Tabs listed here require the password to be entered before they open. Once
+// unlocked, a tab stays unlocked for the rest of this browser session (until
+// the page is reloaded) — it does not ask again on every click.
+const PASSWORD_PROTECTED_VIEWS = ['bulletin', 'ingestion', 'admin', 'export'];
+const TAB_PASSWORD = 'ANTHONY'; // default password
+const unlockedViews = new Set();
+let pendingViewName = null;
+
 function setView(name) {
+  if (PASSWORD_PROTECTED_VIEWS.includes(name) && !unlockedViews.has(name)) {
+    return openTabPasswordModal(name);
+  }
+  activateView(name);
+}
+
+// Actually performs the tab switch — only called once a protected view is
+// unlocked (or immediately for unprotected views like Workbench).
+function activateView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
+}
+
+function openTabPasswordModal(name) {
+  pendingViewName = name;
+  const input = document.getElementById('tab-password-input');
+  input.value = '';
+  document.getElementById('tab-password-modal-message').innerText = 'Enter the password to open this tab.';
+  document.getElementById('tab-password-modal-message').classList.remove('text-rose-400');
+  document.getElementById('tab-password-modal-message').classList.add('text-slate-500');
+  document.getElementById('tab-password-modal').classList.remove('hidden');
+  setTimeout(() => input.focus(), 50);
+}
+
+function closeTabPasswordModal() {
+  document.getElementById('tab-password-modal').classList.add('hidden');
+  pendingViewName = null;
+}
+
+function submitTabPassword() {
+  if (!pendingViewName) return closeTabPasswordModal();
+  const entered = document.getElementById('tab-password-input').value;
+  if (entered.trim().toUpperCase() === TAB_PASSWORD) {
+    unlockedViews.add(pendingViewName);
+    const name = pendingViewName;
+    closeTabPasswordModal();
+    activateView(name);
+  } else {
+    const msg = document.getElementById('tab-password-modal-message');
+    msg.innerText = 'Incorrect password. Try again.';
+    msg.classList.remove('text-slate-500');
+    msg.classList.add('text-rose-400');
+    document.getElementById('tab-password-input').value = '';
+    document.getElementById('tab-password-input').focus();
+  }
 }
 
 // --- OPERATIONAL DAY WINDOW (05:00 -> 04:59 next day) ---
