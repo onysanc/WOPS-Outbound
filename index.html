@@ -688,19 +688,51 @@ function totalConfiguredBreakHours() {
   return configuredBreaks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0) / 60;
 }
 
-// Baseline (no-break) target hours for a single row, role-aware:
+// Flat duration bracket keyed off truck type only — used by Staging Checker,
+// Puller, and Outbound Checker. Per operations spec:
+//   AUV / 4W        = 20 minutes
+//   6W              = 1 hour
+//   10W / 20F / 40F = 3 hours
+function bracketHoursForTruckType(truckType) {
+  const t = (truckType || '').toUpperCase();
+  if (t === 'AUV' || t === '4W') return 20 / 60;
+  if (t === '6W') return 1;
+  if (t === '10W' || t === '20F' || t === '40F' || t === '40') return 3;
+  return 3; // unmapped/larger truck types default to the longest bracket
+}
+
+// Baseline (no-break) target hours for a SINGLE row, role-aware:
 // - Picker: quantity-driven (qty / truck-type speed rate).
-// - Staging Checker & Puller: a fixed duration bracket keyed off truck type only
-//   (Puller mirrors the Staging Checker's target logic per operations spec).
+// - Staging Checker, Puller & Outbound Checker: the flat truck-type bracket above.
+// NOTE: for bracket roles this is only correct when called for one row in
+// isolation (e.g. single-row start). When multiple rows/lines are dispatched
+// together, use targetHoursForGroup() below instead — it charges the bracket
+// once per unique shipment number, not once per row.
 function targetHoursForRow(row, role) {
-  if (role === 'Staging Checker' || role === 'Puller') {
-    const t = (row.truck_type || '').toUpperCase();
-    if (t === 'AUV' || t === '4W') return 20 / 60;
-    if (t === '6W') return 1;
-    if (t === '10W' || t === '20F') return 4;
-    return 4; // unmapped/larger truck types default to the longest bracket
+  if (role === 'Staging Checker' || role === 'Puller' || role === 'Outbound Checker') {
+    return bracketHoursForTruckType(row.truck_type);
   }
   return rowQtySum(row) / speedRateFor(row.truck_type);
+}
+
+// Baseline (no-break) target hours for a GROUP of rows dispatched together:
+// - Picker: quantity-driven, summed across every row/line (unaffected by
+//   shipment grouping — more lines/qty genuinely means more picking time).
+// - Staging Checker, Puller & Outbound Checker: the flat truck-type bracket,
+//   charged ONCE PER UNIQUE SHIPMENT NUMBER in the group — never per row and
+//   never scaled by qty. Selecting 8 lines that all belong to the same
+//   shipment number still yields just one bracket's worth of target time.
+function targetHoursForGroup(rows, role) {
+  if (role === 'Staging Checker' || role === 'Puller' || role === 'Outbound Checker') {
+    const bracketByShipment = new Map(); // shipment_no -> truck_type (first one wins)
+    rows.forEach(row => {
+      if (!bracketByShipment.has(row.shipment_no)) bracketByShipment.set(row.shipment_no, row.truck_type);
+    });
+    let total = 0;
+    bracketByShipment.forEach(truckType => { total += bracketHoursForTruckType(truckType); });
+    return total;
+  }
+  return rows.reduce((s, row) => s + targetHoursForRow(row, role), 0);
 }
 
 // Projected completion time for a baseline (no-break) duration starting at startDate.
@@ -875,15 +907,18 @@ function computeBreakOverlapMinutes(start, end) {
 
 // --- BATCH SELECTION SUMMARY + DISPATCH MODAL ---
 function recalcSummary() {
-  let totalQty = 0, netHours = 0;
+  let totalQty = 0;
   const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:checked');
+  const selectedRows = [];
   checkboxes.forEach(cb => {
     const idx = parseInt(cb.getAttribute('data-index'));
     const row = currentManifestData[idx];
-    const qty = rowQtySum(row);
-    totalQty += qty;
-    netHours += targetHoursForRow(row, currentRole);
+    totalQty += rowQtySum(row);
+    selectedRows.push(row);
   });
+  // Bracket roles (Staging Checker/Puller/Outbound Checker) are charged once per
+  // unique shipment number in the selection, not once per row — see targetHoursForGroup.
+  const netHours = targetHoursForGroup(selectedRows, currentRole);
   // Final hours = baseline (net) hours, plus break time ONLY if a configured break
   // window actually overlaps the projected [now, now+netHours] task window. A break
   // that already ended before the task starts is not included.
@@ -1132,9 +1167,11 @@ async function commitJobTransaction() {
 
   // Rows started within the same confirmation share one start_time, which groups
   // them as a single task (they pause/resume/complete together). Target hours is
-  // computed off the TOTAL qty of the whole group (not each row individually), so
-  // every line in the group carries the same, group-wide target completion time.
-  const groupNetHours = selectedRows.reduce((s, row) => s + targetHoursForRow(row, currentRole), 0);
+  // computed off the whole group, so every line in the group carries the same,
+  // group-wide target completion time. For bracket roles (Staging Checker/Puller/
+  // Outbound Checker) that means the truck-type bracket is charged ONCE PER UNIQUE
+  // SHIPMENT NUMBER in the group — not once per row/line and not scaled by qty.
+  const groupNetHours = targetHoursForGroup(selectedRows, currentRole);
   const batchStartIso = new Date().toISOString();
 
   const payload = selectedRows.map(row => {
