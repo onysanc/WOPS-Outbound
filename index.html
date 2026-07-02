@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logistics Operations Dashboard</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- SheetJS Spreadsheet Parser -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen relative overflow-x-hidden">
 
+    <!-- Header Navigation -->
     <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur p-4 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
@@ -17,6 +21,7 @@
                 <span class="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-700" id="op-day-display">Loading...</span>
             </div>
             
+            <!-- Global Navigation Matrix -->
             <nav class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button onclick="switchSystemTab('tab-workbench')" id="nav-tab-workbench" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer">Processing Workbench</button>
                 <button onclick="switchSystemTab('tab-masterdata')" id="nav-tab-masterdata" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 cursor-pointer">Master Data</button>
@@ -28,6 +33,7 @@
 
     <main class="max-w-7xl mx-auto p-4 lg:p-6">
 
+        <!-- ==================== TAB 1: WORKBENCH ==================== -->
         <section id="tab-workbench" class="tab-content space-y-6">
             
             <div class="max-w-3xl mx-auto bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
@@ -65,6 +71,7 @@
                 </div>
             </div>
 
+            <!-- SEARCH SUBTERRANEAN DRILLDOWN MATRIX -->
             <div id="workbench-matrix-viewport" class="hidden space-y-6">
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-2">
@@ -83,22 +90,25 @@
                             <tr>
                                 <th class="p-3 text-center w-12">Select</th>
                                 <th class="p-3">SO Number</th>
-                                <th class="p-3">Customer Profile</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Assigned Picker</th>
+                                <th class="p-3">Time Analytics</th>
                                 <th class="p-3">Route Track</th>
-                                <th class="p-3 text-center">Truck Profile</th>
-                                <th class="p-3 text-center">PGI Marker</th>
+                                <th class="p-3 text-center">Truck</th>
                                 <th class="p-3 text-right">CV</th>
                                 <th class="p-3 text-right">BX</th>
                                 <th class="p-3 text-right">PAC</th>
                                 <th class="p-3 text-right">TRY</th>
                                 <th class="p-3 text-right">PC</th>
                                 <th class="p-3 text-right">KG</th>
+                                <th class="p-3 text-center">Row Actions</th>
                             </tr>
                         </thead>
                         <tbody id="manifest-rows" class="divide-y divide-slate-800/50"></tbody>
                     </table>
                 </div>
 
+                <!-- Live Summary Metrics & Job Trigger Block -->
                 <div id="target-summary-card" class="hidden bg-slate-950 border border-emerald-500/20 rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-center shadow-lg">
                     <div>
                         <span class="text-xs text-slate-500 block mb-0.5">Aggregated Job Volume</span>
@@ -118,6 +128,7 @@
                 </div>
             </div>
 
+            <!-- FLOOR DISPATCH CONTROL BULLETIN BOARD -->
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
                 <div>
                     <h2 class="text-sm font-bold tracking-wider text-slate-300 uppercase">📋 Floor Dispatch Control Bulletin</h2>
@@ -127,6 +138,7 @@
             </div>
         </section>
 
+        <!-- ==================== TAB 2: MASTER DATA INGESTION ==================== -->
         <section id="tab-masterdata" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
                 <h2 class="text-base font-bold text-slate-200">📥 Master Spreadsheet Data Ingestion</h2>
@@ -137,7 +149,7 @@
                     <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
                     <input type="file" id="shipment-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer" />
                 </div>
-                <div class="pt-2 border-t border-slate-800/60">
+                <div>
                     <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
                     <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
                 </div>
@@ -145,6 +157,7 @@
             </div>
         </section>
 
+        <!-- ==================== TAB 3: PERSONNEL POOL ==================== -->
         <section id="tab-personnel" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
                 <h2 class="text-base font-bold text-slate-200">👥 Personnel Roster Pool Configuration</h2>
@@ -169,6 +182,7 @@
             <div class="space-y-1.5" id="personnel-list-container"></div>
         </section>
 
+        <!-- ==================== TAB 4: BREAK SCHEDULE ==================== -->
         <section id="tab-breaks" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
                 <h2 class="text-base font-bold text-slate-200">⏱️ Administrative Fixed Break Boundaries</h2>
@@ -193,9 +207,9 @@
 
     </main>
 
+    <!-- CUSTOM CONFIRMATION MODAL -->
     <div id="custom-confirm-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all">
         <div class="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl p-6 space-y-6 transform scale-100 transition-transform">
-            
             <div class="flex items-center gap-3 border-b border-slate-800/60 pb-3">
                 <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-lg font-bold">📋</div>
                 <div>
@@ -222,7 +236,7 @@
                         <strong id="modal-val-shipment" class="text-slate-200 font-mono tracking-wide">-</strong>
                     </div>
                     <div class="text-right">
-                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Mapped Truck Configuration</span>
+                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Mapped Trucks</span>
                         <span id="modal-val-truck" class="px-2 py-0.5 rounded text-[10px] bg-slate-900 text-slate-300 border border-slate-800 font-mono inline-block mt-0.5">-</span>
                     </div>
                 </div>
@@ -241,12 +255,8 @@
                         <div id="modal-val-breaks-list" class="text-[11px] text-slate-500 font-mono pl-2 space-y-0.5">None</div>
                     </div>
                     <div class="flex justify-between border-t border-slate-800 pt-2 text-sm font-bold">
-                        <span class="text-slate-300">Total Target Time Rendered (HH:MM):</span>
+                        <span class="text-slate-300">Total Target Time Rendered:</span>
                         <span id="modal-val-total-rendered" class="text-blue-400 font-mono">-</span>
-                    </div>
-                    <div class="flex justify-between text-[11px] text-slate-500 font-mono">
-                        <span>Estimated Target Completion:</span>
-                        <span id="modal-val-completion-time" class="text-emerald-400 font-bold">-</span>
                     </div>
                 </div>
             </div>
@@ -259,28 +269,27 @@
     </div>
 
     <script>
-        // --- SUPABASE CLIENT CONFIGURATION SETUP ---
+        // --- SUPABASE CLIENT SETUP ---
         const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- GLOBAL RUNTIME STORAGE MATRIX ---
+        // --- RUNTIME APPLICATION MATRIX CODES ---
         let currentRole = '';
         let currentManifestData = [];
         let globalPersonnelList = [];
         let configuredBreaks = [];
         let globalShipmentNumbers = [];
+        let activeRowActivityLogs = []; // Stores matching row activity tasks from DB
 
         let computedMetricsSummary = {
             truckTypes: [],
             totalQty: 0,
             netHours: 0,
             finalHours: 0,
-            appliedBreaks: [],
-            estimatedCompletion: ""
+            appliedBreaks: []
         };
 
-        // INITIALIZATION DISPATCH LOOP
         window.addEventListener('DOMContentLoaded', async () => {
             calculateOperationalDayWindow();
             switchSystemTab('tab-workbench');
@@ -290,7 +299,6 @@
             await refreshBulletinBoard();
         });
 
-        // TAB CONTROLLER SYSTEM MATRIX
         function switchSystemTab(activeTabId) {
             document.querySelectorAll('.tab-content').forEach(element => element.classList.add('hidden'));
             document.getElementById(activeTabId).classList.remove('hidden');
@@ -319,23 +327,18 @@
             return { startOfOpDay, endOfOpDay };
         }
 
-        // CONTROL LOOPS FOR DIRECT OPERATOR INTERFACE DESIGN STRIP
         function setWorkbenchRole(roleName) {
             currentRole = roleName;
             document.querySelectorAll('.wb-role-btn').forEach(btn => {
-                // FIXED: Class names separated individually into strings to prevent DOMTokenList crash
                 btn.classList.remove('bg-emerald-600', 'border-emerald-500', 'text-white', 'shadow-lg');
                 btn.classList.add('bg-slate-900/40', 'border-slate-800', 'text-slate-300');
             });
             
             const tgtBtn = document.getElementById(`role-select-${roleName}`);
             tgtBtn.classList.remove('bg-slate-900/40', 'border-slate-800', 'text-slate-300');
-            // FIXED: Separated class names inside classList.add()
             tgtBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white', 'shadow-lg');
 
-            const rowPanel = document.getElementById('hidden-inputs-container');
-            rowPanel.classList.remove('opacity-40', 'pointer-events-none');
-
+            document.getElementById('hidden-inputs-container').classList.remove('opacity-40', 'pointer-events-none');
             document.getElementById('wb-personnel-input').value = '';
             document.getElementById('wb-shipment-input').value = '';
             document.getElementById('workbench-matrix-viewport').classList.add('hidden');
@@ -347,8 +350,7 @@
         function populatePersonnelAutofillList(role) {
             const listDataContainer = document.getElementById('autofill-personnel');
             listDataContainer.innerHTML = '';
-            const matchingPersonnel = globalPersonnelList.filter(p => p.role === role);
-            matchingPersonnel.forEach(p => {
+            globalPersonnelList.filter(p => p.role === role).forEach(p => {
                 listDataContainer.innerHTML += `<option value="${p.name}"></option>`;
             });
         }
@@ -356,7 +358,6 @@
         async function pullGlobalShipmentAutofillReferences() {
             const { data, error } = await supabaseClient.from('shipments').select('shipment_no');
             if (error) return console.error(error);
-            
             globalShipmentNumbers = [...new Set(data.map(item => item.shipment_no))];
             const listDataContainer = document.getElementById('autofill-shipments');
             listDataContainer.innerHTML = '';
@@ -383,12 +384,17 @@
 
         async function executeManifestQuery() {
             const shipmentNo = document.getElementById('wb-shipment-input').value.trim();
-            const { data, error } = await supabaseClient.from('shipments').select('*').eq('shipment_no', shipmentNo);
-            if(error) return alert("System retrieval fault: " + error.message);
-
-            currentManifestData = data;
-            renderManifestTable(data);
             
+            // 1. Fetch shipments
+            const resShipments = await supabaseClient.from('shipments').select('*').eq('shipment_no', shipmentNo);
+            if(resShipments.error) return alert("System retrieval fault: " + resShipments.error.message);
+            currentManifestData = resShipments.data;
+
+            // 2. Fetch active granular activity logs for row-level assignment tracking
+            const resLogs = await supabaseClient.from('activity_logs').select('*').eq('shipment_no', shipmentNo);
+            activeRowActivityLogs = resLogs.data || [];
+
+            renderManifestTable(currentManifestData);
             document.getElementById('workbench-matrix-viewport').classList.remove('hidden');
             document.getElementById('target-summary-card').classList.add('hidden');
         }
@@ -398,42 +404,179 @@
             tbody.innerHTML = '';
 
             if(rows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">No matching records found in database stack. Verify input fields.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">No matching records found.</td></tr>`;
                 return;
             }
 
             rows.forEach((row, i) => {
-                const isPicked = row.pgi_date !== null;
-                const isDisabled = (currentRole === 'Picker' && isPicked);
+                // Find existing row activity logs targeting this specific SO Number & Role context
+                const rowLog = activeRowActivityLogs.find(l => l.so_number === row.so_number && l.role === currentRole);
+                
+                let statusText = "PENDING";
+                let statusClass = "bg-slate-800 text-slate-400";
+                let assignedPersonnel = rowLog ? rowLog.personnel_name : "Unassigned";
+                let isLocked = false;
+
+                // STATUS EVALUATION MATRIX PIPELINE
+                if (row.pgi_date !== null || (rowLog && rowLog.status === 'Completed')) {
+                    statusText = "PICKED";
+                    statusClass = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                } else if (rowLog && (rowLog.status === 'Ongoing' || rowLog.status === 'Paused')) {
+                    statusText = rowLog.status.toUpperCase();
+                    statusClass = rowLog.status === 'Paused' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse";
+                }
+
+                // CROSS-USER SELECTION LOCK RULES
+                const currentUserInput = document.getElementById('wb-personnel-input').value.trim();
+                if (rowLog && rowLog.personnel_name !== currentUserInput && rowLog.status !== 'Completed') {
+                    isLocked = true; // Row is being tracked by a different user right now!
+                }
+                if (statusText === "PICKED") {
+                    isLocked = true; // Finished tasks cannot be changed or selected
+                }
+
+                // Time Metric Formatting String Generation
+                let analyticsString = "---";
+                if(rowLog && rowLog.start_time) {
+                    const startStr = new Date(rowLog.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const compStr = rowLog.end_time ? new Date(rowLog.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '--:--';
+                    const renderedStr = rowLog.rendered_minutes ? `${rowLog.rendered_minutes} min` : 'Active';
+                    analyticsString = `<div class="text-[10px] font-mono leading-tight text-slate-400">In: ${startStr}<br>Out: ${compStr}<br>Net: ${renderedStr}</div>`;
+                }
+
+                // Row action items control block
+                let actionButtonsHTML = "---";
+                if (currentRole === 'Picker' && !isLocked) {
+                    if (!rowLog) {
+                        actionButtonsHTML = `<button onclick="initiateRowLevelTask(${i})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Start Row</button>`;
+                    } else if (rowLog.status === 'Ongoing') {
+                        actionButtonsHTML = `
+                            <div class="flex gap-1 justify-center">
+                                <button onclick="pauseRowLevelTask(${rowLog.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Pause</button>
+                                <button onclick="completeRowLevelTask(${rowLog.id}, ${i})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Complete</button>
+                            </div>`;
+                    } else if (rowLog.status === 'Paused') {
+                        actionButtonsHTML = `<button onclick="resumeRowLevelTask(${rowLog.id})" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Resume</button>`;
+                    }
+                }
 
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-900/60 transition ${isDisabled ? 'opacity-40 bg-slate-950' : ''}">
+                    <tr class="hover:bg-slate-900/60 transition ${isLocked ? 'opacity-50 bg-slate-950/40' : ''}">
                         <td class="p-3 text-center">
-                            <input type="checkbox" data-index="${i}" onchange="recalculateCalculatedWorkflowMetrics()" ${isDisabled ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500 cursor-pointer">
+                            <input type="checkbox" data-index="${i}" onchange="recalculateCalculatedWorkflowMetrics()" ${isLocked ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500 cursor-pointer">
                         </td>
                         <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
-                        <td class="p-3 max-w-[180px] truncate text-slate-400" title="${row.sold_to_party_name}">${row.sold_to_party_name}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold font-sans tracking-wide uppercase ${statusClass}">${statusText}</span></td>
+                        <td class="p-3 text-slate-400 font-medium">${assignedPersonnel}</td>
+                        <td class="p-3">${analyticsString}</td>
                         <td class="p-3 text-slate-400 font-mono text-[11px]">${row.route_description || 'N/A'}</td>
                         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${row.truck_type || 'Unset'}</span></td>
-                        <td class="p-3 text-center">${isPicked ? '✅ <span class="text-[10px] text-emerald-400 font-mono">'+new Date(row.pgi_date).toLocaleDateString()+'</span>' : '❌ Pending'}</td>
                         <td class="p-3 text-right font-mono text-amber-500">${row.cv}</td>
                         <td class="p-3 text-right font-mono text-blue-400">${row.bx}</td>
                         <td class="p-3 text-right font-mono text-purple-400">${row.pac}</td>
                         <td class="p-3 text-right font-mono text-teal-400">${row.try_qty}</td>
                         <td class="p-3 text-right font-mono text-pink-400">${row.pc}</td>
                         <td class="p-3 text-right font-mono text-emerald-400">${row.kg}</td>
+                        <td class="p-3 text-center">${actionButtonsHTML}</td>
                     </tr>`;
             });
         }
 
-        function formatHoursToHHMM(decimalHours) {
-            if (isNaN(decimalHours) || decimalHours <= 0) return "00:00";
-            const totalMinutes = Math.round(decimalHours * 60);
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        // --- ROW-LEVEL TIMER AND WORKFLOW MUTATION FUNCTIONS ---
+        async function initiateRowLevelTask(rowIndex) {
+            const rowItem = currentManifestData[rowIndex];
+            const operatorName = document.getElementById('wb-personnel-input').value.trim();
+            const shipmentNo = document.getElementById('wb-shipment-input').value.trim();
+
+            const { error } = await supabaseClient.from('activity_logs').insert([{
+                shipment_no: shipmentNo,
+                so_number: rowItem.so_number,
+                role: currentRole,
+                personnel_name: operatorName,
+                total_qty: (rowItem.cv + rowItem.bx + rowItem.pac + rowItem.try_qty + rowItem.pc + rowItem.kg),
+                status: 'Ongoing',
+                start_time: new Date().toISOString(),
+                accumulated_seconds: 0
+            }]);
+
+            if (error) alert("Write error: " + error.message);
+            else await executeManifestQuery();
         }
 
+        async function pauseRowLevelTask(logId) {
+            // Retrieve current database entry to increment accumulated operational seconds cleanly
+            const { data, error: fetchErr } = await supabaseClient.from('activity_logs').select('*').eq('id', logId).single();
+            if(fetchErr) return console.error(fetchErr);
+
+            const elapsedSeconds = Math.floor((new Date() - new Date(data.start_time)) / 1000);
+            const totalSecs = (data.accumulated_seconds || 0) + elapsedSeconds;
+
+            const { error } = await supabaseClient.from('activity_logs').update({
+                status: 'Paused',
+                accumulated_seconds: totalSecs,
+                start_time: null // Wipe starting string while process timer sits in idle state
+            }).eq('id', logId);
+
+            if (error) alert("Mutation error: " + error.message);
+            else await executeManifestQuery();
+        }
+
+        async function resumeRowLevelTask(logId) {
+            const { error } = await supabaseClient.from('activity_logs').update({
+                status: 'Ongoing',
+                start_time: new Date().toISOString()
+            }).eq('id', logId);
+
+            if (error) alert("Mutation error: " + error.message);
+            else await executeManifestQuery();
+        }
+
+        async function completeRowLevelTask(logId, rowIndex) {
+            const { data: logEntry, error: fetchErr } = await supabaseClient.from('activity_logs').select('*').eq('id', logId).single();
+            if(fetchErr) return console.error(fetchErr);
+
+            const currentSessionSeconds = logEntry.start_time ? Math.floor((new Date() - new Date(logEntry.start_time)) / 1000) : 0;
+            const totalElapsedSeconds = (logEntry.accumulated_seconds || 0) + currentSessionSeconds;
+            let netDurationMinutes = Math.round(totalElapsedSeconds / 60);
+
+            // CALCULATE BREAK OVERLAPS IF ANY OCCURRED WITHIN ACTIVE SHIFT LOG WINDOWS
+            const taskStartTime = logEntry.created_at ? new Date(logEntry.created_at) : new Date();
+            const taskEndTime = new Date();
+            let overlappingBreakMinutes = 0;
+
+            configuredBreaks.forEach(b => {
+                if (b.start_time && b.end_time) {
+                    const [sHours, sMins] = b.start_time.split(':').map(Number);
+                    const [eHours, eMins] = b.end_time.split(':').map(Number);
+
+                    const bStart = new Date(taskStartTime); bStart.setHours(sHours, sMins, 0, 0);
+                    const bEnd = new Date(taskStartTime); bEnd.setHours(eHours, eMins, 0, 0);
+                    if (bEnd < bStart) bEnd.setDate(bEnd.getDate() + 1);
+
+                    // Intersection validation checks
+                    const maxStart = new Date(Math.max(taskStartTime, bStart));
+                    const minEnd = new Date(Math.min(taskEndTime, bEnd));
+
+                    if (maxStart < minEnd) {
+                        overlappingBreakMinutes += Math.round((minEnd - maxStart) / 1000 / 60);
+                    }
+                }
+            });
+
+            // Adjust clean metrics down to limit zero flooring anomalies
+            netDurationMinutes = Math.max(0, netDurationMinutes - overlappingBreakMinutes);
+
+            const { error } = await supabaseClient.from('activity_logs').update({
+                status: 'Completed',
+                end_time: taskEndTime.toISOString(),
+                rendered_minutes: netDurationMinutes
+            }).eq('id', logId);
+
+            if (error) alert("Task save update exception: " + error.message);
+            else await executeManifestQuery();
+        }
+
+        // --- BATCH SELECTION QUANTITY METRICS ---
         function recalculateCalculatedWorkflowMetrics() {
             let totalQtySelected = 0;
             let netTargetHours = 0;
@@ -462,35 +605,25 @@
                 if (b.start_time && b.end_time) {
                     const [sHours, sMins] = b.start_time.split(':').map(Number);
                     const [eHours, eMins] = b.end_time.split(':').map(Number);
-
-                    const breakStartDate = new Date(now);
-                    breakStartDate.setHours(sHours, sMins, 0, 0);
-
-                    const breakEndDate = new Date(now);
-                    breakEndDate.setHours(eHours, eMins, 0, 0);
-
+                    const breakStartDate = new Date(now); breakStartDate.setHours(sHours, sMins, 0, 0);
+                    const breakEndDate = new Date(now); breakEndDate.setHours(eHours, eMins, 0, 0);
                     if (breakEndDate < breakStartDate) breakEndDate.setDate(breakEndDate.getDate() + 1);
 
                     if (now < breakEndDate && estimatedNetCompletionDate > breakStartDate) {
                         totalBreakHoursToApply += (b.duration_minutes / 60);
                         trackedBreaks.push(`${b.break_name} (${b.start_time} - ${b.end_time})`);
                     }
-                } else {
-                    totalBreakHoursToApply += (b.duration_minutes / 60);
-                    trackedBreaks.push(`${b.break_name} (${b.duration_minutes}m standard)`);
                 }
             });
 
             const finalizedTargetTime = netTargetHours > 0 ? (netTargetHours + totalBreakHoursToApply) : 0;
-            const absoluteCompletionTime = new Date(now.getTime() + (finalizedTargetTime * 60 * 60 * 1000));
 
             computedMetricsSummary = {
                 truckTypes: [...new Set(targetTrucks)],
                 totalQty: totalQtySelected,
                 netHours: netTargetHours,
                 finalHours: finalizedTargetTime,
-                appliedBreaks: trackedBreaks,
-                estimatedCompletion: absoluteCompletionTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                appliedBreaks: trackedBreaks
             };
 
             document.getElementById('summary-total-qty').innerText = totalQtySelected.toFixed(2);
@@ -502,7 +635,12 @@
             else displayCard.classList.add('hidden');
         }
 
-        // CUSTOM POPUP INTERACTION LAYERS
+        function formatHoursToHHMM(decimalHours) {
+            if (isNaN(decimalHours) || decimalHours <= 0) return "00:00";
+            const totalMinutes = Math.round(decimalHours * 60);
+            return `${String(Math.floor(totalMinutes / 60)).padStart(2, '0')}:${String(totalMinutes % 60).padStart(2, '0')}`;
+        }
+
         function openConfirmationModal() {
             document.getElementById('modal-val-operator').innerText = document.getElementById('wb-personnel-input').value.trim();
             document.getElementById('modal-val-role').innerText = currentRole;
@@ -512,13 +650,12 @@
             
             document.getElementById('modal-val-net-time').innerText = formatHoursToHHMM(computedMetricsSummary.netHours) + " (HH:MM)";
             document.getElementById('modal-val-total-rendered').innerText = formatHoursToHHMM(computedMetricsSummary.finalHours);
-            document.getElementById('modal-val-completion-time').innerText = computedMetricsSummary.estimatedCompletion;
 
             const breakBox = document.getElementById('modal-val-breaks-list');
             if (computedMetricsSummary.appliedBreaks.length > 0) {
                 breakBox.innerHTML = computedMetricsSummary.appliedBreaks.map(bk => `• ${bk}`).join('<br>');
             } else {
-                breakBox.innerHTML = "None (No overlapping break windows discovered)";
+                breakBox.innerHTML = "None (No overlapping breaks detected)";
             }
 
             document.getElementById('custom-confirm-modal').classList.remove('hidden');
@@ -538,7 +675,8 @@
                 personnel_name: operatorName,
                 total_qty: computedMetricsSummary.totalQty,
                 target_hours: computedMetricsSummary.finalHours,
-                status: 'Ongoing'
+                status: 'Ongoing',
+                start_time: new Date().toISOString()
             }]);
 
             closeConfirmationModal();
@@ -554,7 +692,7 @@
             }
         }
 
-        // ROSTER POOL ENGINE MODULE LOOPS
+        // --- CRUD BACKEND ENGINE SYNCS ---
         async function refreshPersonnelRosterPool() {
             const { data, error } = await supabaseClient.from('personnel').select('*').order('name', { ascending: true });
             if (error) return console.error(error);
@@ -562,27 +700,11 @@
             
             const container = document.getElementById('personnel-list-container');
             container.innerHTML = '';
-            
             data.forEach(p => {
                 container.innerHTML += `
-                    <div id="p-row-${p.id}" class="flex flex-col gap-1.5 bg-slate-900 px-3 py-2 rounded text-xs border border-slate-800/60">
-                        <div class="flex justify-between items-center w-full">
-                            <span class="text-slate-300 font-medium font-mono">${p.name} <span class="text-[10px] text-emerald-400 font-sans">(${p.role})</span></span>
-                            <div class="flex items-center gap-2">
-                                <button onclick="togglePersonnelEditView(${p.id})" class="text-blue-400 hover:text-blue-300 text-[11px] font-semibold cursor-pointer">Edit</button>
-                                <button onclick="deletePersonnelMember(${p.id})" class="text-rose-400 hover:text-rose-500 font-bold text-sm cursor-pointer">×</button>
-                            </div>
-                        </div>
-                        <div id="p-edit-form-${p.id}" class="hidden flex gap-1 mt-1 border-t border-slate-800/60 pt-1.5">
-                            <input type="text" id="p-edit-input-${p.id}" value="${p.name}" class="bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200 grow">
-                            <select id="p-edit-role-${p.id}" class="bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300">
-                                <option value="Picker" ${p.role === 'Picker' ? 'selected' : ''}>Picker</option>
-                                <option value="Staging Checker" ${p.role === 'Staging Checker' ? 'selected' : ''}>Staging Checker</option>
-                                <option value="Puller" ${p.role === 'Puller' ? 'selected' : ''}>Puller</option>
-                                <option value="Outbound Checker" ${p.role === 'Outbound Checker' ? 'selected' : ''}>Outbound Checker</option>
-                            </select>
-                            <button onclick="commitPersonnelEdit(${p.id})" class="bg-emerald-600 text-white text-[10px] px-2 rounded hover:bg-emerald-500 cursor-pointer">Save</button>
-                        </div>
+                    <div class="flex justify-between items-center bg-slate-900 px-3 py-2 rounded text-xs border border-slate-800/60">
+                        <span class="text-slate-300 font-mono">${p.name} <span class="text-[10px] text-emerald-400 font-sans">(${p.role})</span></span>
+                        <button onclick="deletePersonnelMember(${p.id})" class="text-rose-400 font-bold hover:text-rose-500 text-sm cursor-pointer">×</button>
                     </div>`;
             });
             if(currentRole) populatePersonnelAutofillList(currentRole);
@@ -592,35 +714,16 @@
             e.preventDefault();
             const name = document.getElementById('new-personnel-name').value.trim();
             const role = document.getElementById('new-personnel-role').value;
-            
             const { error } = await supabaseClient.from('personnel').insert([{ name, role }]);
-            if (!error) {
-                document.getElementById('personnel-form').reset();
-                await refreshPersonnelRosterPool();
-            }
-        }
-
-        function togglePersonnelEditView(id) {
-            const form = document.getElementById(`p-edit-form-${id}`);
-            form.classList.toggle('hidden');
-        }
-
-        async function commitPersonnelEdit(id) {
-            const updatedName = document.getElementById(`p-edit-input-${id}`).value.trim();
-            const updatedRole = document.getElementById(`p-edit-role-${id}`).value;
-            if(!updatedName) return;
-            
-            const { error } = await supabaseClient.from('personnel').update({ name: updatedName, role: updatedRole }).eq('id', id);
-            if (!error) await refreshPersonnelRosterPool();
+            if (!error) { document.getElementById('personnel-form').reset(); await refreshPersonnelRosterPool(); }
         }
 
         async function deletePersonnelMember(id) {
-            if(!confirm("Drop member from configuration files?")) return;
+            if(!confirm("Drop member from data pool?")) return;
             const { error } = await supabaseClient.from('personnel').delete().eq('id', id);
             if (!error) await refreshPersonnelRosterPool();
         }
 
-        // ADMIN TIME BREAK DATA CONTROLLERS
         async function refreshConfiguredBreaks() {
             const { data, error } = await supabaseClient.from('break_settings').select('*');
             if (error) return console.error(error);
@@ -629,14 +732,10 @@
             const container = document.getElementById('break-list-container');
             container.innerHTML = '';
             data.forEach(b => {
-                const timeString = (b.start_time && b.end_time) ? `${b.start_time} - ${b.end_time}` : `${b.duration_minutes}m`;
                 container.innerHTML += `
                     <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
                         <span class="text-slate-300 font-medium">${b.break_name}</span>
-                        <div class="flex items-center gap-3">
-                            <span class="font-mono text-amber-400 font-semibold text-[11px]">${timeString}</span>
-                            <button onclick="deleteBreakRule(${b.id})" class="text-rose-400 hover:text-rose-500 font-bold cursor-pointer">×</button>
-                        </div>
+                        <span class="font-mono text-amber-400 font-semibold text-[11px]">${b.start_time} - ${b.end_time}</span>
                     </div>`;
             });
         }
@@ -651,33 +750,17 @@
             const [eh, em] = endTime.split(':').map(Number);
             let diffMins = (eh * 60 + em) - (sh * 60 + sm);
             if (diffMins < 0) diffMins += 24 * 60; 
-            
-            // FIXED: Payload values explicitly parsed to match target column typing definitions
+
             const { error } = await supabaseClient.from('break_settings').insert([{ 
-                break_name: name, 
-                duration_minutes: parseInt(diffMins),
-                start_time: startTime || null,
-                end_time: endTime || null
+                break_name: name, duration_minutes: parseInt(diffMins), start_time: startTime, end_time: endTime
             }]);
-            
-            if(!error) {
-                document.getElementById('break-form').reset();
-                await refreshConfiguredBreaks();
-            } else {
-                alert("Database write error: " + error.message);
-            }
+            if(!error) { document.getElementById('break-form').reset(); await refreshConfiguredBreaks(); }
         }
 
-        async function deleteBreakRule(id) {
-            await supabaseClient.from('break_settings').delete().eq('id', id);
-            await refreshConfiguredBreaks();
-        }
-
-        // SPREADSHEET INGESTION HANDLERS
         async function processUploads() {
             const shipmentFile = document.getElementById('shipment-file').files[0];
             const truckFile = document.getElementById('truck-file').files[0];
-            if(!shipmentFile) return alert("Upload a Shipment dataset baseline.");
+            if(!shipmentFile) return alert("Upload a Shipment dataset configuration.");
 
             const readExcelJson = (file) => {
                 return new Promise((resolve) => {
@@ -696,9 +779,7 @@
 
             if(truckFile) {
                 const rawTrucks = await readExcelJson(truckFile);
-                rawTrucks.forEach(t => {
-                    if(t["SO Number"]) truckMapping[String(t["SO Number"]).trim()] = t["Truck Type"];
-                });
+                rawTrucks.forEach(t => { if(t["SO Number"]) truckMapping[String(t["SO Number"]).trim()] = t["Truck Type"]; });
             }
 
             const formattedShipments = rawShipments.map(s => {
@@ -723,82 +804,52 @@
             });
 
             const { error } = await supabaseClient.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
-            if(!error) {
-                alert("Master Cloud Tables updated successfully!");
-                await pullGlobalShipmentAutofillReferences();
-            } else {
-                alert("Fault encountered: " + error.message);
-            }
+            if(!error) { alert("Master Database Sync Complete!"); await pullGlobalShipmentAutofillReferences(); }
         }
 
-        // BULLETIN MONITOR LOOPS
         async function refreshBulletinBoard() {
             const { startOfOpDay, endOfOpDay } = calculateOperationalDayWindow();
-            const { data, error } = await supabaseClient
-                .from('activity_logs')
+            const { data, error } = await supabaseClient.from('activity_logs')
                 .select('*')
-                .gte('start_time', startOfOpDay.toISOString())
-                .lte('start_time', endOfOpDay.toISOString())
-                .order('start_time', { ascending: false });
+                .gte('created_at', startOfOpDay.toISOString())
+                .lte('created_at', endOfOpDay.toISOString())
+                .order('created_at', { ascending: false });
 
             if(error) return console.error(error);
             const container = document.getElementById('bulletin-container');
             container.innerHTML = '';
 
             if(data.length === 0) {
-                container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">No logs tracked yet within this continuous operational framework window.</div>`;
+                container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">No batch dispatches loaded for this shift window.</div>`;
                 return;
             }
 
             data.forEach(log => {
-                const startLocal = new Date(log.start_time);
-                const targetCompTime = new Date(startLocal.getTime() + (log.target_hours * 60 * 60 * 1000));
-                const isOverdue = new Date() > targetCompTime && log.status === 'Ongoing';
-
                 container.innerHTML += `
-                    <div class="bg-slate-950 border ${isOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-xl p-4 space-y-3 relative overflow-hidden">
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3 relative">
                         <div class="absolute top-0 right-0 text-[9px] uppercase font-mono tracking-wider px-2 py-0.5 ${log.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'} rounded-bl">
                             ${log.status}
                         </div>
                         <div>
                             <span class="text-[10px] font-bold tracking-wider text-slate-500 block uppercase">${log.role}</span>
-                            <span class="text-sm font-bold text-slate-200 font-mono">${log.shipment_no}</span>
+                            <span class="text-sm font-bold text-slate-200 font-mono">${log.shipment_no} ${log.so_number ? `| SO: ${log.so_number}` : ''}</span>
                         </div>
-                        <div class="grid grid-cols-2 gap-2 text-xs border-y border-slate-900 py-2">
-                            <div><span class="text-slate-500 block text-[10px]">Operator</span><strong class="text-slate-300">${log.personnel_name}</strong></div>
-                            <div><span class="text-slate-500 block text-[10px]">Volume</span><strong class="text-amber-400 font-mono">${log.total_qty} units</strong></div>
+                        <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 font-mono">
+                            <div>Op: <strong class="text-slate-200">${log.personnel_name}</strong></div>
+                            <div>Vol: <strong class="text-amber-400">${log.total_qty} units</strong></div>
                         </div>
-                        <div class="text-[11px] font-mono space-y-1">
-                            <div class="flex justify-between"><span>Start:</span><span class="text-slate-400">${startLocal.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div>
-                            <div class="flex justify-between"><span>SLA Target:</span><span class="text-blue-400 font-bold">${formatHoursToHHMM(log.target_hours)} Hrs</span></div>
-                            <div class="flex justify-between pt-1 border-t border-slate-900"><span>Est. Target:</span><span class="${isOverdue ? 'text-rose-400 font-bold animate-pulse' : 'text-emerald-400'}">${targetCompTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></div>
-                        </div>
-                        ${log.status === 'Ongoing' ? `<button onclick="markJobAsComplete(${log.id})" class="w-full mt-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-[11px] font-semibold py-1.5 rounded text-slate-300 cursor-pointer">Complete Process</button>` : ''}
                     </div>`;
             });
         }
 
-        async function markJobAsComplete(id) {
-            const { error } = await supabaseClient.from('activity_logs').update({ status: 'Completed' }).eq('id', id);
-            if(!error) await refreshBulletinBoard();
-        }
-
-        // MATRIX FILTER INTERNALS
         function runInlineMatrixFilter() {
             const query = document.getElementById('inline-search').value.toLowerCase().trim();
-            const rows = document.querySelectorAll('#manifest-rows tr');
-            
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if(text.includes(query)) row.classList.remove('hidden');
-                else row.classList.add('hidden');
+            document.querySelectorAll('#manifest-rows tr').forEach(row => {
+                row.textContent.toLowerCase().includes(query) ? row.classList.remove('hidden') : row.classList.add('hidden');
             });
         }
 
-        function clearInlineFilters() {
-            document.getElementById('inline-search').value = '';
-            runInlineMatrixFilter();
-        }
+        function clearInlineFilters() { document.getElementById('inline-search').value = ''; runInlineMatrixFilter(); }
     </script>
 </body>
 </html>
