@@ -214,6 +214,90 @@
         <code class="text-amber-400">NOTIFY pgrst, 'reload schema';</code> in the SQL editor first, or PostgREST may reject the request with a stale-schema error.
       </p>
     </div>
+
+    <!-- ============ MANUAL DISPATCH / ENTER STO ============ -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 max-w-2xl">
+      <div>
+        <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">✍️ Enter STO / Manual Dispatch</h2>
+        <p class="text-[10px] text-slate-500 mt-1">For a rush/off-manifest SO that didn't come in on the daily upload. Every field below is required — this row needs to carry the same complete manifest data as an uploaded one, since Workbench targets, speed, and bracket calculations all depend on it.</p>
+      </div>
+      <form id="manual-dispatch-form" onsubmit="submitManualDispatch(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">Shipment No.</label>
+          <input type="text" id="md-shipment-no" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">SO Number</label>
+          <input type="text" id="md-so-number" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">OBD Number</label>
+          <input type="text" id="md-obd-number" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">Billing Number</label>
+          <input type="text" id="md-billing-number" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] text-slate-500 mb-1">Route Description</label>
+          <input type="text" id="md-route" placeholder="e.g. 1102 --> MANILA" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] text-slate-500 mb-1">Sold To Party Name</label>
+          <input type="text" id="md-customer" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">SO Amount</label>
+          <input type="number" step="0.01" min="0" id="md-so-amount" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">Truck Type</label>
+          <select id="md-truck-type" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+            <option value="AUV">AUV</option>
+            <option value="4W">4W</option>
+            <option value="6W">6W</option>
+            <option value="10W">10W</option>
+            <option value="20F">20F</option>
+            <option value="40F">40F</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">CV</label>
+          <input type="number" step="1" min="0" id="md-cv" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">BX</label>
+          <input type="number" step="1" min="0" id="md-bx" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">PAC</label>
+          <input type="number" step="1" min="0" id="md-pac" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">TRY</label>
+          <input type="number" step="1" min="0" id="md-try" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">PC</label>
+          <input type="number" step="1" min="0" id="md-pc" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">KG</label>
+          <input type="number" step="0.01" min="0" id="md-kg" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">Status</label>
+          <select id="md-status" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+            <option value="PENDING">PENDING</option>
+            <option value="PICKED">PICKED</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2 pt-1">
+          <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs py-2 px-4 rounded-lg transition">Add to Manifest (upsert on SO Number)</button>
+        </div>
+      </form>
+      <p id="manual-dispatch-status" class="text-xs text-slate-500"></p>
+    </div>
   </section>
 
   <!-- ================= ADMIN VIEW ================= -->
@@ -1816,6 +1900,54 @@ function exportDataToExcel() {
 }
 
 // --- DATA INGESTION ---
+// --- MANUAL DISPATCH / ENTER STO ---
+// Inserts (or upserts, same as the bulk uploader) a single shipments row typed
+// in by hand — for rush/off-manifest SOs that never came in on the daily
+// upload. Every field is required so this row carries the SAME complete
+// manifest data an uploaded row would, since Workbench targets, speed, and
+// bracket calculations all read straight off these columns.
+async function submitManualDispatch(e) {
+  e.preventDefault();
+  const statusEl = document.getElementById('manual-dispatch-status');
+
+  const row = {
+    shipment_no: document.getElementById('md-shipment-no').value.trim(),
+    so_number: document.getElementById('md-so-number').value.trim(),
+    obd_number: document.getElementById('md-obd-number').value.trim(),
+    billing_number: document.getElementById('md-billing-number').value.trim(),
+    route_description: document.getElementById('md-route').value.trim(),
+    sold_to_party_name: document.getElementById('md-customer').value.trim(),
+    so_amount: parseFloat(document.getElementById('md-so-amount').value) || 0,
+    cv: parseFloat(document.getElementById('md-cv').value) || 0,
+    bx: parseFloat(document.getElementById('md-bx').value) || 0,
+    pac: parseFloat(document.getElementById('md-pac').value) || 0,
+    try_qty: parseFloat(document.getElementById('md-try').value) || 0,
+    pc: parseFloat(document.getElementById('md-pc').value) || 0,
+    kg: parseFloat(document.getElementById('md-kg').value) || 0,
+    truck_type: document.getElementById('md-truck-type').value,
+    status: document.getElementById('md-status').value,
+    pgi_date: document.getElementById('md-status').value === 'PICKED' ? new Date().toISOString() : null
+  };
+
+  if (!row.shipment_no || !row.so_number) {
+    return showToast("Shipment No. and SO Number are both required.", "error");
+  }
+
+  statusEl.innerText = "Adding to manifest...";
+  const { error } = await supabaseClient.from('shipments').upsert([row], { onConflict: 'so_number' });
+  if (error) {
+    statusEl.innerHTML = `<span class="text-rose-400">Failed: ${error.message}</span>`;
+    return showToast("Could not add manual dispatch: " + error.message, "error");
+  }
+
+  statusEl.innerHTML = `<span class="text-emerald-400">SO ${row.so_number} (Shipment ${row.shipment_no}) added to the manifest.</span>`;
+  showToast(`SO ${row.so_number} added — now visible on the Workbench manifest.`, "success");
+  document.getElementById('manual-dispatch-form').reset();
+  // Restore the numeric qty defaults the reset() call clears back to blank.
+  ['md-cv','md-bx','md-pac','md-try','md-pc','md-kg'].forEach(id => { document.getElementById(id).value = '0'; });
+  await refreshShipmentDatalist();
+}
+
 async function processUploads() {
   const shipmentFile = document.getElementById('shipment-file').files[0];
   const truckFile = document.getElementById('truck-file').files[0];
