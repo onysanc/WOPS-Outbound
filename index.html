@@ -4,16 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logistics Operations Dashboard</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- SheetJS Spreadsheet Parser -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen relative overflow-x-hidden">
 
-    <!-- Header Navigation -->
     <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur p-4 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
@@ -21,7 +17,6 @@
                 <span class="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-700" id="op-day-display">Loading...</span>
             </div>
             
-            <!-- Global Navigation Matrix -->
             <nav class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button onclick="switchSystemTab('tab-workbench')" id="nav-tab-workbench" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer">Processing Workbench</button>
                 <button onclick="switchSystemTab('tab-masterdata')" id="nav-tab-masterdata" class="tab-btn px-4 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-400 hover:text-slate-200 cursor-pointer">Master Data</button>
@@ -31,9 +26,8 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-4 lg:p-6">
+    <main class="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
 
-        <!-- ==================== TAB 1: WORKBENCH ==================== -->
         <section id="tab-workbench" class="tab-content space-y-6">
             
             <div class="max-w-3xl mx-auto bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
@@ -71,7 +65,6 @@
                 </div>
             </div>
 
-            <!-- SEARCH SUBTERRANEAN DRILLDOWN MATRIX -->
             <div id="workbench-matrix-viewport" class="hidden space-y-6">
                 <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
                     <div class="flex items-center gap-2">
@@ -91,7 +84,7 @@
                                 <th class="p-3 text-center w-12">Select</th>
                                 <th class="p-3">SO Number</th>
                                 <th class="p-3">Status</th>
-                                <th class="p-3">Assigned Picker</th>
+                                <th class="p-3">Assigned Operator</th>
                                 <th class="p-3">Time Analytics</th>
                                 <th class="p-3">Route Track</th>
                                 <th class="p-3 text-center">Truck</th>
@@ -108,7 +101,6 @@
                     </table>
                 </div>
 
-                <!-- Live Summary Metrics & Job Trigger Block -->
                 <div id="target-summary-card" class="hidden bg-slate-950 border border-emerald-500/20 rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-center shadow-lg">
                     <div>
                         <span class="text-xs text-slate-500 block mb-0.5">Aggregated Job Volume</span>
@@ -128,36 +120,51 @@
                 </div>
             </div>
 
-            <!-- FLOOR DISPATCH CONTROL BULLETIN BOARD -->
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
                 <div>
                     <h2 class="text-sm font-bold tracking-wider text-slate-300 uppercase">📋 Floor Dispatch Control Bulletin</h2>
-                    <p class="text-xs text-slate-500">Active deployments within the 24-Hour continuous operational window</p>
+                    <p class="text-xs text-slate-500">Active deployments within the continuous operational window</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bulletin-container"></div>
             </div>
         </section>
 
-        <!-- ==================== TAB 2: MASTER DATA INGESTION ==================== -->
-        <section id="tab-masterdata" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
-            <div>
-                <h2 class="text-base font-bold text-slate-200">📥 Master Spreadsheet Data Ingestion</h2>
-                <p class="text-xs text-slate-400">Refresh global staging arrays directly via spreadsheet uploads</p>
+        <section id="tab-masterdata" class="tab-content hidden max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6 md:col-span-1 h-fit">
+                <div>
+                    <h2 class="text-base font-bold text-slate-200">📥 Master Spreadsheets Ingestion</h2>
+                    <p class="text-xs text-slate-400">Refresh master database schemas directly via excel ingestion rules</p>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
+                        <input type="file" id="shipment-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
+                        <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
+                    </div>
+                    <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2.5 px-4 rounded-lg transition cursor-pointer">Execute Mass Database Refresh</button>
+                </div>
             </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
-                    <input type="file" id="shipment-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer" />
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 md:col-span-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-300 text-sm font-bold uppercase tracking-wider">🔍 Real-Time Global Search Filters</span>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
-                    <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <input type="text" placeholder="Search Shipment No, Route Description..." class="sm:col-span-3 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
+                    <input type="number" placeholder="Min Qty" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
+                    <select class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-400 focus:outline-none focus:border-emerald-500">
+                        <option>Any Unit Type</option>
+                        <option>CV</option>
+                        <option>BX</option>
+                    </select>
+                    <button class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-4 rounded-lg transition cursor-pointer">Reset Filters</button>
                 </div>
-                <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2.5 px-4 rounded-lg transition cursor-pointer">Execute Mass Database Refresh</button>
             </div>
         </section>
 
-        <!-- ==================== TAB 3: PERSONNEL POOL ==================== -->
         <section id="tab-personnel" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
                 <h2 class="text-base font-bold text-slate-200">👥 Personnel Roster Pool Configuration</h2>
@@ -182,7 +189,6 @@
             <div class="space-y-1.5" id="personnel-list-container"></div>
         </section>
 
-        <!-- ==================== TAB 4: BREAK SCHEDULE ==================== -->
         <section id="tab-breaks" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
                 <h2 class="text-base font-bold text-slate-200">⏱️ Administrative Fixed Break Boundaries</h2>
@@ -207,7 +213,6 @@
 
     </main>
 
-    <!-- CUSTOM CONFIRMATION MODAL -->
     <div id="custom-confirm-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all">
         <div class="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl p-6 space-y-6 transform scale-100 transition-transform">
             <div class="flex items-center gap-3 border-b border-slate-800/60 pb-3">
@@ -272,7 +277,9 @@
         // --- SUPABASE CLIENT SETUP ---
         const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Application-specific variable assignment to completely bypass conflict exceptions
+        const logiFlowSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- RUNTIME APPLICATION MATRIX CODES ---
         let currentRole = '';
@@ -280,7 +287,7 @@
         let globalPersonnelList = [];
         let configuredBreaks = [];
         let globalShipmentNumbers = [];
-        let activeRowActivityLogs = []; // Stores matching row activity tasks from DB
+        let activeRowActivityLogs = []; 
 
         let computedMetricsSummary = {
             truckTypes: [],
@@ -308,8 +315,10 @@
                 btn.classList.add('text-slate-400', 'hover:text-slate-200');
             });
             const targetedNavButton = document.getElementById(`nav-${activeTabId}`);
-            targetedNavButton.classList.remove('text-slate-400', 'hover:text-slate-200');
-            targetedNavButton.classList.add('bg-emerald-600', 'text-white', 'border', 'border-emerald-500');
+            if(targetedNavButton) {
+                targetedNavButton.classList.remove('text-slate-400', 'hover:text-slate-200');
+                targetedNavButton.classList.add('bg-emerald-600', 'text-white', 'border', 'border-emerald-500');
+            }
         }
 
         function calculateOperationalDayWindow() {
@@ -335,8 +344,10 @@
             });
             
             const tgtBtn = document.getElementById(`role-select-${roleName}`);
-            tgtBtn.classList.remove('bg-slate-900/40', 'border-slate-800', 'text-slate-300');
-            tgtBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white', 'shadow-lg');
+            if(tgtBtn) {
+                tgtBtn.classList.remove('bg-slate-900/40', 'border-slate-800', 'text-slate-300');
+                tgtBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white', 'shadow-lg');
+            }
 
             document.getElementById('hidden-inputs-container').classList.remove('opacity-40', 'pointer-events-none');
             document.getElementById('wb-personnel-input').value = '';
@@ -356,7 +367,7 @@
         }
 
         async function pullGlobalShipmentAutofillReferences() {
-            const { data, error } = await supabaseClient.from('shipments').select('shipment_no');
+            const { data, error } = await logiFlowSupabase.from('shipments').select('shipment_no');
             if (error) return console.error(error);
             globalShipmentNumbers = [...new Set(data.map(item => item.shipment_no))];
             const listDataContainer = document.getElementById('autofill-shipments');
@@ -385,13 +396,11 @@
         async function executeManifestQuery() {
             const shipmentNo = document.getElementById('wb-shipment-input').value.trim();
             
-            // 1. Fetch shipments
-            const resShipments = await supabaseClient.from('shipments').select('*').eq('shipment_no', shipmentNo);
+            const resShipments = await logiFlowSupabase.from('shipments').select('*').eq('shipment_no', shipmentNo);
             if(resShipments.error) return alert("System retrieval fault: " + resShipments.error.message);
             currentManifestData = resShipments.data;
 
-            // 2. Fetch active granular activity logs for row-level assignment tracking
-            const resLogs = await supabaseClient.from('activity_logs').select('*').eq('shipment_no', shipmentNo);
+            const resLogs = await logiFlowSupabase.from('activity_logs').select('*').eq('shipment_no', shipmentNo);
             activeRowActivityLogs = resLogs.data || [];
 
             renderManifestTable(currentManifestData);
@@ -409,7 +418,6 @@
             }
 
             rows.forEach((row, i) => {
-                // Find existing row activity logs targeting this specific SO Number & Role context
                 const rowLog = activeRowActivityLogs.find(l => l.so_number === row.so_number && l.role === currentRole);
                 
                 let statusText = "PENDING";
@@ -417,7 +425,6 @@
                 let assignedPersonnel = rowLog ? rowLog.personnel_name : "Unassigned";
                 let isLocked = false;
 
-                // STATUS EVALUATION MATRIX PIPELINE
                 if (row.pgi_date !== null || (rowLog && rowLog.status === 'Completed')) {
                     statusText = "PICKED";
                     statusClass = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
@@ -426,16 +433,14 @@
                     statusClass = rowLog.status === 'Paused' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse";
                 }
 
-                // CROSS-USER SELECTION LOCK RULES
                 const currentUserInput = document.getElementById('wb-personnel-input').value.trim();
                 if (rowLog && rowLog.personnel_name !== currentUserInput && rowLog.status !== 'Completed') {
-                    isLocked = true; // Row is being tracked by a different user right now!
+                    isLocked = true; 
                 }
                 if (statusText === "PICKED") {
-                    isLocked = true; // Finished tasks cannot be changed or selected
+                    isLocked = true; 
                 }
 
-                // Time Metric Formatting String Generation
                 let analyticsString = "---";
                 if(rowLog && rowLog.start_time) {
                     const startStr = new Date(rowLog.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -444,7 +449,6 @@
                     analyticsString = `<div class="text-[10px] font-mono leading-tight text-slate-400">In: ${startStr}<br>Out: ${compStr}<br>Net: ${renderedStr}</div>`;
                 }
 
-                // Row action items control block
                 let actionButtonsHTML = "---";
                 if (currentRole === 'Picker' && !isLocked) {
                     if (!rowLog) {
@@ -454,7 +458,7 @@
                             <div class="flex gap-1 justify-center">
                                 <button onclick="pauseRowLevelTask(${rowLog.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Pause</button>
                                 <button onclick="completeRowLevelTask(${rowLog.id}, ${i})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Complete</button>
-                            </div>`;
+                    </div>`;
                     } else if (rowLog.status === 'Paused') {
                         actionButtonsHTML = `<button onclick="resumeRowLevelTask(${rowLog.id})" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Resume</button>`;
                     }
@@ -482,13 +486,12 @@
             });
         }
 
-        // --- ROW-LEVEL TIMER AND WORKFLOW MUTATION FUNCTIONS ---
         async function initiateRowLevelTask(rowIndex) {
             const rowItem = currentManifestData[rowIndex];
             const operatorName = document.getElementById('wb-personnel-input').value.trim();
             const shipmentNo = document.getElementById('wb-shipment-input').value.trim();
 
-            const { error } = await supabaseClient.from('activity_logs').insert([{
+            const { error } = await logiFlowSupabase.from('activity_logs').insert([{
                 shipment_no: shipmentNo,
                 so_number: rowItem.so_number,
                 role: currentRole,
@@ -504,17 +507,16 @@
         }
 
         async function pauseRowLevelTask(logId) {
-            // Retrieve current database entry to increment accumulated operational seconds cleanly
-            const { data, error: fetchErr } = await supabaseClient.from('activity_logs').select('*').eq('id', logId).single();
+            const { data, error: fetchErr } = await logiFlowSupabase.from('activity_logs').select('*').eq('id', logId).single();
             if(fetchErr) return console.error(fetchErr);
 
             const elapsedSeconds = Math.floor((new Date() - new Date(data.start_time)) / 1000);
             const totalSecs = (data.accumulated_seconds || 0) + elapsedSeconds;
 
-            const { error } = await supabaseClient.from('activity_logs').update({
+            const { error } = await logiFlowSupabase.from('activity_logs').update({
                 status: 'Paused',
                 accumulated_seconds: totalSecs,
-                start_time: null // Wipe starting string while process timer sits in idle state
+                start_time: null 
             }).eq('id', logId);
 
             if (error) alert("Mutation error: " + error.message);
@@ -522,7 +524,7 @@
         }
 
         async function resumeRowLevelTask(logId) {
-            const { error } = await supabaseClient.from('activity_logs').update({
+            const { error } = await logiFlowSupabase.from('activity_logs').update({
                 status: 'Ongoing',
                 start_time: new Date().toISOString()
             }).eq('id', logId);
@@ -532,15 +534,14 @@
         }
 
         async function completeRowLevelTask(logId, rowIndex) {
-            const { data: logEntry, error: fetchErr } = await supabaseClient.from('activity_logs').select('*').eq('id', logId).single();
+            const { data: logEntry, error: fetchErr } = await logiFlowSupabase.from('activity_logs').select('*').eq('id', logId).single();
             if(fetchErr) return console.error(fetchErr);
 
             const currentSessionSeconds = logEntry.start_time ? Math.floor((new Date() - new Date(logEntry.start_time)) / 1000) : 0;
             const totalElapsedSeconds = (logEntry.accumulated_seconds || 0) + currentSessionSeconds;
             let netDurationMinutes = Math.round(totalElapsedSeconds / 60);
 
-            // CALCULATE BREAK OVERLAPS IF ANY OCCURRED WITHIN ACTIVE SHIFT LOG WINDOWS
-            const taskStartTime = logEntry.created_at ? new Date(logEntry.created_at) : new Date();
+            const taskStartTime = logEntry.start_time ? new Date(logEntry.start_time) : new Date();
             const taskEndTime = new Date();
             let overlappingBreakMinutes = 0;
 
@@ -553,7 +554,6 @@
                     const bEnd = new Date(taskStartTime); bEnd.setHours(eHours, eMins, 0, 0);
                     if (bEnd < bStart) bEnd.setDate(bEnd.getDate() + 1);
 
-                    // Intersection validation checks
                     const maxStart = new Date(Math.max(taskStartTime, bStart));
                     const minEnd = new Date(Math.min(taskEndTime, bEnd));
 
@@ -563,10 +563,9 @@
                 }
             });
 
-            // Adjust clean metrics down to limit zero flooring anomalies
             netDurationMinutes = Math.max(0, netDurationMinutes - overlappingBreakMinutes);
 
-            const { error } = await supabaseClient.from('activity_logs').update({
+            const { error } = await logiFlowSupabase.from('activity_logs').update({
                 status: 'Completed',
                 end_time: taskEndTime.toISOString(),
                 rendered_minutes: netDurationMinutes
@@ -576,7 +575,6 @@
             else await executeManifestQuery();
         }
 
-        // --- BATCH SELECTION QUANTITY METRICS ---
         function recalculateCalculatedWorkflowMetrics() {
             let totalQtySelected = 0;
             let netTargetHours = 0;
@@ -669,7 +667,7 @@
             const operatorName = document.getElementById('wb-personnel-input').value.trim();
             const shipmentNo = document.getElementById('wb-shipment-input').value.trim();
 
-            const { error } = await supabaseClient.from('activity_logs').insert([{
+            const { error } = await logiFlowSupabase.from('activity_logs').insert([{
                 shipment_no: shipmentNo,
                 role: currentRole,
                 personnel_name: operatorName,
@@ -692,13 +690,13 @@
             }
         }
 
-        // --- CRUD BACKEND ENGINE SYNCS ---
         async function refreshPersonnelRosterPool() {
-            const { data, error } = await supabaseClient.from('personnel').select('*').order('name', { ascending: true });
+            const { data, error } = await logiFlowSupabase.from('personnel').select('*').order('name', { ascending: true });
             if (error) return console.error(error);
             globalPersonnelList = data;
             
             const container = document.getElementById('personnel-list-container');
+            if(!container) return;
             container.innerHTML = '';
             data.forEach(p => {
                 container.innerHTML += `
@@ -714,22 +712,23 @@
             e.preventDefault();
             const name = document.getElementById('new-personnel-name').value.trim();
             const role = document.getElementById('new-personnel-role').value;
-            const { error } = await supabaseClient.from('personnel').insert([{ name, role }]);
+            const { error } = await logiFlowSupabase.from('personnel').insert([{ name, role }]);
             if (!error) { document.getElementById('personnel-form').reset(); await refreshPersonnelRosterPool(); }
         }
 
         async function deletePersonnelMember(id) {
             if(!confirm("Drop member from data pool?")) return;
-            const { error } = await supabaseClient.from('personnel').delete().eq('id', id);
+            const { error } = await logiFlowSupabase.from('personnel').delete().eq('id', id);
             if (!error) await refreshPersonnelRosterPool();
         }
 
         async function refreshConfiguredBreaks() {
-            const { data, error } = await supabaseClient.from('break_settings').select('*');
+            const { data, error } = await logiFlowSupabase.from('break_settings').select('*');
             if (error) return console.error(error);
             configuredBreaks = data;
             
             const container = document.getElementById('break-list-container');
+            if(!container) return;
             container.innerHTML = '';
             data.forEach(b => {
                 container.innerHTML += `
@@ -751,7 +750,7 @@
             let diffMins = (eh * 60 + em) - (sh * 60 + sm);
             if (diffMins < 0) diffMins += 24 * 60; 
 
-            const { error } = await supabaseClient.from('break_settings').insert([{ 
+            const { error } = await logiFlowSupabase.from('break_settings').insert([{ 
                 break_name: name, duration_minutes: parseInt(diffMins), start_time: startTime, end_time: endTime
             }]);
             if(!error) { document.getElementById('break-form').reset(); await refreshConfiguredBreaks(); }
@@ -803,20 +802,21 @@
                 };
             });
 
-            const { error } = await supabaseClient.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
+            const { error } = await logiFlowSupabase.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
             if(!error) { alert("Master Database Sync Complete!"); await pullGlobalShipmentAutofillReferences(); }
         }
 
         async function refreshBulletinBoard() {
-            const { startOfOpDay, endOfOpDay } = calculateOperationalDayWindow();
-            const { data, error } = await supabaseClient.from('activity_logs')
+            const { startOfOpDay } = calculateOperationalDayWindow();
+            
+            const { data, error } = await logiFlowSupabase.from('activity_logs')
                 .select('*')
-                .gte('created_at', startOfOpDay.toISOString())
-                .lte('created_at', endOfOpDay.toISOString())
-                .order('created_at', { ascending: false });
+                .gte('start_time', startOfOpDay.toISOString())
+                .order('start_time', { ascending: false });
 
             if(error) return console.error(error);
             const container = document.getElementById('bulletin-container');
+            if(!container) return;
             container.innerHTML = '';
 
             if(data.length === 0) {
@@ -849,7 +849,11 @@
             });
         }
 
-        function clearInlineFilters() { document.getElementById('inline-search').value = ''; runInlineMatrixFilter(); }
+        function clearInlineFilters() { 
+            const el = document.getElementById('inline-search');
+            if(el) el.value = ''; 
+            runInlineMatrixFilter(); 
+        }
     </script>
 </body>
 </html>
