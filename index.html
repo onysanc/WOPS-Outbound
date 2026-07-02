@@ -21,7 +21,7 @@
 
     <main class="max-w-7xl mx-auto p-4 lg:p-6 space-y-8">
 
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
                 <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">📥 Master Data Ingestion</h2>
@@ -35,7 +35,7 @@
                     <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
                     <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
                 </div>
-                <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2 px-4 rounded-lg transition">Execute Mass Database Refresh</button>
+                <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2 px-4 rounded-lg transition cursor-pointer">Execute Mass Database Refresh</button>
             </div>
 
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -52,9 +52,27 @@
                             <input type="time" id="break-end" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full text-slate-300 focus:outline-none focus:border-emerald-500">
                         </div>
                     </div>
-                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 text-xs font-bold rounded-lg transition">+ Establish Break Schedule Window</button>
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-1.5 text-xs font-bold rounded-lg transition cursor-pointer">+ Establish Break Schedule Window</button>
                 </form>
-                <div class="max-h-[110px] overflow-y-auto space-y-1 structure-scroll" id="break-list-container">
+                <div class="max-h-[110px] overflow-y-auto space-y-1 structure-scroll text-slate-300" id="break-list-container">
+                    </div>
+            </div>
+
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+                <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">👥 Personnel Roster Pool</h2>
+                <form id="personnel-form" onsubmit="addPersonnelMember(event)" class="space-y-2">
+                    <input type="text" id="new-personnel-name" placeholder="Associate Full Name" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+                    <div class="flex gap-2">
+                        <select id="new-personnel-role" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 grow text-slate-300 focus:outline-none focus:border-emerald-500">
+                            <option value="Picker">Picker</option>
+                            <option value="Staging Checker">Staging Checker</option>
+                            <option value="Puller">Puller</option>
+                            <option value="Outbound Checker">Outbound Checker</option>
+                        </select>
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 rounded-lg transition cursor-pointer">Add</button>
+                    </div>
+                </form>
+                <div class="max-h-[110px] overflow-y-auto space-y-1 structure-scroll" id="personnel-list-container">
                     </div>
             </div>
 
@@ -68,7 +86,7 @@
                         <option value="cv">CV</option><option value="bx">BX</option><option value="pac">PAC</option>
                         <option value="try_qty">TRY</option><option value="pc">PC</option><option value="kg">KG</option>
                     </select>
-                    <button onclick="clearGlobalFilters()" class="text-[11px] text-slate-400 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800">Reset</button>
+                    <button onclick="clearGlobalFilters()" class="text-[11px] text-slate-400 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 cursor-pointer">Reset</button>
                 </div>
             </div>
         </section>
@@ -81,10 +99,10 @@
                 </div>
                 
                 <div class="flex flex-wrap gap-2">
-                    <button onclick="setRole('Picker')" id="btn-Picker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">1. Picker</button>
-                    <button onclick="setRole('Staging Checker')" id="btn-Staging Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">2. Staging Checker</button>
-                    <button onclick="setRole('Puller')" id="btn-Puller" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">3. Puller</button>
-                    <button onclick="setRole('Outbound Checker')" id="btn-Outbound Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">4. Outbound Checker</button>
+                    <button onclick="setRole('Picker')" id="btn-Picker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition cursor-pointer">1. Picker</button>
+                    <button onclick="setRole('Staging Checker')" id="btn-Staging Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition cursor-pointer">2. Staging Checker</button>
+                    <button onclick="setRole('Puller')" id="btn-Puller" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition cursor-pointer">3. Puller</button>
+                    <button onclick="setRole('Outbound Checker')" id="btn-Outbound Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition cursor-pointer">4. Outbound Checker</button>
                 </div>
             </div>
 
@@ -100,7 +118,7 @@
                     </select>
                 </div>
                 <div class="flex items-end">
-                    <button onclick="fetchShipmentManifest()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs px-5 py-2.5 rounded-lg h-[38px] transition">Load Manifest</button>
+                    <button onclick="fetchShipmentManifest()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs px-5 py-2.5 rounded-lg h-[38px] transition cursor-pointer">Load Manifest</button>
                 </div>
             </div>
 
@@ -144,7 +162,7 @@
                     <span id="summary-final-hours" class="text-2xl font-black text-blue-400">0.00</span> <span class="text-xs text-slate-400">Hours</span>
                 </div>
                 <div>
-                    <button onclick="commitJobTransaction()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg transition tracking-wider uppercase">Dispatch Job & Start Clock</button>
+                    <button onclick="commitJobTransaction()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg transition tracking-wider uppercase cursor-pointer">Dispatch Job & Start Clock</button>
                 </div>
             </div>
         </section>
@@ -178,6 +196,7 @@
             calculateOperationalDayWindow();
             setRole('Picker');
             await refreshConfiguredBreaks();
+            await refreshPersonnelRosterPool();
             await refreshBulletinBoard();
         });
 
@@ -211,7 +230,7 @@
                 targetBtn.classList.remove('bg-slate-900', 'text-slate-200');
                 targetBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white');
             }
-            await populatePersonnelListByRole(roleName);
+            await populatePersonnelSelector();
             clearManifestViewTable();
         }
 
@@ -220,18 +239,102 @@
             document.getElementById('target-summary-card').classList.add('hidden');
         }
 
-        async function populatePersonnelListByRole(role) {
-            const { data, error } = await supabaseClient.from('personnel').select('*').eq('role', role);
-            if(error) return console.error(error);
+        // --- MANAGEMENT METHODS FOR PERSONNEL ROSTER POOL ---
+        async function refreshPersonnelRosterPool() {
+            const { data, error } = await supabaseClient.from('personnel').select('*').order('name', { ascending: true });
+            if (error) return console.error(error);
+            globalPersonnelList = data;
             
-            const selector = document.getElementById('personnel-selector');
-            selector.innerHTML = '<option value="">Choose Personnel...</option>';
+            // Build the administrative list UI
+            const container = document.getElementById('personnel-list-container');
+            container.innerHTML = '';
+            
             data.forEach(p => {
+                container.innerHTML += `
+                    <div id="p-row-${p.id}" class="flex flex-col gap-1.5 bg-slate-900 px-3 py-2 rounded text-xs border border-slate-800/60">
+                        <div class="flex justify-between items-center w-full">
+                            <span id="p-display-text-${p.id}" class="text-slate-300 font-medium font-mono">${p.name} <span class="text-[10px] text-emerald-400 font-sans">(${p.role})</span></span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="togglePersonnelEditView(${p.id}, '${p.name}', '${p.role}')" class="text-blue-400 hover:text-blue-300 text-[11px] font-semibold cursor-pointer">Edit</button>
+                                <button onclick="deletePersonnelMember(${p.id})" class="text-rose-400 hover:text-rose-500 font-bold text-sm cursor-pointer">×</button>
+                            </div>
+                        </div>
+                        <div id="p-edit-form-${p.id}" class="hidden flex gap-1 mt-1 border-t border-slate-800/60 pt-1.5">
+                            <input type="text" id="p-edit-input-${p.id}" value="${p.name}" class="bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200 grow">
+                            <select id="p-edit-role-${p.id}" class="bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-300">
+                                <option value="Picker" ${p.role === 'Picker' ? 'selected' : ''}>Picker</option>
+                                <option value="Staging Checker" ${p.role === 'Staging Checker' ? 'selected' : ''}>Staging Checker</option>
+                                <option value="Puller" ${p.role === 'Puller' ? 'selected' : ''}>Puller</option>
+                                <option value="Outbound Checker" ${p.role === 'Outbound Checker' ? 'selected' : ''}>Outbound Checker</option>
+                            </select>
+                            <button onclick="commitPersonnelEdit(${p.id})" class="bg-emerald-600 text-white text-[10px] px-2 rounded hover:bg-emerald-500 cursor-pointer">Save</button>
+                        </div>
+                    </div>`;
+            });
+            
+            await populatePersonnelSelector();
+        }
+
+        async function populatePersonnelSelector() {
+            const selector = document.getElementById('personnel-selector');
+            if(!selector) return;
+            selector.innerHTML = '<option value="">Choose Personnel...</option>';
+            
+            // Filter global list dynamically down to the active workbench role selection context
+            const filteredPool = globalPersonnelList.filter(p => p.role === currentRole);
+            filteredPool.forEach(p => {
                 selector.innerHTML += `<option value="${p.name}">${p.name}</option>`;
             });
         }
 
-        // REFRESH ADMIN BREAK CONFIG LISTINGS FROM DB (WITH START/END FIELDS)
+        async function addPersonnelMember(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-personnel-name').value.trim();
+            const role = document.getElementById('new-personnel-role').value;
+            
+            const { error } = await supabaseClient.from('personnel').insert([{ name, role }]);
+            if (!error) {
+                document.getElementById('personnel-form').reset();
+                await refreshPersonnelRosterPool();
+            } else {
+                alert("Error Adding Roster Member: " + error.message);
+            }
+        }
+
+        function togglePersonnelEditView(id, currentName, currentRole) {
+            const form = document.getElementById(`p-edit-form-${id}`);
+            if(form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+            } else {
+                form.classList.add('hidden');
+            }
+        }
+
+        async function commitPersonnelEdit(id) {
+            const updatedName = document.getElementById(`p-edit-input-${id}`).value.trim();
+            const updatedRole = document.getElementById(`p-edit-role-${id}`).value;
+            
+            if(!updatedName) return alert("Roster names can't be empty parameters.");
+            
+            const { error } = await supabaseClient.from('personnel').update({ name: updatedName, role: updatedRole }).eq('id', id);
+            if (!error) {
+                await refreshPersonnelRosterPool();
+            } else {
+                alert("Update Committment Failure: " + error.message);
+            }
+        }
+
+        async function deletePersonnelMember(id) {
+            if(!confirm("Are you sure you want to drop this personnel associate from system rosters?")) return;
+            const { error } = await supabaseClient.from('personnel').delete().eq('id', id);
+            if (!error) {
+                await refreshPersonnelRosterPool();
+            } else {
+                alert("Dropping execution encountered error: " + error.message);
+            }
+        }
+
+        // --- BREAK SYSTEMS ---
         async function refreshConfiguredBreaks() {
             const { data, error } = await supabaseClient.from('break_settings').select('*');
             if (error) return console.error(error);
@@ -240,14 +343,13 @@
             const container = document.getElementById('break-list-container');
             container.innerHTML = '';
             data.forEach(b => {
-                // If break fields contain time values, display them nicely
                 const timeString = (b.start_time && b.end_time) ? `${b.start_time} - ${b.end_time}` : `${b.duration_minutes}m`;
                 container.innerHTML += `
                     <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
                         <span class="text-slate-300 font-medium">${b.break_name}</span>
                         <div class="flex items-center gap-3">
                             <span class="font-mono text-amber-400 font-semibold text-[11px]">${timeString}</span>
-                            <button onclick="deleteBreakRule(${b.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
+                            <button onclick="deleteBreakRule(${b.id})" class="text-rose-400 hover:text-rose-500 font-bold cursor-pointer">×</button>
                         </div>
                     </div>`;
             });
@@ -259,11 +361,10 @@
             const startTime = document.getElementById('break-start').value;
             const endTime = document.getElementById('break-end').value;
 
-            // Compute total minutes from input timestamps
             const [sh, sm] = startTime.split(':').map(Number);
             const [eh, em] = endTime.split(':').map(Number);
             let diffMins = (eh * 60 + em) - (sh * 60 + sm);
-            if (diffMins < 0) diffMins += 24 * 60; // Support overnight crossings gracefully
+            if (diffMins < 0) diffMins += 24 * 60; 
             
             const { error } = await supabaseClient.from('break_settings').insert([{ 
                 break_name: name, 
@@ -276,6 +377,8 @@
                 document.getElementById('break-form').reset();
                 await refreshConfiguredBreaks();
                 recalculateCalculatedWorkflowMetrics();
+            } else {
+                alert("Database Submission Failed: " + error.message);
             }
         }
 
@@ -285,6 +388,7 @@
             recalculateCalculatedWorkflowMetrics();
         }
 
+        // --- CORE PROCESS EXECUTION MATRIX LOOPS ---
         async function processUploads() {
             const shipmentFile = document.getElementById('shipment-file').files[0];
             const truckFile = document.getElementById('truck-file').files[0];
@@ -388,7 +492,6 @@
             });
         }
 
-        // EVALUATE WINDOW INTERSECTIONS FOR TIME BLOCK AND SLA TARGET EXTENSION
         function recalculateCalculatedWorkflowMetrics() {
             let totalQtySelected = 0;
             let netTargetHours = 0;
@@ -406,7 +509,6 @@
                 netTargetHours += (rowQtySum / speedRate);
             });
 
-            // Dynamically analyze if the execution timeline windows cross established break blocks
             const now = new Date();
             const estimatedNetCompletionDate = new Date(now.getTime() + (netTargetHours * 60 * 60 * 1000));
             
@@ -414,7 +516,6 @@
 
             configuredBreaks.forEach(b => {
                 if (b.start_time && b.end_time) {
-                    // Turn configured times into absolute timestamps relative to today
                     const [sHours, sMins] = b.start_time.split(':').map(Number);
                     const [eHours, eMins] = b.end_time.split(':').map(Number);
 
@@ -424,12 +525,10 @@
                     const breakEndDate = new Date(now);
                     breakEndDate.setHours(eHours, eMins, 0, 0);
 
-                    // Adjust break window forward if ending time rolls into the following calendar date
                     if (breakEndDate < breakStartDate) {
                         breakEndDate.setDate(breakEndDate.getDate() + 1);
                     }
 
-                    // CONDITION: If task processing cross-sects or hits any point within the configured shift break timeframe
                     const jobStartsBeforeBreakEnds = now < breakEndDate;
                     const jobEndsAfterBreakStarts = estimatedNetCompletionDate > breakStartDate;
 
@@ -437,7 +536,6 @@
                         totalBreakHoursToApply += (b.duration_minutes / 60);
                     }
                 } else {
-                    // Fallback to static rules additions if time ranges aren't specified
                     totalBreakHoursToApply += (b.duration_minutes / 60);
                 }
             });
@@ -534,7 +632,7 @@
                             </div>
                         </div>
                         ${log.status === 'Ongoing' ? `
-                            <button onclick="markJobAsComplete(${log.id})" class="w-full mt-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-[11px] font-semibold py-1.5 rounded text-slate-300 transition">
+                            <button onclick="markJobAsComplete(${log.id})" class="w-full mt-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-[11px] font-semibold py-1.5 rounded text-slate-300 transition cursor-pointer">
                                 Complete Process Step
                             </button>
                         ` : ''}
