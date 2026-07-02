@@ -335,6 +335,13 @@ let configuredBreaks = [];
 let allPersonnel = [];
 let allStagingAreas = [];
 
+// --- STATUS CHAIN: each role (besides Picker) requires the prior role's
+// completion flag on the shipments row before a line becomes selectable, and
+// each role's own completion persists its own flag for the next role.
+// Picker -> PICKED -> Staging Checker -> STAGED -> Puller -> PULLED -> Outbound Checker -> CHECKED
+const PREV_ROLE = { 'Staging Checker': 'Picker', 'Puller': 'Staging Checker', 'Outbound Checker': 'Puller' };
+const ROLE_COMPLETE_LABEL = { 'Picker': 'PICKED', 'Staging Checker': 'STAGED', 'Puller': 'PULLED', 'Outbound Checker': 'CHECKED' };
+
 // --- INIT ---
 window.addEventListener('DOMContentLoaded', async () => {
   calculateOperationalDayWindow();
@@ -379,7 +386,12 @@ async function setRole(roleName) {
   const btn = document.getElementById(`btn-${roleName}`);
   if (btn) btn.classList.add('active');
   await populatePersonnelDatalist(roleName);
-  await renderManifestTable();
+  // Re-fetch (not just re-render) so the manifest reflects THIS role's own
+  // activity logs and chain-of-custody status immediately. Previously this
+  // called renderManifestTable() directly, which reused logs fetched for the
+  // OLD role — causing stale status/actions to flash until the shipment was
+  // re-typed. Fetching fresh here makes the switch realtime.
+  await fetchShipmentManifest();
   await refreshSidePanel();
 }
 
@@ -456,37 +468,54 @@ async function fetchShipmentManifest() {
     if (!logErr) logs = logData || [];
   }
 
-  // Staging Checker can only work rows the Picker has already finished — either the
-  // SO already carries a PGI date, or the Picker-role log for that SO is Completed.
-  let pickerCompletedSet = new Set();
-  if (currentRole === 'Staging Checker' && soNumbers.length) {
-    const { data: pickerLogs, error: pickerErr } = await supabaseClient
-      .from('activity_logs').select('so_number')
-      .in('so_number', soNumbers).eq('role', 'Picker').eq('status', 'Completed');
-    if (!pickerErr) (pickerLogs || []).forEach(l => pickerCompletedSet.add(l.so_number));
+  // Every role except Picker can only work rows the PRIOR role in the chain has
+  // already finished — either the shipments row already carries the persisted
+  // status flag for that prior stage (PICKED / STAGED / PULLED), or (fallback for
+  // rows not yet backfilled) the prior role's activity_logs entry for this SO is
+  // Completed. We keep the most recent completed prior-role log per SO so the
+  // Puller can also read the Staging Checker's confirmed Staging Area off it.
+  const prevRole = PREV_ROLE[currentRole];
+  let prevCompletedMap = new Map(); // so_number -> most recent completed prior-role log
+  if (prevRole && soNumbers.length) {
+    const { data: prevLogs, error: prevErr } = await supabaseClient
+      .from('activity_logs').select('*')
+      .in('so_number', soNumbers).eq('role', prevRole).eq('status', 'Completed')
+      .order('end_time', { ascending: false });
+    if (!prevErr) (prevLogs || []).forEach(l => {
+      if (!prevCompletedMap.has(l.so_number)) prevCompletedMap.set(l.so_number, l);
+    });
   }
 
-  currentManifestData = data.map(row => ({
-    ...row,
-    _log: logs.find(l => l.so_number === row.so_number) || null,
-    // Ready for Staging Checker once ANY of: source system already set a PGI date,
-    // the shipments row itself carries the persisted status='PICKED' flag (set the
-    // moment a Picker completes), or (fallback for rows not yet backfilled) the
-    // Picker-role activity_logs entry for this SO is Completed.
-    _pickReady: currentRole !== 'Staging Checker' || !!row.pgi_date || row.status === 'PICKED' || pickerCompletedSet.has(row.so_number)
-  }));
+  currentManifestData = data.map(row => {
+    const prevLog = prevCompletedMap.get(row.so_number);
+    return {
+      ...row,
+      _log: logs.find(l => l.so_number === row.so_number) || null,
+      // Ready once ANY of: no prior role in the chain (Picker), the shipments row
+      // carries the prior stage's persisted status flag, a legacy PGI-date signal
+      // (Picker -> Staging Checker only), or a completed prior-role log fallback.
+      _prevReady: !prevRole
+        || (currentRole === 'Staging Checker' && !!row.pgi_date)
+        || row.status === ROLE_COMPLETE_LABEL[prevRole]
+        || !!prevLog,
+      // Staging Area(s) confirmed by the Staging Checker — surfaced as a major
+      // reference for the Puller once that SO is ready to be pulled.
+      _stagingAreas: (currentRole === 'Puller' && prevLog) ? (prevLog.staging_areas || []) : null
+    };
+  });
   renderManifestTable();
 }
 
 // pgi_date on the SO means the source system already marked it picked — that only
 // auto-locks the row away from the Picker themselves; for later stages (Staging
-// Checker, etc.) it's read via row._pickReady as an eligibility signal instead.
+// Checker, etc.) it's read via row._prevReady as an eligibility signal instead.
 function rowStatusLabel(row, log, role) {
+  const doneLabel = ROLE_COMPLETE_LABEL[role] || 'DONE';
   if (role === 'Picker' && (row.pgi_date || row.status === 'PICKED')) return 'PICKED';
   if (!log) return 'PENDING';
   if (log.status === 'Ongoing') return 'ONGOING';
   if (log.status === 'Paused') return 'PAUSED';
-  return 'PICKED';
+  return doneLabel;
 }
 
 function renderManifestTable() {
@@ -513,15 +542,22 @@ function renderManifestTable() {
     // Locked to someone else the moment ANY same-role log is active, whether or not an operator name has been typed yet
     const isMine = isAssignedActive && operator && log.personnel_name === operator;
     const lockedToOther = isAssignedActive && !isMine;
-    const isCompleted = status === 'PICKED';
-    const notReadyForStage = currentRole === 'Staging Checker' && status === 'PENDING' && !row._pickReady;
+    const doneLabel = ROLE_COMPLETE_LABEL[currentRole] || 'DONE';
+    const isCompleted = status === doneLabel;
+    // Generalized across the whole chain: Staging Checker needs PICKED, Puller
+    // needs STAGED, Outbound Checker needs PULLED — all read off row._prevReady.
+    const notReadyForStage = !!PREV_ROLE[currentRole] && status === 'PENDING' && !row._prevReady;
     const isDisabled = isCompleted || isPickedSource || lockedToOther || notReadyForStage;
 
-    const statusColor = { PENDING: 'bg-slate-800 text-slate-300', ONGOING: 'bg-amber-500/20 text-amber-400', PAUSED: 'bg-blue-500/20 text-blue-400', PICKED: 'bg-emerald-500/20 text-emerald-400' }[status];
+    const statusColor = {
+      PENDING: 'bg-slate-800 text-slate-300', ONGOING: 'bg-amber-500/20 text-amber-400', PAUSED: 'bg-blue-500/20 text-blue-400',
+      PICKED: 'bg-emerald-500/20 text-emerald-400', STAGED: 'bg-cyan-500/20 text-cyan-400', PULLED: 'bg-purple-500/20 text-purple-400', CHECKED: 'bg-emerald-500/20 text-emerald-400'
+    }[status];
 
     let actionHtml = '';
     if (notReadyForStage) {
-      actionHtml = `<span class="text-[10px] text-slate-600 italic" title="Waiting for Picker to complete this SO">Awaiting Pick</span>`;
+      const awaitingLabel = { 'Staging Checker': 'Awaiting Pick', 'Puller': 'Awaiting Staging', 'Outbound Checker': 'Awaiting Pull' }[currentRole] || 'Awaiting Prior Step';
+      actionHtml = `<span class="text-[10px] text-slate-600 italic" title="Waiting for ${PREV_ROLE[currentRole]} to complete this SO">${awaitingLabel}</span>`;
     } else if (status === 'PENDING') {
       actionHtml = `<button onclick="startRow(${i})" ${!operator ? 'disabled title="Select personnel first"' : ''} class="text-[10px] font-semibold px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white">Start Row</button>`;
     } else if (status === 'ONGOING' && !lockedToOther) {
@@ -546,7 +582,10 @@ function renderManifestTable() {
         <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
         <td class="p-3 font-mono text-slate-400 text-[11px]">${row.obd_number || '—'}</td>
         <td class="p-3 max-w-[160px] truncate text-slate-400" title="${row.sold_to_party_name || ''}">${row.sold_to_party_name || ''}</td>
-        <td class="p-3 text-slate-400 font-mono text-[11px]">${row.route_description || 'N/A'}</td>
+        <td class="p-3 text-slate-400 font-mono text-[11px]">
+          ${row.route_description || 'N/A'}
+          ${currentRole === 'Puller' && row._stagingAreas && row._stagingAreas.length ? `<div class="mt-1"><span class="px-1.5 py-0.5 rounded text-[9px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono" title="Staging Area (confirmed by Staging Checker)">📍 ${row._stagingAreas.join(', ')}</span></div>` : ''}
+        </td>
         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${row.truck_type || 'Unset'}</span></td>
         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${statusColor}">${status}</span></td>
         <td class="p-3 text-right font-mono text-amber-500">${row.cv}</td>
@@ -572,9 +611,10 @@ function totalConfiguredBreakHours() {
 
 // Baseline (no-break) target hours for a single row, role-aware:
 // - Picker: quantity-driven (qty / truck-type speed rate).
-// - Staging Checker: a fixed duration bracket keyed off truck type only.
+// - Staging Checker & Puller: a fixed duration bracket keyed off truck type only
+//   (Puller mirrors the Staging Checker's target logic per operations spec).
 function targetHoursForRow(row, role) {
-  if (role === 'Staging Checker') {
+  if (role === 'Staging Checker' || role === 'Puller') {
     const t = (row.truck_type || '').toUpperCase();
     if (t === 'AUV' || t === '4W') return 20 / 60;
     if (t === '6W') return 1;
@@ -722,14 +762,15 @@ async function completeLogById(logId, log, extra = {}) {
   }).eq('id', logId);
   if (error) return showToast("Could not complete: " + error.message, "error");
 
-  // A Picker finishing a line means it's ready for Staging — persist that onto the
-  // shipments row itself (not just derived from activity_logs) so Staging Checkers,
-  // reports, and any other consumer of the shipments table see it immediately,
-  // whether or not a PGI date has landed from the source system yet.
-  if (log.role === 'Picker' && log.so_number) {
+  // Persist the completion flag onto the shipments row itself (not just derived
+  // from activity_logs) so the NEXT role in the chain, reports, and any other
+  // consumer of the shipments table see it immediately:
+  // Picker -> PICKED -> Staging Checker -> STAGED -> Puller -> PULLED -> Outbound Checker -> CHECKED
+  if (log.so_number && ROLE_COMPLETE_LABEL[log.role]) {
+    const nextFlag = ROLE_COMPLETE_LABEL[log.role];
     const { error: shipErr } = await supabaseClient.from('shipments')
-      .update({ status: 'PICKED' }).eq('so_number', log.so_number);
-    if (shipErr) console.error('Could not flag shipment as PICKED:', shipErr.message);
+      .update({ status: nextFlag }).eq('so_number', log.so_number);
+    if (shipErr) console.error(`Could not flag shipment as ${nextFlag}:`, shipErr.message);
   }
 }
 
@@ -789,10 +830,21 @@ async function openDispatchModal() {
   if (checkboxes.length === 0) return showToast("Select at least one pending row.", "error");
   const totalQty = document.getElementById('summary-total-qty').innerText;
   const finalHours = document.getElementById('summary-final-hours').innerText;
+
+  // For the Puller, the Staging Area(s) confirmed by the Staging Checker are a
+  // major reference — surface them right in the confirmation summary.
+  let stagingAreaRow = '';
+  if (currentRole === 'Puller') {
+    const selectedRows = Array.from(checkboxes).map(cb => currentManifestData[parseInt(cb.getAttribute('data-index'))]);
+    const areas = [...new Set(selectedRows.flatMap(r => r._stagingAreas || []))];
+    stagingAreaRow = `<div class="flex justify-between"><span>Staging Area</span><strong class="text-cyan-400">${areas.length ? areas.join(', ') : '—'}</strong></div>`;
+  }
+
   document.getElementById('modal-summary-body').innerHTML = `
     <div class="flex justify-between"><span>Role</span><strong class="text-slate-200">${currentRole}</strong></div>
     <div class="flex justify-between"><span>Operator</span><strong class="text-slate-200">${operator}</strong></div>
     <div class="flex justify-between"><span>Rows selected</span><strong class="text-slate-200">${checkboxes.length}</strong></div>
+    ${stagingAreaRow}
     <div class="flex justify-between"><span>Total volume</span><strong class="text-amber-400">${totalQty} units</strong></div>
     <div class="flex justify-between"><span>Target w/ breaks</span><strong class="text-blue-400">${finalHours} hrs</strong></div>`;
   document.getElementById('dispatch-modal').classList.remove('hidden');
@@ -966,6 +1018,15 @@ async function refreshSidePanel() {
     (shipRows || []).forEach(s => { shipMap[s.so_number] = s; });
   }
 
+  // Staging Area(s) confirmed by the Staging Checker — surfaced as a major
+  // reference on any Puller card so the Puller can see where to pull from.
+  let stagingAreaMap = {};
+  if (soNumbers.length) {
+    const { data: sLogs } = await supabaseClient.from('activity_logs').select('so_number,staging_areas')
+      .in('so_number', soNumbers).eq('role', 'Staging Checker').eq('status', 'Completed');
+    (sLogs || []).forEach(l => { if (!stagingAreaMap[l.so_number] && l.staging_areas && l.staging_areas.length) stagingAreaMap[l.so_number] = l.staging_areas; });
+  }
+
   // Sub-group logs into the batches that were started together in one confirmation —
   // that's the real unit of work (one Picker, one Pause/Complete action).
   const groups = {};
@@ -998,6 +1059,7 @@ async function refreshSidePanel() {
       const target = projectedTargetCompletion(new Date(rep.start_time), rep.target_hours || 0);
       const isOverdue = rep.status !== 'Completed' && new Date() > target;
       const panelId = `batch-${shipmentNo}-${bi}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const batchStagingAreas = rep.role === 'Puller' ? [...new Set(members.flatMap(m => stagingAreaMap[m.so_number] || []))] : [];
 
       const lineDetails = members.map(log => {
         const ship = shipMap[log.so_number] || {};
@@ -1039,6 +1101,7 @@ async function refreshSidePanel() {
               <div class="text-xs font-black text-blue-400 font-mono">${obdCount}</div>
             </div>
           </div>
+          ${rep.role === 'Puller' ? `<div class="text-[10px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded px-2 py-1 font-mono">📍 Staging: ${batchStagingAreas.length ? batchStagingAreas.join(', ') : 'No staging area on file'}</div>` : ''}
           <div class="flex justify-between items-center text-[10px]">
             <span class="text-slate-500">Target <span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-blue-400'} font-mono font-semibold">${target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${isOverdue ? ' ⚠' : ''}</span>
             <button onclick="event.stopPropagation(); toggleBatchDetail('${panelId}')" class="text-[10px] text-slate-400 hover:text-emerald-400 font-semibold">▾ ${members.length} line${members.length > 1 ? 's' : ''}</button>
@@ -1303,6 +1366,17 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => {
       refreshBulletinBoard();
       refreshSidePanel();
+      // Keep the on-screen manifest itself realtime too — without this, a status
+      // change made by another role/user (or in another tab) only appeared after
+      // manually re-typing the shipment number.
+      if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+    }).subscribe();
+
+  // shipments.status (PICKED / STAGED / PULLED / CHECKED) drives row eligibility
+  // for the NEXT role in the chain, so it must be realtime too, not just activity_logs.
+  supabaseClient.channel('shipments-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, () => {
+      if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
     }).subscribe();
 }
 
