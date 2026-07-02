@@ -14,6 +14,7 @@
   .role-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .staging-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .staging-area-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
+  .outbound-choice-btn.active{background:#0d9488;color:#fff;border-color:#14b8a6}
   .view{display:none}
   .view.active{display:block}
   @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(244,63,94,.45)}100%{box-shadow:0 0 0 8px rgba(244,63,94,0)}}
@@ -249,20 +250,20 @@
             <th class="p-3 text-left" rowspan="2">OBD</th>
             <th class="p-3 text-left" rowspan="2">Customer</th>
             <th class="p-3 text-right" rowspan="2">Qty</th>
-            <th class="p-2 text-center border-l border-slate-800" colspan="2">Picker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-cyan-400" colspan="2">Staging</th>
-            <th class="p-2 text-center border-l border-slate-800 text-purple-400" colspan="2">Pulled</th>
-            <th class="p-2 text-center border-l border-slate-800 text-emerald-400" colspan="2">Check</th>
+            <th class="p-2 text-center border-l border-slate-800" colspan="3">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-cyan-400" colspan="5">Staging</th>
+            <th class="p-2 text-center border-l border-slate-800 text-purple-400" colspan="3">Pulled</th>
+            <th class="p-2 text-center border-l border-slate-800 text-emerald-400" colspan="4">Check</th>
           </tr>
           <tr class="text-[10px]">
-            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
-            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
-            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
-            <th class="p-2 text-center border-l border-slate-800">Start</th><th class="p-2 text-center">End</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Staging Area</th><th class="p-2 text-center">Discrepancy</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th>
           </tr>
         </thead>
         <tbody id="export-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
+          <tr><td colspan="20" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
         </tbody>
       </table>
     </div>
@@ -325,6 +326,40 @@
     <div class="flex gap-2 pt-2">
       <button onclick="closeStagingCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
       <button onclick="confirmStagingComplete()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Confirm Okay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= OUTBOUND CHECK COMPLETION MODAL ================= -->
+<div id="outbound-complete-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4 max-h-[90vh] overflow-y-auto">
+    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Confirm Outbound Check</h3>
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-2">
+      <div>
+        <span class="text-[10px] uppercase tracking-wider text-slate-500 block">Staged By</span>
+        <span id="outbound-modal-stager-name" class="text-sm font-black text-cyan-400">—</span>
+      </div>
+      <div>
+        <span class="text-[10px] uppercase tracking-wider text-slate-500 block">Staging Area</span>
+        <span id="outbound-modal-staging-area" class="text-sm font-black text-cyan-400">—</span>
+      </div>
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Any staging discrepancy? <span class="text-slate-600 normal-case font-normal">(select any that apply)</span></label>
+      <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
+        <button type="button" data-choice="None" onclick="setOutboundDiscrepancyChoice('None')" class="outbound-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">None</button>
+        <button type="button" data-choice="Over Staged" onclick="setOutboundDiscrepancyChoice('Over Staged')" class="outbound-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Over Staged</button>
+        <button type="button" data-choice="Short Staged" onclick="setOutboundDiscrepancyChoice('Short Staged')" class="outbound-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Short Staged</button>
+        <button type="button" data-choice="Wrong Staged" onclick="setOutboundDiscrepancyChoice('Wrong Staged')" class="outbound-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Wrong Staged</button>
+      </div>
+    </div>
+    <div id="outbound-qty-wrap" class="hidden">
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Discrepancy Qty</label>
+      <input type="number" id="outbound-discrepancy-qty" min="0" step="any" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="closeOutboundCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="confirmOutboundComplete()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Confirm Okay</button>
     </div>
   </div>
 </div>
@@ -774,9 +809,13 @@ async function unassignRow(i) {
 async function completeRow(i) {
   const log = currentManifestData[i]._log;
   const members = await getGroupMembers(log);
-  // Staging Checker completion requires a wrong-pick confirmation popup first.
+  // Staging Checker and Outbound Checker completions require a discrepancy
+  // confirmation popup first; other roles complete straight away.
   if (currentRole === 'Staging Checker') {
     return openStagingCompleteModal(members);
+  }
+  if (currentRole === 'Outbound Checker') {
+    return openOutboundCompleteModal(members);
   }
   for (const m of members) {
     await completeLogById(m.id, m);
@@ -1001,6 +1040,83 @@ async function confirmStagingComplete() {
   await refreshBulletinBoard();
 }
 
+// --- OUTBOUND CHECK COMPLETION MODAL ---
+// Mirrors the Staging Checker's completion modal: the Outbound Checker confirms
+// against what was staged, using its own discrepancy vocabulary (Over/Short/Wrong
+// Staged instead of Over/Short/Wrong Pick), with the Staged-By name and Staging
+// Area shown as read-only reference (not re-selected — that was already fixed at
+// the Staging Checker stage).
+let outboundCompleteMembers = null;
+let outboundDiscrepancyChoices = new Set(); // 'None' is represented by an empty set
+
+function setOutboundDiscrepancyChoice(choice) {
+  if (choice === 'None') {
+    outboundDiscrepancyChoices.clear();
+  } else {
+    if (outboundDiscrepancyChoices.has(choice)) outboundDiscrepancyChoices.delete(choice);
+    else outboundDiscrepancyChoices.add(choice);
+  }
+  const noneActive = outboundDiscrepancyChoices.size === 0;
+  document.querySelectorAll('.outbound-choice-btn').forEach(b => {
+    const c = b.getAttribute('data-choice');
+    b.classList.toggle('active', c === 'None' ? noneActive : outboundDiscrepancyChoices.has(c));
+  });
+  document.getElementById('outbound-qty-wrap').classList.toggle('hidden', noneActive);
+}
+
+async function openOutboundCompleteModal(members) {
+  outboundCompleteMembers = members;
+  document.getElementById('outbound-discrepancy-qty').value = '';
+  outboundDiscrepancyChoices.clear();
+  setOutboundDiscrepancyChoice('None');
+
+  // Show who staged this SO, and where — pulled from the completed Staging
+  // Checker-role log for the same SO(s).
+  const soNumbers = [...new Set(members.map(m => m.so_number).filter(Boolean))];
+  let stagerNames = [], stagingAreas = [];
+  if (soNumbers.length) {
+    const { data: stageLogs, error } = await supabaseClient.from('activity_logs').select('so_number,personnel_name,staging_areas')
+      .in('so_number', soNumbers).eq('role', 'Staging Checker').eq('status', 'Completed');
+    if (!error) {
+      stagerNames = [...new Set((stageLogs || []).map(l => l.personnel_name).filter(Boolean))];
+      stagingAreas = [...new Set((stageLogs || []).flatMap(l => l.staging_areas || []))];
+    }
+  }
+  document.getElementById('outbound-modal-stager-name').innerText = stagerNames.length ? stagerNames.join(', ') : 'Unknown';
+  document.getElementById('outbound-modal-staging-area').innerText = stagingAreas.length ? stagingAreas.join(', ') : 'Unknown';
+  document.getElementById('outbound-complete-modal').classList.remove('hidden');
+}
+
+function closeOutboundCompleteModal() {
+  document.getElementById('outbound-complete-modal').classList.add('hidden');
+  outboundCompleteMembers = null;
+}
+
+async function confirmOutboundComplete() {
+  const members = outboundCompleteMembers;
+  if (!members) return closeOutboundCompleteModal();
+
+  const choices = [...outboundDiscrepancyChoices]; // empty array = no discrepancy
+  let qty = null;
+  if (choices.length > 0) {
+    qty = parseFloat(document.getElementById('outbound-discrepancy-qty').value);
+    if (isNaN(qty) || qty <= 0) return showToast("Enter a valid discrepancy quantity.", "error");
+  }
+
+  const extra = {
+    discrepancy_type: choices.length ? choices : null,
+    discrepancy_qty: choices.length ? qty : null
+  };
+  for (const m of members) {
+    await completeLogById(m.id, m, extra);
+  }
+  closeOutboundCompleteModal();
+  showToast(choices.length ? `Outbound check completed — ${choices.join(', ')} (${qty}) logged.` : "Outbound check completed.", "success");
+  await fetchShipmentManifest();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
+}
+
 async function commitJobTransaction() {
   const operator = document.getElementById('operator-input').value.trim();
   if (!operator || !isValidPersonnel(operator)) {
@@ -1213,6 +1329,9 @@ async function sidePanelComplete(id) {
   const members = await getGroupMembers(log);
   if (log.role === 'Staging Checker') {
     return openStagingCompleteModal(members);
+  }
+  if (log.role === 'Outbound Checker') {
+    return openOutboundCompleteModal(members);
   }
   for (const m of members) await completeLogById(m.id, m);
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
@@ -1431,12 +1550,12 @@ let exportRawRows = [];
 
 async function loadExportData() {
   const tbody = document.getElementById('export-rows');
-  tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="20" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false });
   if (shipErr) {
     console.error(shipErr);
-    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="20" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
     return;
   }
 
@@ -1448,7 +1567,7 @@ async function loadExportData() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data, error } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,start_time,end_time,status')
+        .select('so_number,role,personnel_name,start_time,end_time,status,discrepancy_type,discrepancy_qty,staging_areas')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!error) logs.push(...(data || []));
       else console.error(error);
@@ -1470,10 +1589,12 @@ async function loadExportData() {
     return {
       so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
       customer: row.sold_to_party_name, qty: rowQtySum(row),
-      pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
-      stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
-      pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
-      check_start: check?.start_time || null, check_end: check?.end_time || null
+      pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+      stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+      staging_area: stage?.staging_areas || null, stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
+      pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+      check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
+      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null
     };
   });
 
@@ -1485,6 +1606,13 @@ function fmtExportDT(iso) {
   return new Date(iso).toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
+// discrepancy_type is a text[] like ['Over Pick','Wrong Pick'] with a single shared
+// discrepancy_qty — render as "Over Pick, Wrong Pick (3)" or '—' if none logged.
+function fmtDiscrepancy(types, qty) {
+  if (!types || !types.length) return '—';
+  return `${types.join(', ')} (${qty ?? 0})`;
+}
+
 function filteredExportRows() {
   const searchText = (document.getElementById('export-search').value || '').trim().toLowerCase();
   if (!searchText) return exportRawRows;
@@ -1492,7 +1620,12 @@ function filteredExportRows() {
     (r.so_number || '').toLowerCase().includes(searchText) ||
     (r.shipment_no || '').toLowerCase().includes(searchText) ||
     (r.obd_number || '').toLowerCase().includes(searchText) ||
-    (r.customer || '').toLowerCase().includes(searchText)
+    (r.customer || '').toLowerCase().includes(searchText) ||
+    (r.pick_name || '').toLowerCase().includes(searchText) ||
+    (r.stage_name || '').toLowerCase().includes(searchText) ||
+    (r.pull_name || '').toLowerCase().includes(searchText) ||
+    (r.check_name || '').toLowerCase().includes(searchText) ||
+    (r.staging_area || []).join(' ').toLowerCase().includes(searchText)
   );
 }
 
@@ -1502,7 +1635,7 @@ function renderExportTable() {
   document.getElementById('export-count').innerText = `${rows.length} line(s)`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="20" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
     return;
   }
 
@@ -1513,14 +1646,21 @@ function renderExportTable() {
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
       <td class="p-3 max-w-[180px] truncate text-slate-400" title="${r.customer || ''}">${r.customer || '—'}</td>
       <td class="p-3 text-right font-mono text-amber-400">${r.qty}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
+      <td class="p-3 text-center text-[10px] text-cyan-300">${(r.staging_area || []).join(', ') || '—'}</td>
+      <td class="p-3 text-center text-[10px] ${r.stage_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
+      <td class="p-3 text-center text-[10px] ${r.check_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)}</td>
     </tr>`).join('');
 }
 
@@ -1531,15 +1671,18 @@ function exportDataToExcel() {
   const excelRows = rows.map(r => ({
     'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
     'Customer': r.customer || '', 'Qty': r.qty,
-    'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
-    'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
-    'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
-    'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end)
+    'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
+    'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
+    'Staging Area': (r.staging_area || []).join(', '), 'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
+    'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
+    'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
+    'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)
   }));
 
   const ws = XLSX.utils.json_to_sheet(excelRows);
   ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 8 },
-    { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Timeline');
   const stamp = new Date().toISOString().slice(0, 10);
