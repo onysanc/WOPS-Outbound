@@ -16,10 +16,25 @@
   .view.active{display:block}
   @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(244,63,94,.45)}100%{box-shadow:0 0 0 8px rgba(244,63,94,0)}}
   .overdue-ring{animation:pulseRing 1.6s infinite}
+  @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .toast{animation:toastIn .2s ease-out}
 </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen pb-10">
 
+<!-- ================= TOASTS ================= -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end"></div>
+
+<!-- ================= CUSTOM CONFIRM MODAL ================= -->
+<div id="confirm-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+    <p id="confirm-modal-message" class="text-sm text-slate-200"></p>
+    <div class="flex gap-2">
+      <button id="confirm-modal-no" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button id="confirm-modal-yes" class="flex-1 bg-rose-700 hover:bg-rose-600 text-xs font-bold py-2 rounded-lg text-white">Confirm</button>
+    </div>
+  </div>
+</div>
 <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur sticky top-0 z-40">
   <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-6">
@@ -84,6 +99,7 @@
             <tr>
               <th class="p-3 text-center w-10">Sel</th>
               <th class="p-3">SO Number</th>
+              <th class="p-3">OBD Number</th>
               <th class="p-3">Customer</th>
               <th class="p-3">Route</th>
               <th class="p-3 text-center">Truck</th>
@@ -98,7 +114,7 @@
             </tr>
           </thead>
           <tbody id="manifest-rows" class="divide-y divide-slate-800/50">
-            <tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Type a Shipment ID above to load matching lines.</td></tr>
+            <tr><td colspan="14" class="p-8 text-center text-slate-500 italic">Type a Shipment ID above to load matching lines.</td></tr>
           </tbody>
         </table>
       </div>
@@ -226,6 +242,42 @@ const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- CUSTOM POPUP HELPERS (replace native alert/confirm) ---
+function showToast(message, type = 'info') {
+  const colors = {
+    success: 'bg-emerald-600 border-emerald-500',
+    error: 'bg-rose-700 border-rose-600',
+    info: 'bg-slate-800 border-slate-700'
+  };
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${colors[type] || colors.info} text-white text-xs font-medium px-4 py-3 rounded-lg border shadow-lg max-w-xs`;
+  el.innerText = message;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .3s, transform .3s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+
+function showConfirm(message) {
+  return new Promise(resolve => {
+    document.getElementById('confirm-modal-message').innerText = message;
+    document.getElementById('confirm-modal').classList.remove('hidden');
+    const yesBtn = document.getElementById('confirm-modal-yes');
+    const noBtn = document.getElementById('confirm-modal-no');
+    const cleanup = (result) => {
+      document.getElementById('confirm-modal').classList.add('hidden');
+      yesBtn.onclick = null; noBtn.onclick = null;
+      resolve(result);
+    };
+    yesBtn.onclick = () => cleanup(true);
+    noBtn.onclick = () => cleanup(false);
+  });
+}
+
 // --- APPLICATION STATE ---
 let currentRole = 'Picker';
 let currentManifestData = [];
@@ -347,7 +399,7 @@ function renderManifestTable() {
   );
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">No matching lines loaded.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">No matching lines loaded.</td></tr>`;
     document.getElementById('target-summary-card').classList.add('hidden');
     return;
   }
@@ -388,6 +440,7 @@ function renderManifestTable() {
           <input type="checkbox" data-index="${i}" onchange="recalcSummary()" ${status !== 'PENDING' ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500">
         </td>
         <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
+        <td class="p-3 font-mono text-slate-400 text-[11px]">${row.obd_number || '—'}</td>
         <td class="p-3 max-w-[160px] truncate text-slate-400" title="${row.sold_to_party_name || ''}">${row.sold_to_party_name || ''}</td>
         <td class="p-3 text-slate-400 font-mono text-[11px]">${row.route_description || 'N/A'}</td>
         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${row.truck_type || 'Unset'}</span></td>
@@ -416,7 +469,7 @@ function totalConfiguredBreakHours() {
 // --- ROW STATE MACHINE ACTIONS ---
 async function startRow(i) {
   const operator = document.getElementById('operator-input').value.trim();
-  if (!operator) return alert("Select a personnel name first.");
+  if (!operator) return showToast("Select a personnel name first.", "error");
   const row = currentManifestData[i];
   const qty = rowQtySum(row);
   const targetHours = qty / speedRateFor(row.truck_type);
@@ -425,7 +478,7 @@ async function startRow(i) {
     personnel_name: operator, total_qty: qty, target_hours: targetHours,
     status: 'Ongoing', start_time: new Date().toISOString(), accumulated_seconds: 0
   }]);
-  if (error) return alert("Could not start row: " + error.message);
+  if (error) return showToast("Could not start row: " + error.message, "error");
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -437,7 +490,7 @@ async function pauseRow(i) {
   const { error } = await supabaseClient.from('activity_logs')
     .update({ status: 'Paused', end_time: new Date().toISOString() })
     .eq('id', log.id);
-  if (error) return alert("Could not pause: " + error.message);
+  if (error) return showToast("Could not pause: " + error.message, "error");
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -450,7 +503,7 @@ async function resumeRow(i) {
   const { error } = await supabaseClient.from('activity_logs')
     .update({ status: 'Ongoing', end_time: null, accumulated_seconds: (log.accumulated_seconds || 0) + pauseSeconds })
     .eq('id', log.id);
-  if (error) return alert("Could not resume: " + error.message);
+  if (error) return showToast("Could not resume: " + error.message, "error");
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -458,9 +511,9 @@ async function resumeRow(i) {
 
 async function unassignRow(i) {
   const log = currentManifestData[i]._log;
-  if (!confirm("Unassign this row? This deletes the in-progress log.")) return;
+  if (!(await showConfirm("Unassign this row? This deletes the in-progress log."))) return;
   const { error } = await supabaseClient.from('activity_logs').delete().eq('id', log.id);
-  if (error) return alert("Could not unassign: " + error.message);
+  if (error) return showToast("Could not unassign: " + error.message, "error");
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -489,7 +542,7 @@ async function completeLogById(logId, log) {
     status: 'Completed', end_time: now.toISOString(),
     rendered_minutes: renderedMinutes
   }).eq('id', logId);
-  if (error) alert("Could not complete: " + error.message);
+  if (error) showToast("Could not complete: " + error.message, "error");
 }
 
 // Overlap (minutes) between [start,end] and each configured break's time-of-day window
@@ -528,9 +581,9 @@ function recalcSummary() {
 
 function openDispatchModal() {
   const operator = document.getElementById('operator-input').value.trim();
-  if (!operator) return alert("Select a personnel name first.");
+  if (!operator) return showToast("Select a personnel name first.", "error");
   const checkboxes = document.querySelectorAll('#manifest-rows input[type="checkbox"]:checked');
-  if (checkboxes.length === 0) return alert("Select at least one pending row.");
+  if (checkboxes.length === 0) return showToast("Select at least one pending row.", "error");
   const totalQty = document.getElementById('summary-total-qty').innerText;
   const finalHours = document.getElementById('summary-final-hours').innerText;
   document.getElementById('modal-summary-body').innerHTML = `
@@ -561,8 +614,8 @@ async function commitJobTransaction() {
   const { error } = await supabaseClient.from('activity_logs').insert(payload);
 
   closeDispatchModal();
-  if (error) return alert("Failed to dispatch batch: " + error.message);
-  alert(`Dispatched ${payload.length} line(s) to the floor bulletin.`);
+  if (error) return showToast("Failed to dispatch batch: " + error.message, "error");
+  showToast(`Dispatched ${payload.length} line(s) to the floor bulletin.`, "success");
   document.getElementById('target-summary-card').classList.add('hidden');
   await fetchShipmentManifest();
   await refreshBulletinBoard();
@@ -614,7 +667,7 @@ async function sidePanelComplete(id) {
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelUnassign(id) {
-  if (!confirm("Unassign this line?")) return;
+  if (!(await showConfirm("Unassign this line?"))) return;
   await supabaseClient.from('activity_logs').delete().eq('id', id);
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
@@ -632,27 +685,65 @@ async function refreshBulletinBoard() {
     container.innerHTML = `<div class="col-span-full text-center text-xs text-slate-500 py-6 border border-dashed border-slate-800 rounded-xl">No tracked execution steps for the current window.</div>`;
     return;
   }
-  container.innerHTML = data.map(log => {
-    const startLocal = new Date(log.start_time);
-    const targetCompTime = new Date(startLocal.getTime() + (log.target_hours || 0) * 3600000);
-    const isOverdue = new Date() > targetCompTime && log.status !== 'Completed';
-    const statusColor = log.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400' : log.status === 'Paused' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400';
+
+  // Look up OBD numbers for every SO number referenced, since activity_logs only stores so_number
+  const soNumbers = [...new Set(data.map(l => l.so_number).filter(Boolean))];
+  let obdMap = {};
+  if (soNumbers.length) {
+    const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number').in('so_number', soNumbers);
+    (shipRows || []).forEach(s => { obdMap[s.so_number] = s.obd_number; });
+  }
+
+  // Group lines under their Dispatch (shipment_no) — the main reference
+  const groups = {};
+  data.forEach(log => {
+    const key = log.shipment_no || '(no shipment ref)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(log);
+  });
+
+  const statusColor = (status, isOverdue) => status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400'
+    : status === 'Paused' ? 'bg-blue-500/20 text-blue-400'
+    : isOverdue ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400';
+
+  container.innerHTML = Object.entries(groups).map(([shipmentNo, logs]) => {
+    const totalQty = logs.reduce((s, l) => s + (l.total_qty || 0), 0);
+    const anyOverdue = logs.some(l => {
+      const target = new Date(new Date(l.start_time).getTime() + (l.target_hours || 0) * 3600000);
+      return l.status !== 'Completed' && new Date() > target;
+    });
+
+    const lines = logs.map(log => {
+      const startLocal = new Date(log.start_time);
+      const targetCompTime = new Date(startLocal.getTime() + (log.target_hours || 0) * 3600000);
+      const isOverdue = new Date() > targetCompTime && log.status !== 'Completed';
+      return `
+        <div class="flex justify-between items-start py-2 border-b border-slate-900 last:border-0">
+          <div>
+            <div class="font-mono text-xs text-slate-200 font-semibold">${log.so_number || '—'}</div>
+            <div class="text-[10px] text-slate-500 font-mono">OBD: ${obdMap[log.so_number] || '—'}</div>
+            <div class="text-[10px] text-slate-500">${log.role} · ${log.personnel_name}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-mono text-amber-400 text-xs font-bold">${log.total_qty ?? 0}</div>
+            <span class="text-[9px] px-1.5 py-0.5 rounded font-mono ${statusColor(log.status, isOverdue)}">${log.status}${isOverdue ? ' ⚠' : ''}</span>
+          </div>
+        </div>`;
+    }).join('');
+
     return `
-      <div class="bg-slate-950 border ${isOverdue ? 'border-rose-500/40 overdue-ring' : 'border-slate-800'} rounded-xl p-4 space-y-3 shadow-inner relative overflow-hidden">
-        <div class="absolute top-0 right-0 text-[9px] uppercase font-mono tracking-wider px-2 py-0.5 ${statusColor} rounded-bl">${log.status}</div>
-        <div>
-          <span class="text-[10px] font-bold tracking-wider text-slate-400 block uppercase">${log.role}</span>
-          <span class="text-sm font-bold text-slate-200 font-mono">${log.so_number || log.shipment_no || 'Batch'}</span>
+      <div class="bg-slate-950 border ${anyOverdue ? 'border-rose-500/40 overdue-ring' : 'border-slate-800'} rounded-xl p-4 space-y-2 shadow-inner">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-bold tracking-wider text-slate-400 block uppercase">Dispatch</span>
+            <span class="text-base font-black text-emerald-400 font-mono">${shipmentNo}</span>
+          </div>
+          <span class="text-[10px] text-slate-500">${logs.length} line${logs.length > 1 ? 's' : ''}</span>
         </div>
-        <div class="grid grid-cols-2 gap-2 text-xs border-y border-slate-900 py-2">
-          <div><span class="text-slate-500 block text-[10px]">Handler</span><strong class="text-slate-300">${log.personnel_name}</strong></div>
-          <div><span class="text-slate-500 block text-[10px]">Volume</span><strong class="text-amber-400 font-mono">${log.total_qty} units</strong></div>
-        </div>
-        <div class="text-[11px] font-mono space-y-1">
-          <div class="flex justify-between"><span class="text-slate-500">Started:</span><span class="text-slate-400">${startLocal.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
-          <div class="flex justify-between"><span class="text-slate-500">Allocated SLA:</span><span class="text-blue-400 font-bold">${(log.target_hours || 0).toFixed(2)} Hrs</span></div>
-          <div class="flex justify-between pt-1 border-t border-slate-900"><span class="text-slate-500">Est. Target:</span><span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-emerald-400'}">${targetCompTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
-          ${log.status === 'Completed' ? `<div class="flex justify-between pt-1 border-t border-slate-900"><span class="text-slate-500">Rendered:</span><span class="text-emerald-400 font-bold">${log.rendered_minutes ?? '—'} min</span></div>` : ''}
+        <div class="divide-y divide-slate-900">${lines}</div>
+        <div class="flex justify-between items-center pt-2 border-t border-slate-800">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Total Qty</span>
+          <span class="text-lg font-black text-amber-400 font-mono">${totalQty}</span>
         </div>
       </div>`;
   }).join('');
@@ -671,7 +762,7 @@ async function processUploads() {
   const shipmentFile = document.getElementById('shipment-file').files[0];
   const truckFile = document.getElementById('truck-file').files[0];
   const statusEl = document.getElementById('ingestion-status');
-  if (!shipmentFile) return alert("Please attach the Shipment dataset file first.");
+  if (!shipmentFile) return showToast("Please attach the Shipment dataset file first.", "error");
 
   const readExcelJson = (file) => new Promise((resolve) => {
     const reader = new FileReader();
@@ -728,7 +819,7 @@ async function addPersonnel(e) {
   const role = document.getElementById('personnel-role-input').value;
   const { error } = await supabaseClient.from('personnel').insert([{ name, role }]);
   if (!error) { document.getElementById('personnel-form').reset(); await refreshPersonnelAdminList(); if (role === currentRole) await populatePersonnelDatalist(currentRole); }
-  else alert(error.message);
+  else showToast(error.message, "error");
 }
 async function deletePersonnel(id) {
   await supabaseClient.from('personnel').delete().eq('id', id);
@@ -771,7 +862,7 @@ async function addBreakRule(e) {
   const duration = minutesBetween(start, end);
   const { error } = await supabaseClient.from('break_settings').insert([{ break_name: name, start_time: start, end_time: end, duration_minutes: duration }]);
   if (!error) { document.getElementById('break-form').reset(); await refreshConfiguredBreaks(); }
-  else alert(error.message);
+  else showToast(error.message, "error");
 }
 async function deleteBreakRule(id) {
   await supabaseClient.from('break_settings').delete().eq('id', id);
