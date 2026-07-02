@@ -11,7 +11,7 @@
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen relative overflow-x-hidden">
 
     <header class="border-b border-slate-800 bg-slate-950/50 backdrop-blur p-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
                 <h1 class="text-xl font-bold tracking-wider text-emerald-400">⚡ LOGI-FLOW SYSTEM</h1>
                 <span class="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-700" id="op-day-display">Loading...</span>
@@ -26,106 +26,124 @@
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+    <main class="max-w-[1600px] mx-auto p-4 lg:p-6 space-y-6">
 
-        <section id="tab-workbench" class="tab-content space-y-6">
+        <section id="tab-workbench" class="tab-content grid grid-cols-1 lg:grid-cols-4 gap-6">
             
-            <div class="max-w-3xl mx-auto bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
-                <div>
-                    <h2 class="text-base font-bold text-slate-200">Workflow Entry Manifest</h2>
-                    <p class="text-xs text-slate-500">Provide sequential operations attributes below to trace active item weights</p>
-                </div>
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-200">Workflow Entry Manifest</h2>
+                        <p class="text-xs text-slate-500">Provide sequential operations attributes below to trace active item weights</p>
+                    </div>
 
-                <div class="space-y-2">
-                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">Step 1: Choose Active Designation</label>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <button onclick="setWorkbenchRole('Picker')" id="role-select-Picker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">1. Picker</button>
-                        <button onclick="setWorkbenchRole('Staging Checker')" id="role-select-Staging Checker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">2. Staging Checker</button>
-                        <button onclick="setWorkbenchRole('Puller')" id="role-select-Puller" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">3. Puller</button>
-                        <button onclick="setWorkbenchRole('Outbound Checker')" id="role-select-Outbound Checker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">4. Outbound Checker</button>
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400">Step 1: Choose Active Designation</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <button onclick="setWorkbenchRole('Picker')" id="role-select-Picker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">1. Picker</button>
+                            <button onclick="setWorkbenchRole('Staging Checker')" id="role-select-Staging Checker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">2. Staging Checker</button>
+                            <button onclick="setWorkbenchRole('Puller')" id="role-select-Puller" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">3. Puller</button>
+                            <button onclick="setWorkbenchRole('Outbound Checker')" id="role-select-Outbound Checker" class="wb-role-btn p-3 text-xs font-bold rounded-xl border border-slate-800 bg-slate-900/40 text-slate-300 hover:bg-slate-900 transition text-center cursor-pointer">4. Outbound Checker</button>
+                        </div>
+                    </div>
+
+                    <div id="hidden-inputs-container" class="opacity-40 pointer-events-none transition-all duration-300 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="relative">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Step 2: Personnel Name</label>
+                            <input type="text" id="wb-personnel-input" list="autofill-personnel" placeholder="Type name to autofill..." oninput="evaluateWorkbenchState()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 font-medium">
+                            <datalist id="autofill-personnel"></datalist>
+                        </div>
+
+                        <div class="relative">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Step 3: Shipment ID Reference</label>
+                            <input type="text" id="wb-shipment-input" list="autofill-shipments" placeholder="Type shipment no. to filter..." oninput="evaluateWorkbenchState()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-emerald-400 font-mono tracking-wide focus:outline-none focus:border-emerald-500">
+                            <datalist id="autofill-shipments"></datalist>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button id="wb-load-btn" onclick="executeManifestQuery()" disabled class="w-full md:w-auto px-6 py-3 bg-slate-800 text-slate-400 font-bold text-xs uppercase tracking-wider rounded-xl transition pointer-events-none">Load Dynamic Task Parameters</button>
                     </div>
                 </div>
 
-                <div id="hidden-inputs-container" class="opacity-40 pointer-events-none transition-all duration-300 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="relative">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Step 2: Personnel Name</label>
-                        <input type="text" id="wb-personnel-input" list="autofill-personnel" placeholder="Type name to autofill..." oninput="evaluateWorkbenchState()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 font-medium">
-                        <datalist id="autofill-personnel"></datalist>
+                <div id="workbench-matrix-viewport" class="hidden space-y-6">
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Action Line Manifest Table</h3>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="inline-search" oninput="runInlineMatrixFilter()" placeholder="Filter current manifest rows..." class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500 w-48">
+                            <button onclick="clearInlineFilters()" class="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 bg-slate-900 rounded border border-slate-800 cursor-pointer">Reset</button>
+                        </div>
                     </div>
 
-                    <div class="relative">
-                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Step 3: Shipment ID Reference</label>
-                        <input type="text" id="wb-shipment-input" list="autofill-shipments" placeholder="Type shipment no. to filter..." oninput="evaluateWorkbenchState()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-emerald-400 font-mono tracking-wide focus:outline-none focus:border-emerald-500">
-                        <datalist id="autofill-shipments"></datalist>
+                    <div class="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+                                <tr>
+                                    <th class="p-3 text-center w-12">Select</th>
+                                    <th class="p-3">SO Number</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Assigned Operator</th>
+                                    <th class="p-3">Time Analytics</th>
+                                    <th class="p-3">Route Track</th>
+                                    <th class="p-3 text-center">Truck</th>
+                                    <th class="p-3 text-right">CV</th>
+                                    <th class="p-3 text-right">BX</th>
+                                    <th class="p-3 text-right">PAC</th>
+                                    <th class="p-3 text-right">TRY</th>
+                                    <th class="p-3 text-right">PC</th>
+                                    <th class="p-3 text-right">KG</th>
+                                    <th class="p-3 text-center">Row Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manifest-rows" class="divide-y divide-slate-800/50"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="target-summary-card" class="hidden bg-slate-950 border border-emerald-500/20 rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-center shadow-lg">
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-0.5">Aggregated Job Volume</span>
+                            <span id="summary-total-qty" class="text-2xl font-black text-amber-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Units</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-0.5">Calculated Net Task Time</span>
+                            <span id="summary-target-hours" class="text-2xl font-black text-emerald-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Hours</span>
+                        </div>
+                        <div>
+                            <span class="text-xs text-slate-500 block mb-0.5">Adjusted SLA Target</span>
+                            <span id="summary-final-hours" class="text-2xl font-black text-blue-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Hours</span>
+                        </div>
+                        <div>
+                            <button onclick="openConfirmationModal()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg transition tracking-wider uppercase cursor-pointer">Dispatch Job Selection</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex justify-end pt-2">
-                    <button id="wb-load-btn" onclick="executeManifestQuery()" disabled class="w-full md:w-auto px-6 py-3 bg-slate-800 text-slate-400 font-bold text-xs uppercase tracking-wider rounded-xl transition pointer-events-none">Load Dynamic Task Parameters</button>
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
+                    <div>
+                        <h2 class="text-sm font-bold tracking-wider text-slate-300 uppercase">📋 Floor Dispatch Control Bulletin</h2>
+                        <p class="text-xs text-slate-500">All registered system runs within the active shift window</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bulletin-container"></div>
                 </div>
             </div>
 
-            <div id="workbench-matrix-viewport" class="hidden space-y-6">
-                <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-2">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Action Line Manifest Table</h3>
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-slate-950 border border-amber-500/30 rounded-2xl p-4 sticky top-24 shadow-2xl space-y-4">
+                    <div class="border-b border-slate-800 pb-3">
+                        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-widest block font-mono">Real-Time Sync</span>
+                        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span> 
+                            My Ongoing Task Lines
+                        </h3>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <input type="text" id="inline-search" oninput="runInlineMatrixFilter()" placeholder="Filter current manifest rows..." class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500 w-48">
-                        <button onclick="clearInlineFilters()" class="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-1 bg-slate-900 rounded border border-slate-800 cursor-pointer">Reset</button>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
-                    <table class="w-full text-left text-xs border-collapse">
-                        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-                            <tr>
-                                <th class="p-3 text-center w-12">Select</th>
-                                <th class="p-3">SO Number</th>
-                                <th class="p-3">Status</th>
-                                <th class="p-3">Assigned Operator</th>
-                                <th class="p-3">Time Analytics</th>
-                                <th class="p-3">Route Track</th>
-                                <th class="p-3 text-center">Truck</th>
-                                <th class="p-3 text-right">CV</th>
-                                <th class="p-3 text-right">BX</th>
-                                <th class="p-3 text-right">PAC</th>
-                                <th class="p-3 text-right">TRY</th>
-                                <th class="p-3 text-right">PC</th>
-                                <th class="p-3 text-right">KG</th>
-                                <th class="p-3 text-center">Row Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="manifest-rows" class="divide-y divide-slate-800/50"></tbody>
-                    </table>
-                </div>
-
-                <div id="target-summary-card" class="hidden bg-slate-950 border border-emerald-500/20 rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-center shadow-lg">
-                    <div>
-                        <span class="text-xs text-slate-500 block mb-0.5">Aggregated Job Volume</span>
-                        <span id="summary-total-qty" class="text-2xl font-black text-amber-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Units</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-500 block mb-0.5">Calculated Net Task Time</span>
-                        <span id="summary-target-hours" class="text-2xl font-black text-emerald-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Hours</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-slate-500 block mb-0.5">Adjusted SLA Target (With Breaks)</span>
-                        <span id="summary-final-hours" class="text-2xl font-black text-blue-400 font-mono">0.00</span> <span class="text-xs text-slate-400">Hours</span>
-                    </div>
-                    <div>
-                        <button onclick="openConfirmationModal()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg transition tracking-wider uppercase cursor-pointer">Dispatch Job & Start Clock</button>
+                    
+                    <div id="active-tasks-sidebar" class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                        <div class="text-center py-8 text-xs text-slate-600 italic">No tasks currently running under your session context.</div>
                     </div>
                 </div>
-            </div>
-
-            <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
-                <div>
-                    <h2 class="text-sm font-bold tracking-wider text-slate-300 uppercase">📋 Floor Dispatch Control Bulletin</h2>
-                    <p class="text-xs text-slate-500">Active deployments within the continuous operational window</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bulletin-container"></div>
             </div>
         </section>
 
@@ -133,7 +151,7 @@
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6 md:col-span-1 h-fit">
                 <div>
                     <h2 class="text-base font-bold text-slate-200">📥 Master Spreadsheets Ingestion</h2>
-                    <p class="text-xs text-slate-400">Refresh master database schemas directly via excel ingestion rules</p>
+                    <p class="text-xs text-slate-400">Refresh master database fields directly via Excel rules</p>
                 </div>
                 <div class="space-y-4">
                     <div>
@@ -147,18 +165,16 @@
                     <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2.5 px-4 rounded-lg transition cursor-pointer">Execute Mass Database Refresh</button>
                 </div>
             </div>
-
+            
             <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 md:col-span-2">
                 <div class="flex items-center gap-2">
                     <span class="text-slate-300 text-sm font-bold uppercase tracking-wider">🔍 Real-Time Global Search Filters</span>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <input type="text" placeholder="Search Shipment No, Route Description..." class="sm:col-span-3 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
+                    <input type="text" placeholder="Search Shipment No..." class="sm:col-span-3 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
                     <input type="number" placeholder="Min Qty" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-emerald-500 text-slate-200">
                     <select class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-400 focus:outline-none focus:border-emerald-500">
                         <option>Any Unit Type</option>
-                        <option>CV</option>
-                        <option>BX</option>
                     </select>
                     <button class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2 px-4 rounded-lg transition cursor-pointer">Reset Filters</button>
                 </div>
@@ -168,7 +184,7 @@
         <section id="tab-personnel" class="tab-content hidden max-w-2xl mx-auto bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-6">
             <div>
                 <h2 class="text-base font-bold text-slate-200">👥 Personnel Roster Pool Configuration</h2>
-                <p class="text-xs text-slate-400">Manage names running across operational loops</p>
+                <p class="text-xs text-slate-400">Manage operator profiles configured across active loops</p>
             </div>
             <form id="personnel-form" onsubmit="addPersonnelMember(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end bg-slate-900 p-4 rounded-xl border border-slate-800">
                 <div class="sm:col-span-1">
@@ -214,12 +230,12 @@
     </main>
 
     <div id="custom-confirm-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm transition-all">
-        <div class="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl p-6 space-y-6 transform scale-100 transition-transform">
+        <div class="bg-slate-900 border border-slate-800 max-w-lg w-full rounded-2xl shadow-2xl p-6 space-y-6">
             <div class="flex items-center gap-3 border-b border-slate-800/60 pb-3">
                 <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-lg font-bold">📋</div>
                 <div>
                     <h3 class="text-base font-bold text-slate-200">Confirm Dispatch Allocation</h3>
-                    <p class="text-xs text-slate-500">Verify workflow configurations before task serialization</p>
+                    <p class="text-xs text-slate-500">Verify details before starting runtime timers</p>
                 </div>
             </div>
 
@@ -235,59 +251,80 @@
                     </div>
                 </div>
 
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/40 text-xs flex justify-between items-center">
-                    <div>
-                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Shipment Reference ID</span>
-                        <strong id="modal-val-shipment" class="text-slate-200 font-mono tracking-wide">-</strong>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Mapped Trucks</span>
-                        <span id="modal-val-truck" class="px-2 py-0.5 rounded text-[10px] bg-slate-900 text-slate-300 border border-slate-800 font-mono inline-block mt-0.5">-</span>
-                    </div>
-                </div>
-
                 <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/40 space-y-2.5 text-xs">
                     <div class="flex justify-between">
-                        <span class="text-slate-400">Aggregated Load Quantity:</span>
+                        <span class="text-slate-400">Aggregated Quantity:</span>
                         <strong id="modal-val-qty" class="text-amber-400 font-mono font-bold">-</strong>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-slate-400">Calculated Net Processing Time:</span>
-                        <strong id="modal-val-net-time" class="text-slate-300 font-mono">-</strong>
-                    </div>
-                    <div class="flex flex-col border-t border-slate-900 pt-2 gap-1">
-                        <span class="text-slate-400 block">Encountered Schedule Breaks:</span>
-                        <div id="modal-val-breaks-list" class="text-[11px] text-slate-500 font-mono pl-2 space-y-0.5">None</div>
-                    </div>
-                    <div class="flex justify-between border-t border-slate-800 pt-2 text-sm font-bold">
-                        <span class="text-slate-300">Total Target Time Rendered:</span>
-                        <span id="modal-val-total-rendered" class="text-blue-400 font-mono">-</span>
+                        <span class="text-slate-400">SLA Target Duration:</span>
+                        <strong id="modal-val-total-rendered" class="text-blue-400 font-mono">-</strong>
                     </div>
                 </div>
             </div>
 
             <div class="flex gap-2 justify-end pt-2">
-                <button onclick="closeConfirmationModal()" class="px-4 py-2 bg-slate-950 hover:bg-slate-900 text-slate-400 hover:text-slate-300 text-xs font-bold rounded-xl border border-slate-800/80 transition cursor-pointer">Cancel</button>
-                <button onclick="commitJobTransaction()" class="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer">Confirm & Deploy</button>
+                <button onclick="closeConfirmationModal()" class="px-4 py-2 bg-slate-950 hover:bg-slate-900 text-slate-400 text-xs font-bold rounded-xl border border-slate-800 transition cursor-pointer">Cancel</button>
+                <button onclick="commitJobTransaction()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer">Confirm & Deploy</button>
             </div>
         </div>
     </div>
+
+    <div id="staging-completion-modal" class="hidden fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-all">
+        <div class="bg-slate-900 border border-amber-500/40 max-w-md w-full rounded-2xl shadow-2xl p-6 space-y-5">
+            <div class="flex items-center gap-3 border-b border-slate-800 pb-2">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 text-lg font-bold">🚧</div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-200">Assign Staging Area Location</h3>
+                    <p class="text-xs text-slate-500">Provide an exact verification staging lane area index to lock execution</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                    <div class="text-slate-400 font-medium">Completing Row Item: <span id="staging-modal-so-label" class="text-amber-400 font-mono font-bold"></span></div>
+                    <div class="text-slate-500 text-[11px]">Shipment Association: <span id="staging-modal-shipment-label" class="font-mono"></span></div>
+                </div>
+
+                <div class="relative">
+                    <label class="block text-[10px] font-bold uppercase text-slate-400 tracking-wider mb-1.5">Target Destination Staging Lane</label>
+                    <input type="text" id="completion-staging-input" list="autofill-staging-lanes" placeholder="Type or choose staging lane..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-semibold tracking-wide text-emerald-400 focus:outline-none focus:border-amber-500">
+                    <datalist id="autofill-staging-lanes">
+                        <option value="STAGE-A1"></option>
+                        <option value="STAGE-A2"></option>
+                        <option value="STAGE-B1"></option>
+                        <option value="STAGE-B2"></option>
+                        <option value="STAGE-C1"></option>
+                        <option value="STAGE-C2"></option>
+                        <option value="STAGE-OVERFLOW"></option>
+                    </datalist>
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-2">
+                <button onclick="closeStagingModal()" class="px-4 py-2 bg-slate-950 text-slate-400 text-xs font-bold rounded-xl border border-slate-800 transition cursor-pointer">Back</button>
+                <button onclick="commitRowLevelTaskCompletionWithStaging()" class="px-5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-xs font-bold rounded-xl shadow-md transition cursor-pointer">Commit & Complete Row</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         // --- SUPABASE CLIENT SETUP ---
         const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co"; 
         const SUPABASE_ANON_KEY = "sb_publishable_NZ-61nnHkjLeIx1uQHZJ6A_hchytu0t";
-
-        // Application-specific variable assignment to completely bypass conflict exceptions
         const logiFlowSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- RUNTIME APPLICATION MATRIX CODES ---
+        // --- GLOBAL MATRIX RUNTIMES ---
         let currentRole = '';
         let currentManifestData = [];
         let globalPersonnelList = [];
         let configuredBreaks = [];
         let globalShipmentNumbers = [];
         let activeRowActivityLogs = []; 
+        let globalStagingLanesPool = [];
+
+        let currentActiveStagingLogContext = null;
 
         let computedMetricsSummary = {
             truckTypes: [],
@@ -303,6 +340,7 @@
             await refreshConfiguredBreaks();
             await refreshPersonnelRosterPool();
             await pullGlobalShipmentAutofillReferences();
+            await pullStagingLanesAutocompletePool();
             await refreshBulletinBoard();
         });
 
@@ -336,6 +374,18 @@
             return { startOfOpDay, endOfOpDay };
         }
 
+        async function pullStagingLanesAutocompletePool() {
+            const { data, error } = await logiFlowSupabase.from('master_staging_areas').select('zone_identifier');
+            if(!error && data) {
+                globalStagingLanesPool = data.map(z => z.zone_identifier);
+                const dl = document.getElementById('autofill-staging-lanes');
+                dl.innerHTML = '';
+                globalStagingLanesPool.forEach(zone => {
+                    dl.innerHTML += `<option value="${zone}"></option>`;
+                });
+            }
+        }
+
         function setWorkbenchRole(roleName) {
             currentRole = roleName;
             document.querySelectorAll('.wb-role-btn').forEach(btn => {
@@ -356,6 +406,7 @@
             
             populatePersonnelAutofillList(roleName);
             evaluateWorkbenchState();
+            renderSideTrackingPanel();
         }
 
         function populatePersonnelAutofillList(role) {
@@ -391,6 +442,7 @@
                 executionBtn.classList.add('bg-slate-800', 'text-slate-400', 'pointer-events-none');
                 executionBtn.classList.remove('bg-emerald-600', 'text-white', 'hover:bg-emerald-500', 'cursor-pointer');
             }
+            renderSideTrackingPanel();
         }
 
         async function executeManifestQuery() {
@@ -404,6 +456,7 @@
             activeRowActivityLogs = resLogs.data || [];
 
             renderManifestTable(currentManifestData);
+            renderSideTrackingPanel();
             document.getElementById('workbench-matrix-viewport').classList.remove('hidden');
             document.getElementById('target-summary-card').classList.add('hidden');
         }
@@ -416,6 +469,8 @@
                 tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">No matching records found.</td></tr>`;
                 return;
             }
+
+            const currentUserInput = document.getElementById('wb-personnel-input').value.trim();
 
             rows.forEach((row, i) => {
                 const rowLog = activeRowActivityLogs.find(l => l.so_number === row.so_number && l.role === currentRole);
@@ -433,7 +488,8 @@
                     statusClass = rowLog.status === 'Paused' ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30 animate-pulse";
                 }
 
-                const currentUserInput = document.getElementById('wb-personnel-input').value.trim();
+                // CRITICAL ANTI-DOUBLE SELECTION LOCKOUT:
+                // If the log is owned by another user and is ongoing or paused, freeze the row out completely.
                 if (rowLog && rowLog.personnel_name !== currentUserInput && rowLog.status !== 'Completed') {
                     isLocked = true; 
                 }
@@ -450,18 +506,15 @@
                 }
 
                 let actionButtonsHTML = "---";
-                if (currentRole === 'Picker' && !isLocked) {
+                if (!isLocked) {
                     if (!rowLog) {
                         actionButtonsHTML = `<button onclick="initiateRowLevelTask(${i})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Start Row</button>`;
-                    } else if (rowLog.status === 'Ongoing') {
-                        actionButtonsHTML = `
-                            <div class="flex gap-1 justify-center">
-                                <button onclick="pauseRowLevelTask(${rowLog.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Pause</button>
-                                <button onclick="completeRowLevelTask(${rowLog.id}, ${i})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Complete</button>
-                    </div>`;
-                    } else if (rowLog.status === 'Paused') {
-                        actionButtonsHTML = `<button onclick="resumeRowLevelTask(${rowLog.id})" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2 py-1 rounded font-bold cursor-pointer">Resume</button>`;
+                    } else if (rowLog.status === 'Ongoing' || rowLog.status === 'Paused') {
+                        // Handled via the clean fixed right side container panel view matrix instead
+                        actionButtonsHTML = `<span class="text-[10px] text-amber-400 font-mono italic">See Side Panel</span>`;
                     }
+                } else {
+                    actionButtonsHTML = `<span class="text-[10px] text-slate-600 italic">Locked (${assignedPersonnel})</span>`;
                 }
 
                 tbody.innerHTML += `
@@ -470,7 +523,12 @@
                             <input type="checkbox" data-index="${i}" onchange="recalculateCalculatedWorkflowMetrics()" ${isLocked ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500 cursor-pointer">
                         </td>
                         <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
-                        <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold font-sans tracking-wide uppercase ${statusClass}">${statusText}</span></td>
+                        <td class="p-3">
+                            <div class="flex flex-col gap-0.5">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold font-sans tracking-wide uppercase inline-block text-center ${statusClass}">${statusText}</span>
+                                ${rowLog && rowLog.staging_area ? `<span class="text-[9px] text-teal-400 font-mono text-center font-bold">${rowLog.staging_area}</span>` : ''}
+                            </div>
+                        </td>
                         <td class="p-3 text-slate-400 font-medium">${assignedPersonnel}</td>
                         <td class="p-3">${analyticsString}</td>
                         <td class="p-3 text-slate-400 font-mono text-[11px]">${row.route_description || 'N/A'}</td>
@@ -483,6 +541,54 @@
                         <td class="p-3 text-right font-mono text-emerald-400">${row.kg}</td>
                         <td class="p-3 text-center">${actionButtonsHTML}</td>
                     </tr>`;
+            });
+        }
+
+        // --- RENDER DEDICATED RIGHT SIDEBAR PANEL PANEL FOR ACTIVE ONGOING ENTRIES ---
+        function renderSideTrackingPanel() {
+            const panelContainer = document.getElementById('active-tasks-sidebar');
+            const currentUser = document.getElementById('wb-personnel-input').value.trim();
+            
+            if (!currentUser || !currentRole) {
+                panelContainer.innerHTML = `<div class="text-center py-6 text-xs text-slate-600 italic">Please select role and operator name to load workspace.</div>`;
+                return;
+            }
+
+            // Filter out logs that belong to this operational window, matches the current operator session context, and is active
+            const activeLogs = activeRowActivityLogs.filter(l => l.personnel_name === currentUser && l.role === currentRole && (l.status === 'Ongoing' || l.status === 'Paused'));
+
+            if (activeLogs.length === 0) {
+                panelContainer.innerHTML = `<div class="text-center py-8 text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl p-4">No ongoing task loops open for ${currentUser}.</div>`;
+                return;
+            }
+
+            panelContainer.innerHTML = '';
+            activeLogs.forEach(log => {
+                const isOngoing = log.status === 'Ongoing';
+                panelContainer.innerHTML += `
+                    <div class="bg-slate-900 border ${isOngoing ? 'border-blue-500/40 bg-blue-950/10' : 'border-amber-500/20'} rounded-xl p-4 space-y-3 shadow-md">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold">${log.so_number}</span>
+                                <div class="text-xs font-bold text-slate-200 mt-1">Shipment: ${log.shipment_no}</div>
+                            </div>
+                            <span class="text-[9px] px-1.5 rounded font-bold ${isOngoing ? 'bg-blue-500/20 text-blue-400 animate-pulse' : 'bg-amber-500/20 text-amber-400'}">
+                                ${log.status.toUpperCase()}
+                            </span>
+                        </div>
+                        
+                        <div class="text-[11px] text-slate-400 font-mono">
+                            Logged Vol: <span class="text-amber-400 font-bold">${log.total_qty || 0} units</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-1.5 pt-1">
+                            ${isOngoing ? 
+                                `<button onclick="pauseRowLevelTask(${log.id})" class="bg-amber-600 hover:bg-amber-500 text-white text-[11px] py-1.5 px-2 rounded-lg font-bold transition cursor-pointer">Pause</button>` :
+                                `<button onclick="resumeRowLevelTask(${log.id})" class="bg-purple-600 hover:bg-purple-500 text-white text-[11px] py-1.5 px-2 rounded-lg font-bold transition cursor-pointer">Resume</button>`
+                            }
+                            <button onclick="openStagingAreaModal(${log.id}, '${log.so_number}', '${log.shipment_no}')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] py-1.5 px-2 rounded-lg font-bold transition col-span-1 shadow cursor-pointer">Complete</button>
+                        </div>
+                    </div>`;
             });
         }
 
@@ -533,7 +639,27 @@
             else await executeManifestQuery();
         }
 
-        async function completeRowLevelTask(logId, rowIndex) {
+        // --- STAGING FLOW COMPLETION MODAL WINDOW WRAPPERS ---
+        function openStagingAreaModal(logId, soNumber, shipmentNo) {
+            currentActiveStagingLogContext = logId;
+            document.getElementById('staging-modal-so-label').innerText = soNumber;
+            document.getElementById('staging-modal-shipment-label').innerText = shipmentNo;
+            document.getElementById('completion-staging-input').value = '';
+            document.getElementById('staging-completion-modal').classList.remove('hidden');
+        }
+
+        function closeStagingModal() {
+            document.getElementById('staging-completion-modal').classList.add('hidden');
+            currentActiveStagingLogContext = null;
+        }
+
+        async function commitRowLevelTaskCompletionWithStaging() {
+            const stagingInputText = document.getElementById('completion-staging-input').value.trim().toUpperCase();
+            if(!stagingInputText) {
+                return alert("Operational Constraint: You must specify or input a valid location staging field coordinate.");
+            }
+
+            const logId = currentActiveStagingLogContext;
             const { data: logEntry, error: fetchErr } = await logiFlowSupabase.from('activity_logs').select('*').eq('id', logId).single();
             if(fetchErr) return console.error(fetchErr);
 
@@ -568,8 +694,11 @@
             const { error } = await logiFlowSupabase.from('activity_logs').update({
                 status: 'Completed',
                 end_time: taskEndTime.toISOString(),
-                rendered_minutes: netDurationMinutes
+                rendered_minutes: netDurationMinutes,
+                staging_area: stagingInputText
             }).eq('id', logId);
+
+            closeStagingModal();
 
             if (error) alert("Task save update exception: " + error.message);
             else await executeManifestQuery();
@@ -642,20 +771,8 @@
         function openConfirmationModal() {
             document.getElementById('modal-val-operator').innerText = document.getElementById('wb-personnel-input').value.trim();
             document.getElementById('modal-val-role').innerText = currentRole;
-            document.getElementById('modal-val-shipment').innerText = document.getElementById('wb-shipment-input').value.trim();
-            document.getElementById('modal-val-truck').innerText = computedMetricsSummary.truckTypes.join(', ') || 'N/A';
             document.getElementById('modal-val-qty').innerText = computedMetricsSummary.totalQty.toFixed(2) + " Units";
-            
-            document.getElementById('modal-val-net-time').innerText = formatHoursToHHMM(computedMetricsSummary.netHours) + " (HH:MM)";
             document.getElementById('modal-val-total-rendered').innerText = formatHoursToHHMM(computedMetricsSummary.finalHours);
-
-            const breakBox = document.getElementById('modal-val-breaks-list');
-            if (computedMetricsSummary.appliedBreaks.length > 0) {
-                breakBox.innerHTML = computedMetricsSummary.appliedBreaks.map(bk => `• ${bk}`).join('<br>');
-            } else {
-                breakBox.innerHTML = "None (No overlapping breaks detected)";
-            }
-
             document.getElementById('custom-confirm-modal').classList.remove('hidden');
         }
 
@@ -833,6 +950,7 @@
                         <div>
                             <span class="text-[10px] font-bold tracking-wider text-slate-500 block uppercase">${log.role}</span>
                             <span class="text-sm font-bold text-slate-200 font-mono">${log.shipment_no} ${log.so_number ? `| SO: ${log.so_number}` : ''}</span>
+                            ${log.staging_area ? `<div class="text-[11px] text-teal-400 font-mono mt-0.5">Loc: ${log.staging_area}</div>` : ''}
                         </div>
                         <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 font-mono">
                             <div>Op: <strong class="text-slate-200">${log.personnel_name}</strong></div>
