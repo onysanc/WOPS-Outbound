@@ -250,10 +250,11 @@
     </div>
     <div>
       <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Any picking discrepancy?</label>
-      <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
+      <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
         <button type="button" data-choice="None" onclick="setStagingDiscrepancyChoice('None')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">None</button>
         <button type="button" data-choice="Over Pick" onclick="setStagingDiscrepancyChoice('Over Pick')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Over Pick</button>
         <button type="button" data-choice="Short Pick" onclick="setStagingDiscrepancyChoice('Short Pick')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Short Pick</button>
+        <button type="button" data-choice="Wrong Pick" onclick="setStagingDiscrepancyChoice('Wrong Pick')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Wrong Pick</button>
       </div>
     </div>
     <div id="staging-qty-wrap" class="hidden">
