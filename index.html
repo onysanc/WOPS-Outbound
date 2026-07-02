@@ -214,7 +214,7 @@
 </main>
 
 <!-- ================= STICKY SIDE PANEL ================= -->
-<aside id="side-panel" class="fixed right-3 top-24 w-72 max-h-[75vh] overflow-y-auto bg-slate-950/95 backdrop-blur border border-slate-800 rounded-xl p-4 space-y-3 shadow-2xl z-30 hidden lg:block">
+<aside id="side-panel" class="fixed right-3 top-24 w-80 max-h-[75vh] overflow-y-auto bg-slate-950/95 backdrop-blur border border-slate-800 rounded-xl p-4 space-y-3 shadow-2xl z-30 hidden lg:block">
   <div class="flex items-center justify-between">
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">All Active Lines</h3>
     <button onclick="refreshSidePanel()" class="text-[10px] text-slate-500 hover:text-emerald-400">↻ refresh</button>
@@ -634,21 +634,73 @@ async function refreshSidePanel() {
     container.innerHTML = `<p class="text-[11px] text-slate-600 italic">No active or paused lines system-wide.</p>`;
     return;
   }
-  container.innerHTML = data.map(log => `
-    <div class="bg-slate-900 border border-slate-800 rounded-lg p-2.5 space-y-1.5">
-      <div class="flex justify-between items-center">
-        <span class="text-[11px] font-mono font-semibold text-slate-200">${log.so_number || log.shipment_no || 'Batch'}</span>
-        <span class="text-[9px] px-1.5 py-0.5 rounded ${log.status === 'Ongoing' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}">${log.status}</span>
-      </div>
-      <div class="text-[10px] text-slate-500">${log.role} · ${log.personnel_name} · ${(log.total_qty || 0)} units</div>
-      <div class="flex gap-1">
-        ${log.status === 'Ongoing'
-          ? `<button onclick="sidePanelPause(${log.id})" class="flex-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white rounded py-1">Pause</button>
-             <button onclick="sidePanelComplete(${log.id})" class="flex-1 text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white rounded py-1">Complete</button>`
-          : `<button onclick="sidePanelResume(${log.id})" class="flex-1 text-[10px] bg-amber-600 hover:bg-amber-500 text-white rounded py-1">Resume</button>
-             <button onclick="sidePanelUnassign(${log.id})" class="flex-1 text-[10px] bg-rose-700 hover:bg-rose-600 text-white rounded py-1">Unassign</button>`}
-      </div>
-    </div>`).join('');
+
+  // Pull Customer + OBD Number from shipments since activity_logs only stores so_number
+  const soNumbers = [...new Set(data.map(l => l.so_number).filter(Boolean))];
+  let shipMap = {};
+  if (soNumbers.length) {
+    const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number,sold_to_party_name').in('so_number', soNumbers);
+    (shipRows || []).forEach(s => { shipMap[s.so_number] = s; });
+  }
+
+  const groups = {};
+  data.forEach(log => {
+    const key = log.shipment_no || '(no shipment ref)';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(log);
+  });
+
+  container.innerHTML = Object.entries(groups).map(([shipmentNo, logs]) => {
+    const totalQty = logs.reduce((s, l) => s + (l.total_qty || 0), 0);
+    const targetCompleteTimes = logs.map(l => new Date(new Date(l.start_time).getTime() + (l.target_hours || 0) * 3600000));
+    const latestTarget = new Date(Math.max(...targetCompleteTimes));
+    const anyOverdue = logs.some((l, idx) => l.status !== 'Completed' && new Date() > targetCompleteTimes[idx]);
+
+    const lines = logs.map(log => {
+      const ship = shipMap[log.so_number] || {};
+      return `
+        <div class="bg-slate-950 border border-slate-800 rounded-lg p-2 space-y-1">
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="text-[11px] font-mono font-semibold text-slate-200">${log.so_number || '—'}</div>
+              <div class="text-[10px] text-slate-500 font-mono">OBD: ${ship.obd_number || '—'}</div>
+              <div class="text-[10px] text-slate-500 truncate max-w-[160px]" title="${ship.sold_to_party_name || ''}">${ship.sold_to_party_name || '—'}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] font-mono text-amber-400 font-bold">${log.total_qty ?? 0} qty</div>
+              <span class="text-[9px] px-1.5 py-0.5 rounded ${log.status === 'Ongoing' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}">${log.status}</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500">${log.role} · ${log.personnel_name}</div>
+          <div class="flex gap-1 pt-1">
+            ${log.status === 'Ongoing'
+              ? `<button onclick="sidePanelPause(${log.id})" class="flex-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white rounded py-1">Pause</button>
+                 <button onclick="sidePanelComplete(${log.id})" class="flex-1 text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white rounded py-1">Complete</button>`
+              : `<button onclick="sidePanelResume(${log.id})" class="flex-1 text-[10px] bg-amber-600 hover:bg-amber-500 text-white rounded py-1">Resume</button>
+                 <button onclick="sidePanelUnassign(${log.id})" class="flex-1 text-[10px] bg-rose-700 hover:bg-rose-600 text-white rounded py-1">Unassign</button>`}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="bg-slate-900 border ${anyOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2.5 space-y-2">
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="text-[9px] uppercase tracking-wider text-slate-500 block">Dispatch</span>
+            <span class="text-xs font-black text-emerald-400 font-mono">${shipmentNo}</span>
+          </div>
+          <div class="text-right">
+            <span class="text-[9px] uppercase tracking-wider text-slate-500 block">Target Complete</span>
+            <span class="text-[11px] font-mono font-bold ${anyOverdue ? 'text-rose-400' : 'text-blue-400'}">${latestTarget.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        </div>
+        <div class="space-y-1.5">${lines}</div>
+        <div class="flex justify-between items-center pt-1 border-t border-slate-800">
+          <span class="text-[10px] text-slate-500 uppercase tracking-wider">Total Qty</span>
+          <span class="text-sm font-black text-amber-400 font-mono">${totalQty}</span>
+        </div>
+      </div>`;
+  }).join('');
 }
 
 async function sidePanelPause(id) {
