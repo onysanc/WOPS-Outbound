@@ -12,6 +12,7 @@
   ::-webkit-scrollbar-thumb{background:#1e293b;border-radius:4px}
   .tab-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .role-btn.active{background:#059669;color:#fff;border-color:#10b981}
+  .staging-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .view{display:none}
   .view.active{display:block}
   @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(244,63,94,.45)}100%{box-shadow:0 0 0 8px rgba(244,63,94,0)}}
@@ -239,6 +240,33 @@
   </div>
 </div>
 
+<!-- ================= STAGING CHECK COMPLETION MODAL ================= -->
+<div id="staging-complete-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Confirm Staging Check</h3>
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 space-y-0.5">
+      <span class="text-[10px] uppercase tracking-wider text-slate-500 block">Picked By</span>
+      <span id="staging-modal-picker-name" class="text-sm font-black text-emerald-400">—</span>
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Any picking discrepancy?</label>
+      <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
+        <button type="button" data-choice="None" onclick="setStagingDiscrepancyChoice('None')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">None</button>
+        <button type="button" data-choice="Over Pick" onclick="setStagingDiscrepancyChoice('Over Pick')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Over Pick</button>
+        <button type="button" data-choice="Short Pick" onclick="setStagingDiscrepancyChoice('Short Pick')" class="staging-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">Short Pick</button>
+      </div>
+    </div>
+    <div id="staging-qty-wrap" class="hidden">
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Discrepancy Qty</label>
+      <input type="number" id="staging-discrepancy-qty" min="0" step="any" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="closeStagingCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="confirmStagingComplete()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Confirm Okay</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // --- SUPABASE CLIENT CONFIGURATION ---
 const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co";
@@ -377,15 +405,30 @@ async function fetchShipmentManifest() {
       .order('start_time', { ascending: false });
     if (!logErr) logs = logData || [];
   }
+
+  // Staging Checker can only work rows the Picker has already finished — either the
+  // SO already carries a PGI date, or the Picker-role log for that SO is Completed.
+  let pickerCompletedSet = new Set();
+  if (currentRole === 'Staging Checker' && soNumbers.length) {
+    const { data: pickerLogs, error: pickerErr } = await supabaseClient
+      .from('activity_logs').select('so_number')
+      .in('so_number', soNumbers).eq('role', 'Picker').eq('status', 'Completed');
+    if (!pickerErr) (pickerLogs || []).forEach(l => pickerCompletedSet.add(l.so_number));
+  }
+
   currentManifestData = data.map(row => ({
     ...row,
-    _log: logs.find(l => l.so_number === row.so_number) || null
+    _log: logs.find(l => l.so_number === row.so_number) || null,
+    _pickReady: currentRole !== 'Staging Checker' || !!row.pgi_date || pickerCompletedSet.has(row.so_number)
   }));
   renderManifestTable();
 }
 
-function rowStatusLabel(row, log) {
-  if (row.pgi_date) return 'PICKED'; // already picked in the source system, regardless of app-tracked log
+// pgi_date on the SO means the source system already marked it picked — that only
+// auto-locks the row away from the Picker themselves; for later stages (Staging
+// Checker, etc.) it's read via row._pickReady as an eligibility signal instead.
+function rowStatusLabel(row, log, role) {
+  if (role === 'Picker' && row.pgi_date) return 'PICKED';
   if (!log) return 'PENDING';
   if (log.status === 'Ongoing') return 'ONGOING';
   if (log.status === 'Paused') return 'PAUSED';
@@ -410,19 +453,22 @@ function renderManifestTable() {
 
   rows.forEach((row, i) => {
     const log = row._log;
-    const status = rowStatusLabel(row, log);
-    const isPickedSource = !!row.pgi_date;
+    const status = rowStatusLabel(row, log, currentRole);
+    const isPickedSource = currentRole === 'Picker' && !!row.pgi_date;
     const isAssignedActive = log && (log.status === 'Ongoing' || log.status === 'Paused');
     // Locked to someone else the moment ANY same-role log is active, whether or not an operator name has been typed yet
     const isMine = isAssignedActive && operator && log.personnel_name === operator;
     const lockedToOther = isAssignedActive && !isMine;
     const isCompleted = status === 'PICKED';
-    const isDisabled = isCompleted || isPickedSource || lockedToOther;
+    const notReadyForStage = currentRole === 'Staging Checker' && status === 'PENDING' && !row._pickReady;
+    const isDisabled = isCompleted || isPickedSource || lockedToOther || notReadyForStage;
 
     const statusColor = { PENDING: 'bg-slate-800 text-slate-300', ONGOING: 'bg-amber-500/20 text-amber-400', PAUSED: 'bg-blue-500/20 text-blue-400', PICKED: 'bg-emerald-500/20 text-emerald-400' }[status];
 
     let actionHtml = '';
-    if (status === 'PENDING') {
+    if (notReadyForStage) {
+      actionHtml = `<span class="text-[10px] text-slate-600 italic" title="Waiting for Picker to complete this SO">Awaiting Pick</span>`;
+    } else if (status === 'PENDING') {
       actionHtml = `<button onclick="startRow(${i})" ${!operator ? 'disabled title="Select personnel first"' : ''} class="text-[10px] font-semibold px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white">Start Row</button>`;
     } else if (status === 'ONGOING' && !lockedToOther) {
       actionHtml = `
@@ -441,7 +487,7 @@ function renderManifestTable() {
     tbody.innerHTML += `
       <tr class="hover:bg-slate-900/60 transition ${isDisabled ? 'opacity-50 bg-slate-950' : ''}">
         <td class="p-3 text-center">
-          <input type="checkbox" data-index="${i}" onchange="recalcSummary()" ${status !== 'PENDING' ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500">
+          <input type="checkbox" data-index="${i}" onchange="recalcSummary()" ${(status !== 'PENDING' || notReadyForStage) ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500">
         </td>
         <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
         <td class="p-3 font-mono text-slate-400 text-[11px]">${row.obd_number || '—'}</td>
@@ -468,6 +514,20 @@ function speedRateFor(truckType) {
 }
 function totalConfiguredBreakHours() {
   return configuredBreaks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0) / 60;
+}
+
+// Baseline (no-break) target hours for a single row, role-aware:
+// - Picker: quantity-driven (qty / truck-type speed rate).
+// - Staging Checker: a fixed duration bracket keyed off truck type only.
+function targetHoursForRow(row, role) {
+  if (role === 'Staging Checker') {
+    const t = (row.truck_type || '').toUpperCase();
+    if (t === 'AUV' || t === '4W') return 20 / 60;
+    if (t === '6W') return 1;
+    if (t === '10W' || t === '20F') return 4;
+    return 4; // unmapped/larger truck types default to the longest bracket
+  }
+  return rowQtySum(row) / speedRateFor(row.truck_type);
 }
 
 // Projected completion time for a baseline (no-break) duration starting at startDate.
@@ -510,7 +570,7 @@ async function startRow(i) {
   }
   const row = currentManifestData[i];
   const qty = rowQtySum(row);
-  const targetHours = qty / speedRateFor(row.truck_type);
+  const targetHours = targetHoursForRow(row, currentRole);
   const { error } = await supabaseClient.from('activity_logs').insert([{
     shipment_no: row.shipment_no, so_number: row.so_number, role: currentRole,
     personnel_name: operator, total_qty: qty, target_hours: targetHours,
@@ -573,6 +633,10 @@ async function unassignRow(i) {
 async function completeRow(i) {
   const log = currentManifestData[i]._log;
   const members = await getGroupMembers(log);
+  // Staging Checker completion requires a wrong-pick confirmation popup first.
+  if (currentRole === 'Staging Checker') {
+    return openStagingCompleteModal(members);
+  }
   for (const m of members) {
     await completeLogById(m.id, m);
   }
@@ -581,8 +645,10 @@ async function completeRow(i) {
   await refreshBulletinBoard();
 }
 
-// Shared completion routine: computes elapsed active seconds minus pauses minus break overlap
-async function completeLogById(logId, log) {
+// Shared completion routine: computes elapsed active seconds minus pauses minus break
+// overlap. `extra` lets specific roles (e.g. Staging Checker) attach additional fields
+// such as discrepancy_type / discrepancy_qty to the same update.
+async function completeLogById(logId, log, extra = {}) {
   const now = new Date();
   const start = new Date(log.start_time);
   const elapsedTotalSeconds = Math.max(0, Math.floor((now - start) / 1000));
@@ -594,7 +660,8 @@ async function completeLogById(logId, log) {
 
   const { error } = await supabaseClient.from('activity_logs').update({
     status: 'Completed', end_time: now.toISOString(),
-    rendered_minutes: renderedMinutes
+    rendered_minutes: renderedMinutes,
+    ...extra
   }).eq('id', logId);
   if (error) showToast("Could not complete: " + error.message, "error");
 }
@@ -624,7 +691,7 @@ function recalcSummary() {
     const row = currentManifestData[idx];
     const qty = rowQtySum(row);
     totalQty += qty;
-    netHours += qty / speedRateFor(row.truck_type);
+    netHours += targetHoursForRow(row, currentRole);
   });
   // Final hours = baseline (net) hours, plus break time ONLY if a configured break
   // window actually overlaps the projected [now, now+netHours] task window. A break
@@ -662,6 +729,62 @@ async function openDispatchModal() {
 }
 function closeDispatchModal() { document.getElementById('dispatch-modal').classList.add('hidden'); }
 
+// --- STAGING CHECK COMPLETION MODAL ---
+let stagingCompleteMembers = null;
+let stagingDiscrepancyChoice = 'None';
+
+function setStagingDiscrepancyChoice(choice) {
+  stagingDiscrepancyChoice = choice;
+  document.querySelectorAll('.staging-choice-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-choice') === choice);
+  });
+  document.getElementById('staging-qty-wrap').classList.toggle('hidden', choice === 'None');
+}
+
+async function openStagingCompleteModal(members) {
+  stagingCompleteMembers = members;
+  document.getElementById('staging-discrepancy-qty').value = '';
+  setStagingDiscrepancyChoice('None');
+
+  // Show who originally picked this SO — pulled from the completed Picker-role log.
+  const soNumbers = [...new Set(members.map(m => m.so_number).filter(Boolean))];
+  let pickerNames = [];
+  if (soNumbers.length) {
+    const { data: pickerLogs, error } = await supabaseClient.from('activity_logs').select('so_number,personnel_name')
+      .in('so_number', soNumbers).eq('role', 'Picker').eq('status', 'Completed');
+    if (!error) pickerNames = [...new Set((pickerLogs || []).map(l => l.personnel_name).filter(Boolean))];
+  }
+  document.getElementById('staging-modal-picker-name').innerText = pickerNames.length ? pickerNames.join(', ') : 'Unknown';
+  document.getElementById('staging-complete-modal').classList.remove('hidden');
+}
+
+function closeStagingCompleteModal() {
+  document.getElementById('staging-complete-modal').classList.add('hidden');
+  stagingCompleteMembers = null;
+}
+
+async function confirmStagingComplete() {
+  const members = stagingCompleteMembers;
+  if (!members) return closeStagingCompleteModal();
+
+  const choice = stagingDiscrepancyChoice;
+  let qty = null;
+  if (choice !== 'None') {
+    qty = parseFloat(document.getElementById('staging-discrepancy-qty').value);
+    if (isNaN(qty) || qty <= 0) return showToast("Enter a valid discrepancy quantity.", "error");
+  }
+
+  const extra = { discrepancy_type: choice === 'None' ? null : choice, discrepancy_qty: choice === 'None' ? null : qty };
+  for (const m of members) {
+    await completeLogById(m.id, m, extra);
+  }
+  closeStagingCompleteModal();
+  showToast(choice === 'None' ? "Staging check completed." : `Staging check completed — ${choice} (${qty}) logged.`, "success");
+  await fetchShipmentManifest();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
+}
+
 async function commitJobTransaction() {
   const operator = document.getElementById('operator-input').value.trim();
   if (await personnelHasOngoing(operator, currentRole)) {
@@ -675,7 +798,7 @@ async function commitJobTransaction() {
   // them as a single task (they pause/resume/complete together). Target hours is
   // computed off the TOTAL qty of the whole group (not each row individually), so
   // every line in the group carries the same, group-wide target completion time.
-  const groupNetHours = selectedRows.reduce((s, row) => s + rowQtySum(row) / speedRateFor(row.truck_type), 0);
+  const groupNetHours = selectedRows.reduce((s, row) => s + targetHoursForRow(row, currentRole), 0);
   const batchStartIso = new Date().toISOString();
 
   const payload = selectedRows.map(row => {
@@ -857,6 +980,9 @@ async function sidePanelResume(id) {
 async function sidePanelComplete(id) {
   const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
   const members = await getGroupMembers(log);
+  if (log.role === 'Staging Checker') {
+    return openStagingCompleteModal(members);
+  }
   for (const m of members) await completeLogById(m.id, m);
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
