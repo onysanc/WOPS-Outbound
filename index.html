@@ -474,13 +474,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 // Tabs listed here require the password to be entered before they open. Once
 // unlocked, a tab stays unlocked for the rest of this browser session (until
 // the page is reloaded) — it does not ask again on every click.
-const PASSWORD_PROTECTED_VIEWS = ['ingestion', 'admin', 'export'];
-const TAB_PASSWORD = 'ANTHONY'; // default password
+const TAB_PASSWORDS = {
+  ingestion: 'OUTBOUND',
+  admin: 'OUTBOUND',
+  export: 'ANTHONY'
+};
 const unlockedViews = new Set();
 let pendingViewName = null;
 
 function setView(name) {
-  if (PASSWORD_PROTECTED_VIEWS.includes(name) && !unlockedViews.has(name)) {
+  if (TAB_PASSWORDS[name] && !unlockedViews.has(name)) {
     return openTabPasswordModal(name);
   }
   activateView(name);
@@ -516,7 +519,8 @@ function closeTabPasswordModal() {
 function submitTabPassword() {
   if (!pendingViewName) return closeTabPasswordModal();
   const entered = document.getElementById('tab-password-input').value;
-  if (entered.trim().toUpperCase() === TAB_PASSWORD) {
+  const expected = TAB_PASSWORDS[pendingViewName];
+  if (entered.trim().toUpperCase() === expected) {
     unlockedViews.add(pendingViewName);
     const name = pendingViewName;
     closeTabPasswordModal();
