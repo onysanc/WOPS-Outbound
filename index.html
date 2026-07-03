@@ -2683,7 +2683,29 @@ async function processUploads() {
   });
 
   statusEl.innerText = `Upserting ${formattedShipments.length} rows...`;
-  const { error } = await supabaseClient.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
+
+  // IMPORTANT: some rows carry a `status` key (PGI date present -> 'PICKED')
+  // and some deliberately omit it (no PGI date -> don't clobber an existing
+  // status). If those are upserted together in one array, PostgREST unifies
+  // the column list across the whole batch and fills the missing `status`
+  // values with the column's DEFAULT for every row that omitted it. Since
+  // `shipments.status` has no default, that resolves to NULL and trips the
+  // NOT NULL constraint. Splitting into two upserts keeps each request's
+  // column list consistent, so rows without `status` truly leave that
+  // column untouched on conflict (new rows still need `status` to have a
+  // DB-level default of 'PENDING' — see: alter table shipments alter
+  // column status set default 'PENDING';).
+  const withStatus = formattedShipments.filter(r => 'status' in r);
+  const withoutStatus = formattedShipments.filter(r => !('status' in r));
+
+  let error = null;
+  if (withStatus.length) {
+    ({ error } = await supabaseClient.from('shipments').upsert(withStatus, { onConflict: 'so_number' }));
+  }
+  if (!error && withoutStatus.length) {
+    ({ error } = await supabaseClient.from('shipments').upsert(withoutStatus, { onConflict: 'so_number' }));
+  }
+
   if (error) {
     statusEl.innerHTML = `<span class="text-rose-400">Failed: ${error.message}</span>`;
   } else {
