@@ -69,6 +69,7 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="export" onclick="setView('export')">Data Export</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="aging" onclick="setView('aging')">Pending / Aging</button>
       </nav>
     </div>
     <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
@@ -556,6 +557,62 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     <p class="text-[10px] text-slate-600">Productivity per stage = Target Minutes ÷ Actual Minutes × 100% (over 100% = finished faster than target).</p>
   </section>
 
+  <!-- ================= PENDING / AGING ================= -->
+  <section id="view-aging" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">⏳ Pending / Aging</h2>
+        <p class="text-xs text-slate-400">Every Sales Order still sitting at <span class="text-slate-300 font-semibold">PENDING</span> — no shipment movement yet: not Picked, not Staged, not Pulled, not Checked. Aging = days since the record was uploaded.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="text" id="aging-search" oninput="renderAgingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+        <button onclick="loadAgingData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
+        <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel</button>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-wrap items-end gap-3">
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date From</label>
+        <input type="date" id="aging-date-from" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date To</label>
+        <input type="date" id="aging-date-to" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+      </div>
+      <button onclick="clearAgingDateFilter()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Clear dates</button>
+      <div class="flex-1"></div>
+      <div class="flex gap-4 text-[11px]">
+        <div><span class="text-slate-500">Records:</span> <span id="aging-total-count" class="text-slate-200 font-bold">0</span></div>
+        <div><span class="text-slate-500">Total Qty:</span> <span id="aging-total-qty" class="text-amber-400 font-bold">0</span></div>
+        <div><span class="text-slate-500">Oldest:</span> <span id="aging-oldest" class="text-rose-400 font-bold">—</span></div>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th class="p-3 text-left">Sales Order</th>
+            <th class="p-3 text-left">Shipment</th>
+            <th class="p-3 text-left">OBD</th>
+            <th class="p-3 text-left">Customer</th>
+            <th class="p-3 text-left">Truck Type</th>
+            <th class="p-3 text-right">Qty</th>
+            <th class="p-3 text-center">Status</th>
+            <th class="p-3 text-center">Record Date</th>
+            <th class="p-3 text-center">Aging (Days)</th>
+          </tr>
+        </thead>
+        <tbody id="aging-rows" class="divide-y divide-slate-800/50">
+          <tr><td colspan="9" class="p-8 text-center text-slate-500 italic">Open this tab to load pending records.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="aging-count" class="text-[10px] text-slate-600"></p>
+    <p class="text-[10px] text-slate-600">A record only appears here while its status is PENDING — the moment it's flagged PICKED (PGI date lands, or a Picker completes it), it drops off this list and moves to the Workbench pipeline.</p>
+  </section>
+
 </main>
 
 <!-- ================= STICKY SIDE PANEL ================= -->
@@ -797,6 +854,7 @@ function activateView(name) {
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
+  if (name === 'aging') loadAgingData();
 }
 
 function openTabPasswordModal(name) {
@@ -2381,6 +2439,7 @@ function subscribeRealtime() {
 // Full milestone timeline per SO: one row per shipments line, with the most
 // recent Completed start/end pair for each of the four roles in the chain.
 let exportRawRows = [];
+let agingRawRows = [];
 
 async function loadExportData() {
   const tbody = document.getElementById('export-rows');
@@ -2565,6 +2624,145 @@ function exportDataToExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Timeline');
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(wb, `dispatch-timeline-${stamp}.xlsx`);
+  showToast(`Exported ${rows.length} line(s) to Excel.`, "success");
+}
+
+// --- PENDING / AGING ---
+// Every shipments row that hasn't moved yet: no shipment_no assigned to a
+// truck, not Picked (no PGI date and status never flagged PICKED), not
+// Staged, not Pulled, not Checked. Uses the exact same "effective status"
+// rule as refreshPipelineSummary() so this tab always agrees with the
+// Workbench pipeline counters — a row is only PENDING here if it's PENDING
+// everywhere else in the app too.
+async function loadAgingData() {
+  const tbody = document.getElementById('aging-rows');
+  tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+
+  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    return;
+  }
+
+  agingRawRows = (data || [])
+    .filter(row => {
+      // Same effective-status logic as refreshPipelineSummary(): a PGI date
+      // (or an explicit STAGED/PULLED/CHECKED flag) means it's no longer
+      // truly pending, even if `status` itself was left blank.
+      let effective = row.status;
+      if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
+        effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
+      }
+      return effective === 'PENDING' || !effective;
+    })
+    .map(row => ({
+      so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
+      customer: row.sold_to_party_name, truck_type: row.truck_type,
+      qty: rowQtySum(row), status: row.status || 'PENDING',
+      record_date: row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at)
+    }));
+
+  renderAgingTable();
+}
+
+function computeAgingDays(iso) {
+  if (!iso) return null;
+  const recorded = new Date(iso);
+  const now = new Date();
+  const msPerDay = 24 * 60 * 60 * 1000;
+  // Whole days elapsed since the record landed (floor, not round) — a record
+  // uploaded 3 hours ago shows as 0 days aged, not 1.
+  return Math.max(0, Math.floor((now - recorded) / msPerDay));
+}
+
+function fmtAgingDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString([], { year: 'numeric', month: 'short', day: '2-digit' });
+}
+
+function agingColorClass(days) {
+  if (days === null || days === undefined) return 'text-slate-500';
+  if (days >= 3) return 'text-rose-400 font-bold';
+  if (days >= 1) return 'text-amber-400 font-semibold';
+  return 'text-emerald-400 font-semibold';
+}
+
+function clearAgingDateFilter() {
+  document.getElementById('aging-date-from').value = '';
+  document.getElementById('aging-date-to').value = '';
+  renderAgingTable();
+}
+
+function filteredAgingRows() {
+  const searchText = (document.getElementById('aging-search').value || '').trim().toLowerCase();
+  const fromVal = document.getElementById('aging-date-from').value;
+  const toVal = document.getElementById('aging-date-to').value;
+  const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+  const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
+
+  return agingRawRows.filter(r => {
+    if (searchText) {
+      const hit = (r.so_number || '').toLowerCase().includes(searchText) ||
+        (r.shipment_no || '').toLowerCase().includes(searchText) ||
+        (r.obd_number || '').toLowerCase().includes(searchText) ||
+        (r.customer || '').toLowerCase().includes(searchText);
+      if (!hit) return false;
+    }
+    if (fromDate || toDate) {
+      if (!r.record_date) return false;
+      const recorded = new Date(r.record_date);
+      if (fromDate && recorded < fromDate) return false;
+      if (toDate && recorded > toDate) return false;
+    }
+    return true;
+  });
+}
+
+function renderAgingTable() {
+  const tbody = document.getElementById('aging-rows');
+  const rows = filteredAgingRows().sort((a, b) => (b.aging_days ?? 0) - (a.aging_days ?? 0));
+  document.getElementById('aging-count').innerText = `${rows.length} pending record(s)`;
+  document.getElementById('aging-total-count').innerText = rows.length;
+  document.getElementById('aging-total-qty').innerText = rows.reduce((s, r) => s + (r.qty || 0), 0).toLocaleString();
+  document.getElementById('aging-oldest').innerText = rows.length ? `${Math.max(...rows.map(r => r.aging_days ?? 0))}d` : '—';
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 italic">No pending records in range.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr class="hover:bg-slate-900/60 transition">
+      <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.shipment_no || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
+      <td class="p-3 max-w-[220px] truncate text-slate-400" title="${r.customer || ''}">${r.customer || '—'}</td>
+      <td class="p-3 text-slate-400 text-[11px]">${r.truck_type || '—'}</td>
+      <td class="p-3 text-right font-mono text-amber-400">${r.qty}</td>
+      <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-700/40 text-slate-300">${r.status}</span></td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
+      <td class="p-3 text-center font-mono text-[11px] ${agingColorClass(r.aging_days)}">${r.aging_days === null ? '—' : r.aging_days + 'd'}</td>
+    </tr>`).join('');
+}
+
+function exportAgingToExcel() {
+  const rows = filteredAgingRows();
+  if (!rows.length) return showToast("No rows to export.", "error");
+
+  const excelRows = rows.map(r => ({
+    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
+    'Customer': r.customer || '', 'Truck Type': r.truck_type || '', 'Qty': r.qty,
+    'Status': r.status, 'Record Date': fmtAgingDate(r.record_date),
+    'Aging (Days)': r.aging_days === null ? '' : r.aging_days
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(excelRows);
+  ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pending Aging');
+  const stamp = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `pending-aging-${stamp}.xlsx`);
   showToast(`Exported ${rows.length} line(s) to Excel.`, "success");
 }
 
