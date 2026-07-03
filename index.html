@@ -2655,10 +2655,40 @@ async function processUploads() {
     rawTrucks.forEach(t => { if (t["SO Number"]) truckMapping[String(t["SO Number"]).trim()] = t["Truck Type"]; });
   }
 
+  // The workflow only ever moves forward: PENDING -> PICKED -> STAGED -> PULLED
+  // -> CHECKED. A re-upload (e.g. a fresh daily file that doesn't have a PGI
+  // date for an SO yet) must never drag an SO that's already progressed
+  // further than that (e.g. already STAGED by a Staging Checker in the
+  // Workbench) back down to PENDING or PICKED. So before building the
+  // payload, look up each SO's CURRENT status in the DB and only let the
+  // upload push status forward, never backward.
+  const STATUS_ORDER = ['PENDING', 'PICKED', 'STAGED', 'PULLED', 'CHECKED'];
+  const rank = (st) => { const i = STATUS_ORDER.indexOf(st); return i === -1 ? 0 : i; };
+
+  const soNumbersInFile = [...new Set(rawShipments.map(s => String(s["SO Number"] || "").trim()).filter(Boolean))];
+  const existingStatusMap = {};
+  const lookupChunkSize = 300;
+  for (let i = 0; i < soNumbersInFile.length; i += lookupChunkSize) {
+    const chunk = soNumbersInFile.slice(i, i + lookupChunkSize);
+    const { data: existingRows, error: lookupErr } = await supabaseClient
+      .from('shipments').select('so_number,status').in('so_number', chunk);
+    if (lookupErr) {
+      statusEl.innerHTML = `<span class="text-rose-400">Failed to check existing statuses: ${lookupErr.message}</span>`;
+      return;
+    }
+    (existingRows || []).forEach(r => { existingStatusMap[r.so_number] = r.status; });
+  }
+
   const formattedShipments = rawShipments.map(s => {
     const soNum = String(s["SO Number"] || "").trim();
     const pgiRaw = s["PGI Date"];
     const pgiDate = pgiRaw instanceof Date ? pgiRaw.toISOString() : (pgiRaw ? new Date(pgiRaw).toISOString() : null);
+    // What this upload alone implies for status: a PGI date means at least
+    // PICKED, otherwise this row doesn't tell us anything beyond PENDING.
+    const uploadImpliedStatus = pgiDate ? 'PICKED' : 'PENDING';
+    const currentStatus = existingStatusMap[soNum] || 'PENDING';
+    // Never move status backward — whichever is further along the chain wins.
+    const finalStatus = rank(uploadImpliedStatus) > rank(currentStatus) ? uploadImpliedStatus : currentStatus;
     return {
       shipment_no: String(s["Shipment No."] || "").trim(),
       pgi_date: pgiDate,
@@ -2674,37 +2704,15 @@ async function processUploads() {
       // per-unit breakdown — rowQtySum() reads this directly for target math.
       quantity: parseFloat(String(s["Quantity"] || "0").replace(/,/g, '')),
       truck_type: truckMapping[soNum] || "4W",
-      // If this fresh upload already carries a PGI date, it's picked — say so
-      // explicitly. Otherwise DON'T send a status at all: leave it out of the
-      // payload so upsert doesn't clobber a status='PICKED' flag that a Picker
-      // may have already set for this SO from inside the app.
-      ...(pgiDate ? { status: 'PICKED' } : {})
+      // Always include status explicitly (every row, same shape) so PostgREST
+      // never has to fill in a missing value for a mixed batch — that was the
+      // root cause of the earlier "null value in column status" failures.
+      status: finalStatus
     };
   });
 
   statusEl.innerText = `Upserting ${formattedShipments.length} rows...`;
-
-  // IMPORTANT: some rows carry a `status` key (PGI date present -> 'PICKED')
-  // and some deliberately omit it (no PGI date -> don't clobber an existing
-  // status). If those are upserted together in one array, PostgREST unifies
-  // the column list across the whole batch and fills the missing `status`
-  // values with the column's DEFAULT for every row that omitted it. Since
-  // `shipments.status` has no default, that resolves to NULL and trips the
-  // NOT NULL constraint. Splitting into two upserts keeps each request's
-  // column list consistent, so rows without `status` truly leave that
-  // column untouched on conflict (new rows still need `status` to have a
-  // DB-level default of 'PENDING' — see: alter table shipments alter
-  // column status set default 'PENDING';).
-  const withStatus = formattedShipments.filter(r => 'status' in r);
-  const withoutStatus = formattedShipments.filter(r => !('status' in r));
-
-  let error = null;
-  if (withStatus.length) {
-    ({ error } = await supabaseClient.from('shipments').upsert(withStatus, { onConflict: 'so_number' }));
-  }
-  if (!error && withoutStatus.length) {
-    ({ error } = await supabaseClient.from('shipments').upsert(withoutStatus, { onConflict: 'so_number' }));
-  }
+  const { error } = await supabaseClient.from('shipments').upsert(formattedShipments, { onConflict: 'so_number' });
 
   if (error) {
     statusEl.innerHTML = `<span class="text-rose-400">Failed: ${error.message}</span>`;
