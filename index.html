@@ -717,6 +717,16 @@ function clearOperatorInput() {
   onOperatorChange();
 }
 
+// Resets the Shipment ID Reference field after a task is successfully
+// dispatched, same as clearOperatorInput above — clears the loaded manifest
+// too so the next lookup starts fresh instead of showing stale rows.
+function clearShipmentInput() {
+  const input = document.getElementById('target-shipment-no');
+  input.value = '';
+  currentManifestData = [];
+  renderManifestTable();
+}
+
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
 async function refreshShipmentDatalist() {
   const { data, error } = await supabaseClient.from('shipments').select('shipment_no').limit(500);
@@ -1017,7 +1027,7 @@ async function startRow(i) {
   }]);
   if (error) return showToast("Could not start row: " + error.message, "error");
   clearOperatorInput();
-  await fetchShipmentManifest();
+  clearShipmentInput();
   await refreshSidePanel();
   await refreshBulletinBoard();
 }
@@ -1430,7 +1440,7 @@ async function commitJobTransaction() {
   showToast(`Dispatched ${payload.length} line(s) as one grouped task.`, "success");
   document.getElementById('target-summary-card').classList.add('hidden');
   clearOperatorInput();
-  await fetchShipmentManifest();
+  clearShipmentInput();
   await refreshBulletinBoard();
   await refreshSidePanel();
 }
