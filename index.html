@@ -181,6 +181,7 @@
             <th class="p-3 text-right">Qty (Lines)</th>
             <th class="p-3 text-right">Volume (Units)</th>
             <th class="p-3 text-right">Active Hrs</th>
+            <th class="p-3 text-right">Productivity</th>
             <th class="p-3 text-right">Speed (Units/Hr)</th>
             <th class="p-3 text-right">Idle Time</th>
             <th class="p-3 text-center w-10"></th>
@@ -189,6 +190,7 @@
         <tbody id="bulletin-container" class="divide-y divide-slate-800/50"></tbody>
       </table>
     </div>
+    <p class="text-[10px] text-slate-600">Productivity = Active Hrs ÷ 6.5 (standard daily working hours) × 100%. Every personnel on file is listed for the selected Activity Day, even with zero logged activity.</p>
   </section>
 
   <!-- ================= INGESTION VIEW ================= -->
@@ -384,24 +386,25 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <th class="p-3 text-left" rowspan="2">OBD</th>
             <th class="p-3 text-left" rowspan="2">Customer</th>
             <th class="p-3 text-right" rowspan="2">Qty</th>
-            <th class="p-2 text-center border-l border-slate-800" colspan="3">Picker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-cyan-400" colspan="5">Staging</th>
-            <th class="p-2 text-center border-l border-slate-800 text-purple-400" colspan="3">Pulled</th>
-            <th class="p-2 text-center border-l border-slate-800 text-emerald-400" colspan="4">Check</th>
+            <th class="p-2 text-center border-l border-slate-800" colspan="5">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-cyan-400" colspan="7">Staging</th>
+            <th class="p-2 text-center border-l border-slate-800 text-purple-400" colspan="5">Pulled</th>
+            <th class="p-2 text-center border-l border-slate-800 text-emerald-400" colspan="6">Check</th>
           </tr>
           <tr class="text-[10px]">
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Staging Area</th><th class="p-2 text-center">Discrepancy</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Staging Area</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
           </tr>
         </thead>
         <tbody id="export-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="20" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
+          <tr><td colspan="28" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
         </tbody>
       </table>
     </div>
     <p id="export-count" class="text-[10px] text-slate-600"></p>
+    <p class="text-[10px] text-slate-600">Productivity per stage = Target Hours ÷ Actual Hours × 100% (over 100% = finished faster than target).</p>
   </section>
 
 </main>
@@ -1747,6 +1750,9 @@ function operationalDayWindowForDate(dateStr) {
 // Fetches every activity_logs row whose start_time falls in the selected
 // Activity Day's operational window, then hands off to renderBulletinBoard()
 // to aggregate per-personnel metrics (speed/volume/qty/shipments/idle time).
+let bulletinRosterNames = []; // full personnel roster (deduped by name, with every role they hold) — refreshed alongside bulletinRawData so the summary always lists everyone, not just people with logged activity
+const STANDARD_DAILY_HOURS = 6.5; // basis for the Productivity column below
+
 async function refreshBulletinBoard() {
   const dateInput = document.getElementById('bulletin-date');
   if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
@@ -1757,21 +1763,40 @@ async function refreshBulletinBoard() {
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
     .order('personnel_name').order('start_time');
   if (error) return console.error(error);
-
   bulletinRawData = data || [];
+
+  // Full personnel roster, regardless of role or whether they logged anything on
+  // this particular Activity Day — the Performance Summary should always list
+  // every name on file so absentees/zero-activity personnel are visible too.
+  const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role');
+  if (rosterErr) {
+    console.error(rosterErr);
+  } else {
+    const byName = {};
+    (roster || []).forEach(p => {
+      const key = (p.name || '').trim();
+      if (!key) return;
+      if (!byName[key]) byName[key] = new Set();
+      byName[key].add(p.role);
+    });
+    bulletinRosterNames = Object.entries(byName).map(([name, roles]) => ({ name, roles: [...roles] }));
+  }
+
   renderBulletinBoard();
 }
 
 // Builds the per-personnel performance table for the selected Activity Day.
+// Every personnel on file is listed, even with zero logged activity that day.
 // Metrics are computed from Completed logs only (Ongoing/Paused tasks don't
 // have a reliable end_time/rendered_minutes yet):
-//   - Shipments : distinct shipment_no touched that day
-//   - Qty       : number of shipment lines (activity_log rows) completed
-//   - Volume    : sum of total_qty (units) across those lines
-//   - Active Hrs: sum of rendered_minutes (actual worked time, breaks/pauses excluded)
-//   - Speed     : Volume / Active Hrs (units per hour)
-//   - Idle Time : sum of gaps between one completed task's end_time and the
-//                 next task's start_time, task-to-task, for that personnel
+//   - Shipments   : distinct shipment_no touched that day
+//   - Qty         : number of shipment lines (activity_log rows) completed
+//   - Volume      : sum of total_qty (units) across those lines
+//   - Active Hrs  : sum of rendered_minutes (actual worked time, breaks/pauses excluded)
+//   - Productivity: Active Hrs ÷ 6.5 (standard daily working hours) × 100%
+//   - Speed       : Volume / Active Hrs (units per hour)
+//   - Idle Time   : sum of gaps between one completed task's end_time and the
+//                   next task's start_time, task-to-task, for that personnel
 function renderBulletinBoard() {
   const container = document.getElementById('bulletin-container');
   const searchText = (document.getElementById('bulletin-search')?.value || '').trim().toLowerCase();
@@ -1785,16 +1810,24 @@ function renderBulletinBoard() {
     byPersonnel[key].push(log);
   });
 
+  // Always list every personnel on file for this Activity Day, even with zero
+  // logged activity — merge in anyone from the roster who isn't already present.
+  const rosterRolesByName = {};
+  bulletinRosterNames.forEach(p => {
+    rosterRolesByName[p.name] = p.roles;
+    if (!byPersonnel[p.name]) byPersonnel[p.name] = [];
+  });
+
   let personnelNames = Object.keys(byPersonnel).sort();
   if (searchText) {
     personnelNames = personnelNames.filter(name => {
-      const roles = [...new Set(byPersonnel[name].map(l => l.role))].join(' ').toLowerCase();
+      const roles = [...new Set(byPersonnel[name].map(l => l.role))].concat(rosterRolesByName[name] || []).join(' ').toLowerCase();
       return name.toLowerCase().includes(searchText) || roles.includes(searchText);
     });
   }
 
   if (!personnelNames.length) {
-    container.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-500 italic">${searchText ? 'No personnel match found.' : 'No activity logged for this Activity Day.'}</td></tr>`;
+    container.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">${searchText ? 'No personnel match found.' : 'No personnel on file yet.'}</td></tr>`;
     return;
   }
 
@@ -1808,7 +1841,7 @@ function renderBulletinBoard() {
 
   container.innerHTML = personnelNames.map((name, pi) => {
     const logs = byPersonnel[name];
-    const roles = [...new Set(logs.map(l => l.role))];
+    const roles = logs.length ? [...new Set(logs.map(l => l.role))] : (rosterRolesByName[name] || []);
     const completed = logs.filter(l => l.status === 'Completed');
 
     const shipments = new Set(completed.map(l => l.shipment_no).filter(Boolean)).size;
@@ -1817,6 +1850,8 @@ function renderBulletinBoard() {
     const activeMinutes = completed.reduce((s, l) => s + (l.rendered_minutes || 0), 0);
     const activeHours = activeMinutes / 60;
     const speed = activeHours > 0 ? volume / activeHours : 0;
+    const productivityPct = (activeHours / STANDARD_DAILY_HOURS) * 100;
+    const productivityColor = productivityPct >= 100 ? 'text-emerald-400' : productivityPct >= 70 ? 'text-amber-400' : 'text-rose-400';
 
     // Idle time, task-to-task: sort ALL of this personnel's logs for the day by
     // start_time, then measure the gap between each Completed task's end_time
@@ -1834,7 +1869,9 @@ function renderBulletinBoard() {
     const idleMinutes = gaps.reduce((s, g) => s + g.minutes, 0);
 
     const panelId = `perf-detail-${pi}`;
-    const gapRows = gaps.length
+    const gapRows = logs.length === 0
+      ? '<div class="text-slate-600 italic py-1">No activity logged for this Activity Day.</div>'
+      : gaps.length
       ? gaps.map(g => `
           <div class="flex justify-between py-1 border-b border-slate-900 last:border-0">
             <span class="text-slate-500">After <span class="text-slate-300 font-mono">${g.afterShipment || '—'}</span> → before <span class="text-slate-300 font-mono">${g.beforeShipment || '—'}</span></span>
@@ -1851,6 +1888,7 @@ function renderBulletinBoard() {
         <td class="p-3 text-right font-mono text-slate-300">${qtyLines}</td>
         <td class="p-3 text-right font-mono text-amber-400 font-semibold">${volume.toFixed(2)}</td>
         <td class="p-3 text-right font-mono text-slate-300">${fmtHrs(activeHours)}</td>
+        <td class="p-3 text-right font-mono font-semibold ${productivityColor}">${productivityPct.toFixed(1)}%</td>
         <td class="p-3 text-right font-mono text-emerald-400 font-semibold">${speed.toFixed(2)}</td>
         <td class="p-3 text-right font-mono ${idleMinutes > 60 ? 'text-rose-400 font-bold' : 'text-slate-300'}">${fmtMinutes(idleMinutes)}</td>
         <td class="p-3 text-center">
@@ -1858,7 +1896,7 @@ function renderBulletinBoard() {
         </td>
       </tr>
       <tr id="${panelId}" class="hidden bg-slate-950/60">
-        <td colspan="10" class="px-4 pb-3 pt-0">
+        <td colspan="11" class="px-4 pb-3 pt-0">
           <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-[11px]">
             <div class="text-slate-500 uppercase tracking-wider text-[10px] font-semibold mb-1">Task-to-task idle gaps</div>
             ${gapRows}
@@ -1899,12 +1937,12 @@ let exportRawRows = [];
 
 async function loadExportData() {
   const tbody = document.getElementById('export-rows');
-  tbody.innerHTML = `<tr><td colspan="20" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="28" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false });
   if (shipErr) {
     console.error(shipErr);
-    tbody.innerHTML = `<tr><td colspan="20" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="28" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
     return;
   }
 
@@ -1916,7 +1954,7 @@ async function loadExportData() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data, error } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,personnel_name,start_time,end_time,status,discrepancy_type,discrepancy_qty,staging_areas')
+        .select('so_number,role,personnel_name,start_time,end_time,status,discrepancy_type,discrepancy_qty,staging_areas,remarks,target_hours,rendered_minutes')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!error) logs.push(...(data || []));
       else console.error(error);
@@ -1939,15 +1977,41 @@ async function loadExportData() {
       so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
       customer: row.sold_to_party_name, qty: rowQtySum(row),
       pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+      pick_remarks: pick?.remarks || null, pick_productivity: calcProductivityPct(pick),
       stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
       staging_area: stage?.staging_areas || null, stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
+      stage_remarks: stage?.remarks || null, stage_productivity: calcProductivityPct(stage),
       pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+      pull_remarks: pull?.remarks || null, pull_productivity: calcProductivityPct(pull),
       check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
-      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null
+      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
+      check_remarks: check?.remarks || null, check_productivity: calcProductivityPct(check)
     };
   });
 
   renderExportTable();
+}
+
+// Per-stage Productivity for the export table: Target Hours (the pre-computed
+// allotment for that task, already stored on the log at dispatch time) versus
+// Actual Hours actually taken (rendered_minutes). Over 100% = finished faster
+// than target; under 100% = took longer than target. Null when there isn't
+// enough data (no target set, or zero recorded time) to compute a ratio.
+function calcProductivityPct(log) {
+  if (!log) return null;
+  const targetHrs = parseFloat(log.target_hours);
+  const actualHrs = (log.rendered_minutes || 0) / 60;
+  if (!targetHrs || targetHrs <= 0 || actualHrs <= 0) return null;
+  return (targetHrs / actualHrs) * 100;
+}
+
+function fmtProductivity(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return '—';
+  return `${pct.toFixed(0)}%`;
+}
+function productivityColorClass(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return 'text-slate-500';
+  return pct >= 100 ? 'text-emerald-400 font-semibold' : pct >= 70 ? 'text-amber-400 font-semibold' : 'text-rose-400 font-semibold';
 }
 
 function fmtExportDT(iso) {
@@ -1974,7 +2038,11 @@ function filteredExportRows() {
     (r.stage_name || '').toLowerCase().includes(searchText) ||
     (r.pull_name || '').toLowerCase().includes(searchText) ||
     (r.check_name || '').toLowerCase().includes(searchText) ||
-    (r.staging_area || []).join(' ').toLowerCase().includes(searchText)
+    (r.staging_area || []).join(' ').toLowerCase().includes(searchText) ||
+    (r.pick_remarks || '').toLowerCase().includes(searchText) ||
+    (r.stage_remarks || '').toLowerCase().includes(searchText) ||
+    (r.pull_remarks || '').toLowerCase().includes(searchText) ||
+    (r.check_remarks || '').toLowerCase().includes(searchText)
   );
 }
 
@@ -1984,7 +2052,7 @@ function renderExportTable() {
   document.getElementById('export-count').innerText = `${rows.length} line(s)`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="20" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="28" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
     return;
   }
 
@@ -1998,18 +2066,26 @@ function renderExportTable() {
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pick_remarks || ''}">${r.pick_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pick_productivity)}">${fmtProductivity(r.pick_productivity)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
       <td class="p-3 text-center text-[10px] text-cyan-300">${(r.staging_area || []).join(', ') || '—'}</td>
       <td class="p-3 text-center text-[10px] ${r.stage_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.stage_remarks || ''}">${r.stage_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.stage_productivity)}">${fmtProductivity(r.stage_productivity)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pull_remarks || ''}">${r.pull_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pull_productivity)}">${fmtProductivity(r.pull_productivity)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
       <td class="p-3 text-center text-[10px] ${r.check_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.check_remarks || ''}">${r.check_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.check_productivity)}">${fmtProductivity(r.check_productivity)}</td>
     </tr>`).join('');
 }
 
@@ -2021,17 +2097,23 @@ function exportDataToExcel() {
     'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
     'Customer': r.customer || '', 'Qty': r.qty,
     'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
+    'Picker Remarks': r.pick_remarks || '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
     'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
     'Staging Area': (r.staging_area || []).join(', '), 'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
+    'Staging Remarks': r.stage_remarks || '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
     'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
+    'Pulled Remarks': r.pull_remarks || '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
     'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
-    'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)
+    'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty),
+    'Check Remarks': r.check_remarks || '', 'Check Productivity': fmtProductivity(r.check_productivity)
   }));
 
   const ws = XLSX.utils.json_to_sheet(excelRows);
   ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 8 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }];
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Timeline');
   const stamp = new Date().toISOString().slice(0, 10);
