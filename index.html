@@ -126,17 +126,12 @@
               <th class="p-3">Route</th>
               <th class="p-3 text-center">Truck</th>
               <th class="p-3 text-center">Status</th>
-              <th class="p-3 text-right">CV</th>
-              <th class="p-3 text-right">BX</th>
-              <th class="p-3 text-right">PAC</th>
-              <th class="p-3 text-right">TRY</th>
-              <th class="p-3 text-right">PC</th>
-              <th class="p-3 text-right">KG</th>
+              <th class="p-3 text-right">Qty</th>
               <th class="p-3 text-center">Row Action</th>
             </tr>
           </thead>
           <tbody id="manifest-rows" class="divide-y divide-slate-800/50">
-            <tr><td colspan="14" class="p-8 text-center text-slate-500 italic">Type a Shipment ID above to load matching lines.</td></tr>
+            <tr><td colspan="9" class="p-8 text-center text-slate-500 italic">Type a Shipment ID above to load matching lines.</td></tr>
           </tbody>
         </table>
       </div>
@@ -204,10 +199,23 @@
       <div>
         <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
         <input type="file" id="shipment-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer" />
+        <div class="mt-2">
+          <button type="button" onclick="document.getElementById('shipment-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300">⇄ Or paste rows copied from Excel instead</button>
+          <div id="shipment-paste-wrap" class="hidden mt-2">
+            <textarea id="shipment-paste" rows="5" placeholder="Copy the rows from Excel (including the header row) and paste here. Expected columns: Shipment No., PGI Date, SO Number, OBD Number, Billing Number, Route Description, Ship To Party Name, SO Amount, Quantity" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+          </div>
+        </div>
+        <p class="text-[10px] text-slate-600 mt-1">Columns expected (any order): <span class="text-slate-500">Shipment No., PGI Date, SO Number, OBD Number, Billing Number, Route Description, Ship To Party Name, SO Amount, Quantity</span></p>
       </div>
       <div class="pt-2 border-t border-slate-800/60">
         <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
         <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
+        <div class="mt-2">
+          <button type="button" onclick="document.getElementById('truck-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-blue-400 hover:text-blue-300">⇄ Or paste rows copied from Excel instead</button>
+          <div id="truck-paste-wrap" class="hidden mt-2">
+            <textarea id="truck-paste" rows="4" placeholder="Copy the rows from Excel (including the header row) and paste here. Expected columns: SO Number, Truck Type" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+          </div>
+        </div>
       </div>
       <button onclick="processUploads()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs py-2 px-4 rounded-lg transition">Execute Mass Database Refresh (upsert on SO Number)</button>
       <p id="ingestion-status" class="text-xs text-slate-500"></p>
@@ -245,7 +253,7 @@
           <input type="text" id="md-route" placeholder="e.g. 1102 --> MANILA" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
         </div>
         <div class="sm:col-span-2">
-          <label class="block text-[10px] text-slate-500 mb-1">Sold To Party Name</label>
+          <label class="block text-[10px] text-slate-500 mb-1">Ship To Party Name</label>
           <input type="text" id="md-customer" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
         </div>
         <div>
@@ -264,28 +272,8 @@
           </select>
         </div>
         <div>
-          <label class="block text-[10px] text-slate-500 mb-1">CV</label>
-          <input type="number" step="1" min="0" id="md-cv" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">BX</label>
-          <input type="number" step="1" min="0" id="md-bx" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">PAC</label>
-          <input type="number" step="1" min="0" id="md-pac" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">TRY</label>
-          <input type="number" step="1" min="0" id="md-try" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">PC</label>
-          <input type="number" step="1" min="0" id="md-pc" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">KG</label>
-          <input type="number" step="0.01" min="0" id="md-kg" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+          <label class="block text-[10px] text-slate-500 mb-1">Quantity</label>
+          <input type="number" step="1" min="0" id="md-quantity" value="0" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
         </div>
         <div>
           <label class="block text-[10px] text-slate-500 mb-1">Status</label>
@@ -401,7 +389,7 @@
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">All Active Lines</h3>
     <button onclick="refreshSidePanel()" class="text-[10px] text-slate-500 hover:text-emerald-400">↻ refresh</button>
   </div>
-  <div id="side-panel-list" class="space-y-2">
+  <div id="side-panel-list" class="grid grid-cols-2 gap-2">
     <p class="text-[11px] text-slate-600 italic">Loading...</p>
   </div>
 </aside>
@@ -856,12 +844,7 @@ function renderManifestTable() {
         </td>
         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${row.truck_type || 'Unset'}</span></td>
         <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${statusColor}">${status}</span></td>
-        <td class="p-3 text-right font-mono text-amber-500">${row.cv}</td>
-        <td class="p-3 text-right font-mono text-blue-400">${row.bx}</td>
-        <td class="p-3 text-right font-mono text-purple-400">${row.pac}</td>
-        <td class="p-3 text-right font-mono text-teal-400">${row.try_qty}</td>
-        <td class="p-3 text-right font-mono text-pink-400">${row.pc}</td>
-        <td class="p-3 text-right font-mono text-emerald-400">${row.kg}</td>
+        <td class="p-3 text-right font-mono text-amber-400 font-semibold">${rowQtySum(row)}</td>
         <td class="p-3 text-center whitespace-nowrap">${actionHtml}</td>
       </tr>`;
   });
@@ -869,7 +852,14 @@ function renderManifestTable() {
   recalcSummary();
 }
 
-function rowQtySum(row) { return (row.cv || 0) + (row.bx || 0) + (row.pac || 0) + (row.try_qty || 0) + (row.pc || 0) + (row.kg || 0); }
+// Total quantity for a row: uses the new single "quantity" column when present;
+// falls back to summing the legacy per-unit columns (cv/bx/pac/try_qty/pc/kg)
+// for older rows uploaded before the format change, so target-hour math and
+// historical data both keep working without needing a backfill.
+function rowQtySum(row) {
+  if (row.quantity !== null && row.quantity !== undefined && row.quantity !== '') return Number(row.quantity) || 0;
+  return (row.cv || 0) + (row.bx || 0) + (row.pac || 0) + (row.try_qty || 0) + (row.pc || 0) + (row.kg || 0);
+}
 function speedRateFor(truckType) {
   return ["AUV", "4W", "6W", "10W", "20F", "40"].includes((truckType || '').toUpperCase()) ? 180 : 110;
 }
@@ -1475,60 +1465,60 @@ async function refreshSidePanel() {
       // Picker name is the primary reference here — it's how a picker recognizes
       // they already have a pending/ongoing task before starting a new one.
       return `
-        <div class="bg-slate-900 border ${isOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2.5 space-y-2">
-          <div class="flex justify-between items-start cursor-pointer" onclick="toggleBatchDetail('${panelId}')">
-            <div>
-              <div class="text-[9px] uppercase tracking-wider text-slate-500">${rep.role}</div>
-              <div class="text-sm font-black text-emerald-400 leading-tight">👤 ${rep.personnel_name}</div>
+        <div class="bg-slate-900 border ${isOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2 space-y-1.5 min-w-0">
+          <div class="flex justify-between items-start gap-1 cursor-pointer" onclick="toggleBatchDetail('${panelId}')">
+            <div class="min-w-0">
+              <div class="text-[8px] uppercase tracking-wider text-slate-500">${rep.role}</div>
+              <div class="text-[11px] font-black text-emerald-400 leading-tight truncate">👤 ${rep.personnel_name}</div>
             </div>
-            <span class="text-[9px] px-1.5 py-0.5 rounded shrink-0 ${rep.status === 'Ongoing' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}">${rep.status}</span>
+            <span class="text-[8px] px-1 py-0.5 rounded shrink-0 ${rep.status === 'Ongoing' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}">${rep.status}</span>
           </div>
-          <div class="grid grid-cols-3 gap-2 text-center bg-slate-950 border border-slate-800/60 rounded-lg py-2">
+          <div class="grid grid-cols-3 gap-1 text-center bg-slate-950 border border-slate-800/60 rounded-lg py-1.5">
             <div>
-              <div class="text-[9px] text-slate-500 uppercase">Qty</div>
-              <div class="text-xs font-black text-amber-400 font-mono">${batchQty}</div>
+              <div class="text-[8px] text-slate-500 uppercase">Qty</div>
+              <div class="text-[11px] font-black text-amber-400 font-mono">${batchQty}</div>
+            </div>
+            <div class="min-w-0">
+              <div class="text-[8px] text-slate-500 uppercase">Cust${customers.length > 1 ? 's' : ''}</div>
+              <div class="text-[9px] text-slate-300 truncate px-0.5" title="${customers.join(', ')}">${customers.length ? (customers.length > 1 ? customers.length + ' custs' : customers[0]) : '—'}</div>
             </div>
             <div>
-              <div class="text-[9px] text-slate-500 uppercase">Customer${customers.length > 1 ? 's' : ''}</div>
-              <div class="text-[10px] text-slate-300 truncate px-1" title="${customers.join(', ')}">${customers.length ? (customers.length > 1 ? customers.length + ' custs' : customers[0]) : '—'}</div>
-            </div>
-            <div>
-              <div class="text-[9px] text-slate-500 uppercase">OBDs</div>
-              <div class="text-xs font-black text-blue-400 font-mono">${obdCount}</div>
+              <div class="text-[8px] text-slate-500 uppercase">OBDs</div>
+              <div class="text-[11px] font-black text-blue-400 font-mono">${obdCount}</div>
             </div>
           </div>
-          ${rep.role === 'Puller' ? `<div class="text-[10px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded px-2 py-1 font-mono">📍 Staging: ${batchStagingAreas.length ? batchStagingAreas.join(', ') : 'No staging area on file'}</div>` : ''}
-          <div class="flex justify-between items-center text-[10px]">
-            <span class="text-slate-500">Target <span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-blue-400'} font-mono font-semibold">${target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${isOverdue ? ' ⚠' : ''}</span>
-            <button onclick="event.stopPropagation(); toggleBatchDetail('${panelId}')" class="text-[10px] text-slate-400 hover:text-emerald-400 font-semibold">▾ ${members.length} line${members.length > 1 ? 's' : ''}</button>
+          ${rep.role === 'Puller' ? `<div class="text-[9px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 rounded px-1.5 py-1 font-mono truncate">📍 ${batchStagingAreas.length ? batchStagingAreas.join(', ') : 'No staging area'}</div>` : ''}
+          <div class="flex justify-between items-center text-[9px] gap-1">
+            <span class="text-slate-500 truncate">Tgt <span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-blue-400'} font-mono font-semibold">${target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${isOverdue ? ' ⚠' : ''}</span>
+            <button onclick="event.stopPropagation(); toggleBatchDetail('${panelId}')" class="text-[9px] text-slate-400 hover:text-emerald-400 font-semibold shrink-0">▾ ${members.length}L</button>
           </div>
           <div id="${panelId}" class="hidden space-y-1.5 pt-1.5 border-t border-slate-800">${lineDetails}</div>
           <div class="flex gap-1 pt-1">
             ${rep.status === 'Ongoing'
-              ? `<button onclick="sidePanelPause(${rep.id})" class="flex-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white rounded py-1">Pause</button>
-                 <button onclick="sidePanelComplete(${rep.id})" class="flex-1 text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white rounded py-1">Complete</button>`
-              : `<button onclick="sidePanelResume(${rep.id})" class="flex-1 text-[10px] bg-amber-600 hover:bg-amber-500 text-white rounded py-1">Resume</button>
-                 <button onclick="sidePanelUnassign(${rep.id})" class="flex-1 text-[10px] bg-rose-700 hover:bg-rose-600 text-white rounded py-1">Unassign</button>`}
+              ? `<button onclick="sidePanelPause(${rep.id})" class="flex-1 text-[9px] bg-blue-600 hover:bg-blue-500 text-white rounded py-1">Pause</button>
+                 <button onclick="sidePanelComplete(${rep.id})" class="flex-1 text-[9px] bg-emerald-600 hover:bg-emerald-500 text-white rounded py-1">Done</button>`
+              : `<button onclick="sidePanelResume(${rep.id})" class="flex-1 text-[9px] bg-amber-600 hover:bg-amber-500 text-white rounded py-1">Resume</button>
+                 <button onclick="sidePanelUnassign(${rep.id})" class="flex-1 text-[9px] bg-rose-700 hover:bg-rose-600 text-white rounded py-1">Unassign</button>`}
           </div>
         </div>`;
     }).join('');
 
     return `
-      <div class="bg-slate-900 border ${anyOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2.5 space-y-2">
-        <div class="flex justify-between items-center">
-          <div>
-            <span class="text-[9px] uppercase tracking-wider text-slate-500 block">Dispatch</span>
-            <span class="text-xs font-black text-emerald-400 font-mono">${shipmentNo}</span>
+      <div class="bg-slate-900 border ${anyOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2 space-y-1.5 min-w-0">
+        <div class="flex justify-between items-center gap-1">
+          <div class="min-w-0">
+            <span class="text-[8px] uppercase tracking-wider text-slate-500 block">Dispatch</span>
+            <span class="text-[11px] font-black text-emerald-400 font-mono truncate block">${shipmentNo}</span>
           </div>
-          <div class="text-right">
-            <span class="text-[9px] uppercase tracking-wider text-slate-500 block">Target Complete</span>
-            <span class="text-[11px] font-mono font-bold ${anyOverdue ? 'text-rose-400' : 'text-blue-400'}">${latestTarget.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          <div class="text-right shrink-0">
+            <span class="text-[8px] uppercase tracking-wider text-slate-500 block">Target</span>
+            <span class="text-[10px] font-mono font-bold ${anyOverdue ? 'text-rose-400' : 'text-blue-400'}">${latestTarget.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
         </div>
         <div class="space-y-1.5">${batchCardsHtml}</div>
         <div class="flex justify-between items-center pt-1 border-t border-slate-800">
-          <span class="text-[10px] text-slate-500 uppercase tracking-wider">Total Qty</span>
-          <span class="text-sm font-black text-amber-400 font-mono">${totalQty}</span>
+          <span class="text-[9px] text-slate-500 uppercase tracking-wider">Total Qty</span>
+          <span class="text-xs font-black text-amber-400 font-mono">${totalQty}</span>
         </div>
       </div>`;
   }).join('');
@@ -1921,12 +1911,7 @@ async function submitManualDispatch(e) {
     route_description: document.getElementById('md-route').value.trim(),
     sold_to_party_name: document.getElementById('md-customer').value.trim(),
     so_amount: parseFloat(document.getElementById('md-so-amount').value) || 0,
-    cv: parseFloat(document.getElementById('md-cv').value) || 0,
-    bx: parseFloat(document.getElementById('md-bx').value) || 0,
-    pac: parseFloat(document.getElementById('md-pac').value) || 0,
-    try_qty: parseFloat(document.getElementById('md-try').value) || 0,
-    pc: parseFloat(document.getElementById('md-pc').value) || 0,
-    kg: parseFloat(document.getElementById('md-kg').value) || 0,
+    quantity: parseFloat(document.getElementById('md-quantity').value) || 0,
     truck_type: document.getElementById('md-truck-type').value,
     status: document.getElementById('md-status').value,
     pgi_date: document.getElementById('md-status').value === 'PICKED' ? new Date().toISOString() : null
@@ -1947,15 +1932,33 @@ async function submitManualDispatch(e) {
   showToast(`SO ${row.so_number} added — now visible on the Workbench manifest.`, "success");
   document.getElementById('manual-dispatch-form').reset();
   // Restore the numeric qty defaults the reset() call clears back to blank.
-  ['md-cv','md-bx','md-pac','md-try','md-pc','md-kg'].forEach(id => { document.getElementById(id).value = '0'; });
+  ['md-quantity'].forEach(id => { document.getElementById(id).value = '0'; });
   await refreshShipmentDatalist();
+}
+
+// Parses text copied straight out of Excel (tab-separated cells, one row per
+// line, header row first) into the same array-of-objects shape that
+// XLSX.utils.sheet_to_json() produces from a file, so both paste and file
+// upload paths can feed the same formatting logic below.
+function parsePastedTable(text) {
+  const lines = text.replace(/\r/g, '').split('\n').map(l => l).filter(l => l.trim() !== '');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split('\t').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const cells = line.split('\t');
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = cells[i] !== undefined ? cells[i].trim() : ''; });
+    return obj;
+  });
 }
 
 async function processUploads() {
   const shipmentFile = document.getElementById('shipment-file').files[0];
   const truckFile = document.getElementById('truck-file').files[0];
+  const shipmentPaste = document.getElementById('shipment-paste').value.trim();
+  const truckPaste = document.getElementById('truck-paste').value.trim();
   const statusEl = document.getElementById('ingestion-status');
-  if (!shipmentFile) return showToast("Please attach the Shipment dataset file first.", "error");
+  if (!shipmentFile && !shipmentPaste) return showToast("Attach the Shipment dataset file, or paste rows copied from Excel, first.", "error");
 
   const readExcelJson = (file) => new Promise((resolve) => {
     const reader = new FileReader();
@@ -1968,11 +1971,11 @@ async function processUploads() {
     reader.readAsArrayBuffer(file);
   });
 
-  statusEl.innerText = "Reading spreadsheets...";
-  const rawShipments = await readExcelJson(shipmentFile);
+  statusEl.innerText = "Reading data...";
+  const rawShipments = shipmentFile ? await readExcelJson(shipmentFile) : parsePastedTable(shipmentPaste);
   let truckMapping = {};
-  if (truckFile) {
-    const rawTrucks = await readExcelJson(truckFile);
+  if (truckFile || truckPaste) {
+    const rawTrucks = truckFile ? await readExcelJson(truckFile) : parsePastedTable(truckPaste);
     rawTrucks.forEach(t => { if (t["SO Number"]) truckMapping[String(t["SO Number"]).trim()] = t["Truck Type"]; });
   }
 
@@ -1987,10 +1990,13 @@ async function processUploads() {
       obd_number: String(s["OBD Number"] || "").trim(),
       billing_number: String(s["Billing Number"] || "").trim(),
       route_description: s["Route Description"],
-      sold_to_party_name: s["Sold To Party Name"],
+      // "Ship To Party Name" is the current column name; older files/pastes
+      // that still use "Sold To Party Name" continue to work as a fallback.
+      sold_to_party_name: s["Ship To Party Name"] ?? s["Sold To Party Name"],
       so_amount: parseFloat(String(s["SO Amount"] || "0").replace(/,/g, '')),
-      cv: parseFloat(s["CV"] || 0), bx: parseFloat(s["BX"] || 0), pac: parseFloat(s["PAC"] || 0),
-      try_qty: parseFloat(s["TRY"] || 0), pc: parseFloat(s["PC"] || 0), kg: parseFloat(s["KG"] || 0),
+      // Single total Quantity column replaces the old CV/BX/PAC/TRY/PC/KG
+      // per-unit breakdown — rowQtySum() reads this directly for target math.
+      quantity: parseFloat(String(s["Quantity"] || "0").replace(/,/g, '')),
       truck_type: truckMapping[soNum] || "4W",
       // If this fresh upload already carries a PGI date, it's picked — say so
       // explicitly. Otherwise DON'T send a status at all: leave it out of the
