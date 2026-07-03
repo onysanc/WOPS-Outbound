@@ -305,6 +305,17 @@
         </select>
         <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">+</button>
       </form>
+      <div class="pt-1">
+        <button type="button" onclick="document.getElementById('personnel-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300">⇄ Or paste rows copied from Excel instead</button>
+        <div id="personnel-paste-wrap" class="hidden mt-2 space-y-2">
+          <textarea id="personnel-paste" rows="4" placeholder="Personnel	Designation
+J. BARRICA	Picker
+J. SO	Staging Checker" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+          <p class="text-[10px] text-slate-600">Header row required: <span class="text-slate-500">Personnel, Designation</span>. Designation must exactly match: <span class="text-slate-500">Picker, Staging Checker, Puller, Outbound Checker</span>.</p>
+          <button type="button" onclick="importPersonnelPaste()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">Import Pasted Personnel</button>
+          <p id="personnel-paste-status" class="text-[11px] text-slate-500"></p>
+        </div>
+      </div>
       <div id="personnel-list-container" class="space-y-3 max-h-[420px] overflow-y-auto"></div>
     </div>
 
@@ -314,6 +325,18 @@
         <input type="text" id="staging-area-name-input" placeholder="e.g. Bay 1, Dock A" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
         <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">+</button>
       </form>
+      <div class="pt-1">
+        <button type="button" onclick="document.getElementById('staging-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300">⇄ Or paste rows copied from Excel instead</button>
+        <div id="staging-paste-wrap" class="hidden mt-2 space-y-2">
+          <textarea id="staging-paste" rows="4" placeholder="Staging Area
+SA01
+SA02
+SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+          <p class="text-[10px] text-slate-600">Header row required: <span class="text-slate-500">Staging Area</span> — one area name per line after that.</p>
+          <button type="button" onclick="importStagingAreaPaste()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">Import Pasted Staging Areas</button>
+          <p id="staging-paste-status" class="text-[11px] text-slate-500"></p>
+        </div>
+      </div>
       <div id="staging-area-list-container" class="space-y-1 max-h-[420px] overflow-y-auto"></div>
       <p class="text-[10px] text-slate-600 border-t border-slate-800/60 pt-3">This is the masterlist a Staging Checker picks from when confirming a check — at least one area is required per completion.</p>
     </div>
@@ -571,6 +594,11 @@ function activateView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  // "All Active Lines" side panel is only relevant to the Workbench — hide it
+  // everywhere else so it doesn't take up space on unrelated tabs.
+  const sidePanel = document.getElementById('side-panel');
+  if (sidePanel) sidePanel.classList.toggle('lg:block', name === 'workbench');
+  if (sidePanel) sidePanel.classList.toggle('hidden', name !== 'workbench');
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
@@ -2072,6 +2100,39 @@ async function refreshStagingAreas() {
   allStagingAreas = data || [];
 }
 
+// Bulk-import staging areas pasted straight from Excel — expects a single
+// "Staging Area" column, header row first, one area name per line after that.
+async function importStagingAreaPaste() {
+  const statusEl = document.getElementById('staging-paste-status');
+  const raw = document.getElementById('staging-paste').value.trim();
+  if (!raw) return showToast("Paste some rows first.", "error");
+
+  const rows = parsePastedTable(raw);
+  const headerKey = rows.length ? Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'staging area') : null;
+  if (!rows.length || !headerKey) {
+    statusEl.innerHTML = `<span class="text-rose-400">Could not find a "Staging Area" header in the pasted text.</span>`;
+    return;
+  }
+
+  const names = [...new Set(rows.map(r => String(r[headerKey] || '').trim()).filter(Boolean))];
+  if (!names.length) {
+    statusEl.innerHTML = `<span class="text-rose-400">No area names found under "Staging Area".</span>`;
+    return;
+  }
+
+  statusEl.innerText = `Importing ${names.length} staging area(s)...`;
+  const { error } = await supabaseClient.from('staging_areas').insert(names.map(name => ({ name })));
+  if (error) {
+    statusEl.innerHTML = `<span class="text-rose-400">Failed: ${error.message}</span>`;
+    return showToast("Could not import staging areas: " + error.message, "error");
+  }
+  statusEl.innerHTML = `<span class="text-emerald-400">Imported ${names.length} staging area(s).</span>`;
+  showToast(`${names.length} staging area(s) added.`, "success");
+  document.getElementById('staging-paste').value = '';
+  await refreshStagingAreaAdminList();
+  await refreshStagingAreas();
+}
+
 // --- ADMIN: PERSONNEL ---
 async function addPersonnel(e) {
   e.preventDefault();
@@ -2080,6 +2141,59 @@ async function addPersonnel(e) {
   const { error } = await supabaseClient.from('personnel').insert([{ name, role }]);
   if (!error) { document.getElementById('personnel-form').reset(); await refreshPersonnelAdminList(); if (role === currentRole) await populatePersonnelDatalist(currentRole); }
   else showToast(error.message, "error");
+}
+
+// Bulk-import personnel pasted straight from Excel — expects "Personnel" and
+// "Designation" columns, header row first. Designation must exactly match
+// (case-insensitive) one of the four known roles; anything else is skipped
+// and reported rather than guessed at, since a wrong role misassigns staff.
+const KNOWN_ROLES = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
+async function importPersonnelPaste() {
+  const statusEl = document.getElementById('personnel-paste-status');
+  const raw = document.getElementById('personnel-paste').value.trim();
+  if (!raw) return showToast("Paste some rows first.", "error");
+
+  const rows = parsePastedTable(raw);
+  if (!rows.length) {
+    statusEl.innerHTML = `<span class="text-rose-400">Could not read any rows — make sure the header row (Personnel, Designation) is included.</span>`;
+    return;
+  }
+  const nameKey = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'personnel');
+  const roleKey = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'designation');
+  if (!nameKey || !roleKey) {
+    statusEl.innerHTML = `<span class="text-rose-400">Could not find "Personnel" and "Designation" headers in the pasted text.</span>`;
+    return;
+  }
+
+  const toInsert = [];
+  const skipped = [];
+  rows.forEach(r => {
+    const name = String(r[nameKey] || '').trim();
+    const rawRole = String(r[roleKey] || '').trim();
+    const matchedRole = KNOWN_ROLES.find(k => k.toLowerCase() === rawRole.toLowerCase());
+    if (!name) return;
+    if (!matchedRole) { skipped.push(`${name} (${rawRole || 'blank'})`); return; }
+    toInsert.push({ name, role: matchedRole });
+  });
+
+  if (!toInsert.length) {
+    statusEl.innerHTML = `<span class="text-rose-400">No valid rows to import. Designation must exactly match: ${KNOWN_ROLES.join(', ')}.</span>`;
+    return;
+  }
+
+  statusEl.innerText = `Importing ${toInsert.length} personnel...`;
+  const { error } = await supabaseClient.from('personnel').insert(toInsert);
+  if (error) {
+    statusEl.innerHTML = `<span class="text-rose-400">Failed: ${error.message}</span>`;
+    return showToast("Could not import personnel: " + error.message, "error");
+  }
+
+  statusEl.innerHTML = `<span class="text-emerald-400">Imported ${toInsert.length} personnel.</span>` +
+    (skipped.length ? `<br><span class="text-amber-400">Skipped ${skipped.length}: ${skipped.join(', ')} — designation must exactly match ${KNOWN_ROLES.join(', ')}.</span>` : '');
+  showToast(`${toInsert.length} personnel added${skipped.length ? `, ${skipped.length} skipped` : ''}.`, skipped.length ? "warning" : "success");
+  document.getElementById('personnel-paste').value = '';
+  await refreshPersonnelAdminList();
+  await populatePersonnelDatalist(currentRole);
 }
 async function deletePersonnel(id) {
   await supabaseClient.from('personnel').delete().eq('id', id);
