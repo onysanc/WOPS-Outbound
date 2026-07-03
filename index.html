@@ -82,6 +82,32 @@
   <!-- ================= WORKBENCH VIEW ================= -->
   <section id="view-workbench" class="view space-y-6">
 
+    <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400">Pipeline Summary — Pending by Stage</h2>
+        <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold">⟳ Refresh</button>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="pipeline-summary-grid">
+        <div class="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
+          <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold block mb-1">Pending to Pick</span>
+          <span id="pending-pick-count" class="text-2xl font-black text-green-400">–</span>
+        </div>
+        <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 p-3">
+          <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold block mb-1">Pending to Staged</span>
+          <span id="pending-staged-count" class="text-2xl font-black text-sky-300">–</span>
+        </div>
+        <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 p-3">
+          <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold block mb-1">Pending to Pull</span>
+          <span id="pending-pull-count" class="text-2xl font-black text-pink-400">–</span>
+        </div>
+        <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+          <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold block mb-1">Pending to Check</span>
+          <span id="pending-check-count" class="text-2xl font-black text-blue-400">–</span>
+        </div>
+      </div>
+    </div>
+
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -614,6 +640,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   await refreshStagingAreas();
   await refreshBulletinBoard();
   await refreshShipmentDatalist();
+  await refreshPipelineSummary();
   subscribeRealtime();
 });
 
@@ -773,6 +800,29 @@ function clearShipmentInput() {
   input.value = '';
   currentManifestData = [];
   renderManifestTable();
+}
+
+// --- PIPELINE SUMMARY: pending count per stage, across every shipments row
+// currently on file. Mirrors the same PENDING -> PICKED -> STAGED -> PULLED ->
+// CHECKED chain used for row eligibility (rowStatusLabel), including the
+// pgi_date fallback that marks a row PICKED even if status wasn't set.
+async function refreshPipelineSummary() {
+  const { data, error } = await supabaseClient.from('shipments').select('status,pgi_date');
+  if (error) return console.error(error);
+  const counts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  (data || []).forEach(row => {
+    let effective = row.status;
+    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
+      effective = 'PICKED';
+    }
+    if (!effective) effective = 'PENDING';
+    if (counts[effective] === undefined) effective = 'PENDING';
+    counts[effective]++;
+  });
+  document.getElementById('pending-pick-count').innerText = counts.PENDING;
+  document.getElementById('pending-staged-count').innerText = counts.PICKED;
+  document.getElementById('pending-pull-count').innerText = counts.STAGED;
+  document.getElementById('pending-check-count').innerText = counts.PULLED;
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
@@ -1942,6 +1992,7 @@ function subscribeRealtime() {
   // for the NEXT role in the chain, so it must be realtime too, not just activity_logs.
   supabaseClient.channel('shipments-live')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, () => {
+      refreshPipelineSummary();
       if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
     }).subscribe();
 }
