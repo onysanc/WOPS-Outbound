@@ -32,22 +32,29 @@
 <!-- ================= TOASTS ================= -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end"></div>
 
-<!-- ================= TAB PASSWORD MODAL ================= -->
-<div id="tab-password-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+<!-- ================= LOGIN SCREEN ================= -->
+<div id="login-screen" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-4">
+  <form id="login-form" onsubmit="attemptLogin(event)" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full space-y-5 shadow-2xl">
+    <div class="text-center space-y-1">
+      <div class="text-3xl">⚡</div>
+      <h1 class="text-base font-bold tracking-wider text-emerald-400">WAREHOUSE OPERATIONS</h1>
+      <p class="text-[11px] text-slate-500">Sign in to continue</p>
+    </div>
     <div>
-      <p class="text-sm font-semibold text-slate-200">Restricted Section</p>
-      <p id="tab-password-modal-message" class="text-xs text-slate-500 mt-1">Enter the password to open this tab.</p>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Username</label>
+      <input type="text" id="login-username" autocomplete="username" required autofocus
+        class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
     </div>
-    <input type="password" id="tab-password-input" placeholder="Password" autocomplete="off"
-      class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
-      onkeydown="if(event.key==='Enter') submitTabPassword()">
-    <div class="flex gap-2">
-      <button onclick="closeTabPasswordModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
-      <button onclick="submitTabPassword()" class="flex-1 bg-emerald-700 hover:bg-emerald-600 text-xs font-bold py-2 rounded-lg text-white">Unlock</button>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Password</label>
+      <input type="password" id="login-password" autocomplete="current-password" required
+        class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
     </div>
-  </div>
+    <p id="login-error" class="hidden text-[11px] text-rose-400 text-center"></p>
+    <button type="submit" id="login-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-sm font-bold py-2.5 rounded-lg text-white transition">Log In</button>
+  </form>
 </div>
+
 <!-- ================= CUSTOM CONFIRM MODAL ================= -->
 <div id="confirm-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
   <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
@@ -58,6 +65,34 @@
     </div>
   </div>
 </div>
+
+<!-- ================= ADD / EDIT USER MODAL ================= -->
+<div id="user-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4 max-h-[90vh] overflow-y-auto">
+    <h3 id="user-modal-title" class="text-sm font-bold text-slate-100 uppercase tracking-wider">Add User</h3>
+    <input type="hidden" id="user-modal-id">
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Username</label>
+      <input type="text" id="user-modal-username" autocomplete="off" placeholder="e.g. Outbound"
+        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Password <span id="user-modal-password-hint" class="text-slate-600 normal-case font-normal"></span></label>
+      <input type="text" id="user-modal-password" autocomplete="off" placeholder="Password"
+        class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Tab Access <span class="text-slate-600 normal-case font-normal">(select which tabs this user can open)</span></label>
+      <div id="user-modal-tabs" class="grid grid-cols-2 gap-2 text-xs"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="closeUserModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="saveUserModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Save User</button>
+    </div>
+  </div>
+</div>
+
+<div id="app-shell" class="hidden">
 <header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur sticky top-0 z-40">
   <div class="max-w-[1700px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-6 flex-1 min-w-0">
@@ -70,10 +105,17 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="export" onclick="setView('export')">Data Export</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="aging" onclick="setView('aging')">Pending / Aging</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
     </div>
-    <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-      Operational Day: <span id="op-day-display" class="font-mono text-amber-400">Loading...</span>
+    <div class="flex items-center gap-2">
+      <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+        Operational Day: <span id="op-day-display" class="font-mono text-amber-400">Loading...</span>
+      </div>
+      <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+        <span class="text-slate-500">👤</span><span id="current-username-display" class="font-semibold text-slate-200">—</span>
+        <button onclick="logoutUser()" class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white transition ml-1">Log Out</button>
+      </div>
     </div>
   </div>
 </header>
@@ -613,6 +655,36 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     <p class="text-[10px] text-slate-600">A record only appears here while its status is PENDING — the moment it's flagged PICKED (PGI date lands, or a Picker completes it), it drops off this list and moves to the Workbench pipeline.</p>
   </section>
 
+  <!-- ================= USER MANAGEMENT ================= -->
+  <section id="view-usermgmt" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">🔐 User Management</h2>
+        <p class="text-xs text-slate-400">Add, edit, or remove login accounts and control exactly which tabs each user can open.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="loadUsers()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
+        <button onclick="openUserModal(null)" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">+ Add User</button>
+      </div>
+    </div>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th class="p-3 text-left">Username</th>
+            <th class="p-3 text-left">Password</th>
+            <th class="p-3 text-left">Tab Access</th>
+            <th class="p-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="user-mgmt-rows" class="divide-y divide-slate-800/50">
+          <tr><td colspan="4" class="p-8 text-center text-slate-500 italic">Open this tab to load users.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-[10px] text-slate-600">Passwords are stored in plain text in the <code>users</code> table for simplicity — treat the Supabase project credentials as sensitive, and avoid reusing these passwords elsewhere.</p>
+  </section>
+
 </main>
 
 <!-- ================= STICKY SIDE PANEL ================= -->
@@ -738,6 +810,8 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
   </div>
 </div>
 
+</div><!-- /#app-shell -->
+
 <script>
 // --- SUPABASE CLIENT CONFIGURATION ---
 const SUPABASE_URL = "https://mdyiyemshupvcejxquyh.supabase.co";
@@ -807,10 +881,17 @@ function roleTextClass(role) { return (ROLE_COLORS[role] || {}).text || 'text-sl
 function roleBadgeClass(role) { return (ROLE_COLORS[role] || {}).badge || 'bg-slate-500/15 text-slate-300 border border-slate-500/30'; }
 
 // --- INIT ---
-window.addEventListener('DOMContentLoaded', async () => {
+// The app no longer boots automatically — it waits behind the login screen.
+// Once attemptLogin() succeeds, startApp() runs this same sequence.
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('login-username').focus();
+});
+
+async function startApp() {
   calculateOperationalDayWindow();
   setInterval(calculateOperationalDayWindow, 30000);
-  setView('workbench');
+  applyUserPermissions();
+  setView(firstAllowedTab());
   await setRole('Picker');
   await refreshConfiguredBreaks();
   await refreshStagingAreas();
@@ -818,29 +899,100 @@ window.addEventListener('DOMContentLoaded', async () => {
   await refreshShipmentDatalist();
   await refreshPipelineSummary();
   subscribeRealtime();
-});
+}
+
+// --- LOGIN / USER MANAGEMENT ---
+// Simple username+password auth against a `users` table (no email, no
+// hashing — matches the low-friction internal-tool style of the rest of
+// this app). `currentUser` only lives in a JS variable, same pattern the
+// old tab-password unlock used, so a page reload always re-prompts login.
+const ALL_TABS = [
+  { key: 'workbench', label: 'Workbench' },
+  { key: 'bulletin', label: 'Performance Summary' },
+  { key: 'analytics', label: 'Analytics & Reports' },
+  { key: 'ingestion', label: 'Data Ingestion' },
+  { key: 'admin', label: 'Personnel & Breaks' },
+  { key: 'export', label: 'Data Export' },
+  { key: 'aging', label: 'Pending / Aging' },
+  { key: 'usermgmt', label: 'User Management' }
+];
+let currentUser = null; // { id, username, allowed_tabs: [...] }
+
+async function attemptLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-submit-btn');
+  errEl.classList.add('hidden');
+  if (!username || !password) return;
+
+  btn.disabled = true;
+  btn.innerText = 'Signing in...';
+  const { data, error } = await supabaseClient.from('users').select('*').ilike('username', username).limit(1);
+  btn.disabled = false;
+  btn.innerText = 'Log In';
+
+  if (error) {
+    errEl.innerText = `Login failed: ${error.message}`;
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const row = (data || [])[0];
+  if (!row || row.password !== password) {
+    errEl.innerText = 'Incorrect username or password.';
+    errEl.classList.remove('hidden');
+    document.getElementById('login-password').value = '';
+    document.getElementById('login-password').focus();
+    return;
+  }
+
+  currentUser = { id: row.id, username: row.username, allowed_tabs: row.allowed_tabs || [] };
+  document.getElementById('current-username-display').innerText = currentUser.username;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+  document.getElementById('login-form').reset();
+  await startApp();
+}
+
+function logoutUser() {
+  currentUser = null;
+  document.getElementById('app-shell').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').classList.add('hidden');
+  setTimeout(() => document.getElementById('login-username').focus(), 50);
+}
+
+function userCanAccess(tabKey) {
+  return !!currentUser && (currentUser.allowed_tabs || []).includes(tabKey);
+}
+
+function firstAllowedTab() {
+  const found = ALL_TABS.find(t => userCanAccess(t.key));
+  return found ? found.key : 'workbench';
+}
+
+// Hides nav buttons for any tab the logged-in user isn't permitted to open.
+function applyUserPermissions() {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('hidden', !userCanAccess(b.dataset.view));
+  });
+}
 
 // --- TAB NAVIGATION ---
-// Tabs listed here require the password to be entered before they open. Once
-// unlocked, a tab stays unlocked for the rest of this browser session (until
-// the page is reloaded) — it does not ask again on every click.
-const TAB_PASSWORDS = {
-  ingestion: 'OUTBOUND',
-  admin: 'OUTBOUND',
-  export: 'ANTHONY'
-};
-const unlockedViews = new Set();
-let pendingViewName = null;
-
+// Access is controlled entirely by the logged-in user's allowed_tabs (set
+// via the User Management tab) — there's no separate per-tab password
+// anymore.
 function setView(name) {
-  if (TAB_PASSWORDS[name] && !unlockedViews.has(name)) {
-    return openTabPasswordModal(name);
+  if (!userCanAccess(name)) {
+    return showToast("You don't have access to that tab. Ask an admin to grant it in User Management.", "error");
   }
   activateView(name);
 }
 
-// Actually performs the tab switch — only called once a protected view is
-// unlocked (or immediately for unprotected views like Workbench).
+// Actually performs the tab switch.
 function activateView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
@@ -855,41 +1007,123 @@ function activateView(name) {
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
   if (name === 'aging') loadAgingData();
+  if (name === 'usermgmt') loadUsers();
 }
 
-function openTabPasswordModal(name) {
-  pendingViewName = name;
-  const input = document.getElementById('tab-password-input');
-  input.value = '';
-  document.getElementById('tab-password-modal-message').innerText = 'Enter the password to open this tab.';
-  document.getElementById('tab-password-modal-message').classList.remove('text-rose-400');
-  document.getElementById('tab-password-modal-message').classList.add('text-slate-500');
-  document.getElementById('tab-password-modal').classList.remove('hidden');
-  setTimeout(() => input.focus(), 50);
-}
+// --- USER MANAGEMENT: CRUD against the `users` table ---
+let usersRawRows = [];
 
-function closeTabPasswordModal() {
-  document.getElementById('tab-password-modal').classList.add('hidden');
-  pendingViewName = null;
-}
-
-function submitTabPassword() {
-  if (!pendingViewName) return closeTabPasswordModal();
-  const entered = document.getElementById('tab-password-input').value;
-  const expected = TAB_PASSWORDS[pendingViewName];
-  if (entered.trim().toUpperCase() === expected) {
-    unlockedViews.add(pendingViewName);
-    const name = pendingViewName;
-    closeTabPasswordModal();
-    activateView(name);
-  } else {
-    const msg = document.getElementById('tab-password-modal-message');
-    msg.innerText = 'Incorrect password. Try again.';
-    msg.classList.remove('text-slate-500');
-    msg.classList.add('text-rose-400');
-    document.getElementById('tab-password-input').value = '';
-    document.getElementById('tab-password-input').focus();
+async function loadUsers() {
+  const tbody = document.getElementById('user-mgmt-rows');
+  tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  const { data, error } = await supabaseClient.from('users').select('*').order('username', { ascending: true });
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    return;
   }
+  usersRawRows = data || [];
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const tbody = document.getElementById('user-mgmt-rows');
+  if (!usersRawRows.length) {
+    tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-500 italic">No users yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = usersRawRows.map(u => `
+    <tr class="hover:bg-slate-900/60 transition">
+      <td class="p-3 font-semibold text-slate-200">${u.username}${currentUser && u.id === currentUser.id ? ' <span class="text-[9px] text-emerald-400 font-normal">(you)</span>' : ''}</td>
+      <td class="p-3 font-mono text-slate-500 text-[11px]">••••••••</td>
+      <td class="p-3">
+        <div class="flex flex-wrap gap-1">
+          ${(u.allowed_tabs && u.allowed_tabs.length)
+            ? u.allowed_tabs.map(t => `<span class="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">${(ALL_TABS.find(a => a.key === t) || {}).label || t}</span>`).join('')
+            : '<span class="text-[10px] text-slate-600 italic">No tabs assigned</span>'}
+        </div>
+      </td>
+      <td class="p-3 text-center whitespace-nowrap">
+        <button onclick="openUserModal('${u.id}')" class="text-[10px] font-semibold px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 mr-1">Edit</button>
+        <button onclick="deleteUserRow('${u.id}', '${(u.username || '').replace(/'/g, "\\'")}')" class="text-[10px] font-semibold px-2 py-1 rounded-md bg-slate-800 hover:bg-rose-700 text-slate-200 hover:text-white border border-slate-700">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openUserModal(userId) {
+  const isEdit = !!userId;
+  const user = isEdit ? usersRawRows.find(u => String(u.id) === String(userId)) : null;
+  document.getElementById('user-modal-title').innerText = isEdit ? `Edit User — ${user.username}` : 'Add User';
+  document.getElementById('user-modal-id').value = isEdit ? user.id : '';
+  document.getElementById('user-modal-username').value = isEdit ? user.username : '';
+  document.getElementById('user-modal-password').value = '';
+  document.getElementById('user-modal-password').placeholder = isEdit ? 'Leave blank to keep current password' : 'Password';
+  document.getElementById('user-modal-password-hint').innerText = isEdit ? '(leave blank to keep unchanged — this doubles as Reset Password)' : '(required)';
+
+  const activeTabs = isEdit ? (user.allowed_tabs || []) : [];
+  document.getElementById('user-modal-tabs').innerHTML = ALL_TABS.map(t => `
+    <label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 cursor-pointer hover:border-slate-700">
+      <input type="checkbox" value="${t.key}" ${activeTabs.includes(t.key) ? 'checked' : ''} class="user-modal-tab-checkbox w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+      <span class="text-[11px] text-slate-300">${t.label}</span>
+    </label>`).join('');
+
+  document.getElementById('user-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('user-modal-username').focus(), 50);
+}
+
+function closeUserModal() {
+  document.getElementById('user-modal').classList.add('hidden');
+}
+
+async function saveUserModal() {
+  const id = document.getElementById('user-modal-id').value;
+  const isEdit = !!id;
+  const username = document.getElementById('user-modal-username').value.trim();
+  const password = document.getElementById('user-modal-password').value;
+  const allowedTabs = Array.from(document.querySelectorAll('.user-modal-tab-checkbox:checked')).map(cb => cb.value);
+
+  if (!username) return showToast("Username is required.", "error");
+  if (!isEdit && !password) return showToast("Password is required for a new user.", "error");
+
+  // Enforce unique username (case-insensitive), excluding this row itself when editing.
+  const dupe = usersRawRows.find(u => u.username.toLowerCase() === username.toLowerCase() && String(u.id) !== String(id));
+  if (dupe) return showToast("That username is already taken.", "error");
+
+  const payload = { username, allowed_tabs: allowedTabs };
+  if (!isEdit || password) payload.password = password;
+
+  const { error } = isEdit
+    ? await supabaseClient.from('users').update(payload).eq('id', id)
+    : await supabaseClient.from('users').insert(payload);
+
+  if (error) return showToast(`Could not save user: ${error.message}`, "error");
+
+  // If the admin just edited their own account, keep the live session in sync
+  // (e.g. their own tab access or display name changed).
+  if (currentUser && isEdit && String(id) === String(currentUser.id)) {
+    currentUser.username = username;
+    currentUser.allowed_tabs = allowedTabs;
+    document.getElementById('current-username-display').innerText = username;
+    applyUserPermissions();
+    if (!userCanAccess(document.querySelector('.view.active')?.id?.replace('view-', ''))) {
+      setView(firstAllowedTab());
+    }
+  }
+
+  showToast(isEdit ? "User updated." : "User added.", "success");
+  closeUserModal();
+  loadUsers();
+}
+
+async function deleteUserRow(userId, username) {
+  if (currentUser && String(userId) === String(currentUser.id)) {
+    return showToast("You can't delete the account you're currently logged in as.", "error");
+  }
+  const ok = await showConfirm(`Delete user "${username}"? This cannot be undone.`);
+  if (!ok) return;
+  const { error } = await supabaseClient.from('users').delete().eq('id', userId);
+  if (error) return showToast(`Could not delete user: ${error.message}`, "error");
+  showToast("User deleted.", "success");
+  loadUsers();
 }
 
 // --- OPERATIONAL DAY WINDOW (05:00 -> 04:59 next day) ---
