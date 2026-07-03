@@ -109,9 +109,6 @@
       </nav>
     </div>
     <div class="flex items-center gap-2">
-      <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-        Operational Day: <span id="op-day-display" class="font-mono text-amber-400">Loading...</span>
-      </div>
       <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
         <span class="text-slate-500">👤</span><span id="current-username-display" class="font-semibold text-slate-200">—</span>
         <button onclick="logoutUser()" class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white transition ml-1">Log Out</button>
@@ -888,8 +885,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function startApp() {
-  calculateOperationalDayWindow();
-  setInterval(calculateOperationalDayWindow, 30000);
   applyUserPermissions();
   setView(firstAllowedTab());
   await setRole('Picker');
@@ -1124,20 +1119,6 @@ async function deleteUserRow(userId, username) {
   if (error) return showToast(`Could not delete user: ${error.message}`, "error");
   showToast("User deleted.", "success");
   loadUsers();
-}
-
-// --- OPERATIONAL DAY WINDOW (05:00 -> 04:59 next day) ---
-function calculateOperationalDayWindow() {
-  const now = new Date();
-  let startOfOpDay = new Date(now);
-  startOfOpDay.setHours(5, 0, 0, 0);
-  if (now.getHours() < 5) startOfOpDay.setDate(startOfOpDay.getDate() - 1);
-  let endOfOpDay = new Date(startOfOpDay);
-  endOfOpDay.setDate(endOfOpDay.getDate() + 1);
-  endOfOpDay.setMilliseconds(endOfOpDay.getMilliseconds() - 1);
-  document.getElementById('op-day-display').innerText =
-    `${startOfOpDay.toLocaleDateString()} 05:00 AM – ${endOfOpDay.toLocaleDateString()} 04:59 AM`;
-  return { startOfOpDay, endOfOpDay };
 }
 
 // --- ROLE SWITCHING ---
