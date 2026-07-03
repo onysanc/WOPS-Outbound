@@ -65,6 +65,7 @@
       <nav class="flex flex-1 gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold">
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="workbench" onclick="setView('workbench')">Workbench</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="export" onclick="setView('export')">Data Export</button>
@@ -221,6 +222,124 @@
       </table>
     </div>
     <p class="text-[10px] text-slate-600">Productivity = Active Minutes ÷ 390 (standard daily working minutes) × 100%. Every personnel on file is listed for the selected Activity Day, even with zero logged activity.</p>
+  </section>
+
+  <!-- ================= ANALYTICS & REPORTS VIEW ================= -->
+  <section id="view-analytics" class="view space-y-6">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">📈 Analytics &amp; Reports</h2>
+        <p class="text-xs text-slate-400">Bottlenecks, discrepancies, throughput, and forecasts — Activity Day sections use 05:00–04:59</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="text-[11px] text-slate-400 font-semibold">Activity Day</label>
+        <input type="date" id="analytics-date" onchange="refreshAnalyticsView()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <button onclick="refreshAnalyticsView()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold px-2 py-1.5">⟳ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Cycle Time by Stage -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">⏱ Avg. Active Minutes per Stage <span class="text-slate-500 font-normal">(Completed tasks, selected Activity Day)</span></h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="cycle-time-grid"></div>
+    </div>
+
+    <!-- Overdue / At-Risk Board -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">⚠ Overdue &amp; At-Risk Tasks <span class="text-slate-500 font-normal">(live — all currently Ongoing/Paused)</span></h3>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2">Personnel</th><th class="p-2">Role</th><th class="p-2 text-right">Lines</th>
+              <th class="p-2 text-center">Started</th><th class="p-2 text-center">Target</th><th class="p-2 text-right">Overdue By</th>
+            </tr>
+          </thead>
+          <tbody id="atrisk-rows" class="divide-y divide-slate-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Discrepancy Report -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔍 Discrepancy Report <span class="text-slate-500 font-normal">(Staging + Outbound Check, selected Activity Day)</span></h3>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr><th class="p-2">Discrepancy Type</th><th class="p-2 text-right"># Occurrences</th><th class="p-2 text-right">Total Qty</th></tr>
+          </thead>
+          <tbody id="discrepancy-rows" class="divide-y divide-slate-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Throughput Trend -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">📊 Throughput Trend <span class="text-slate-500 font-normal">(lines completed per stage, last 7 Activity Days)</span></h3>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2">Activity Day</th>
+              <th class="p-2 text-right text-green-400">Picker</th>
+              <th class="p-2 text-right text-sky-300">Staging</th>
+              <th class="p-2 text-right text-pink-400">Puller</th>
+              <th class="p-2 text-right text-blue-400">Check</th>
+            </tr>
+          </thead>
+          <tbody id="throughput-rows" class="divide-y divide-slate-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Personnel Leaderboard -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🏆 Personnel Leaderboard <span class="text-slate-500 font-normal">(ranked by Productivity %, selected Activity Day)</span></h3>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2">Role(s)</th>
+              <th class="p-2 text-right">Volume</th><th class="p-2 text-right">Active Min</th><th class="p-2 text-right">Productivity</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-rows" class="divide-y divide-slate-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Truck Type / Route Breakdown -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h3 class="text-sm font-semibold text-slate-200">🚚 Volume by Truck Type <span class="text-slate-500 font-normal">(all shipments on file)</span></h3>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr><th class="p-2">Truck Type</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (Selling Units)</th></tr>
+            </thead>
+            <tbody id="truck-breakdown-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h3 class="text-sm font-semibold text-slate-200">🛣 Volume by Route <span class="text-slate-500 font-normal">(all shipments on file)</span></h3>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950 max-h-72 overflow-y-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium sticky top-0">
+              <tr><th class="p-2">Route</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (Selling Units)</th></tr>
+            </thead>
+            <tbody id="route-breakdown-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backlog Forecast -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔮 Backlog Forecast <span class="text-slate-500 font-normal">(pending lines ÷ today's throughput rate so far)</span></h3>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3" id="backlog-forecast-grid"></div>
+      <p class="text-[10px] text-slate-600">Rate is lines completed ÷ active minutes for that stage today. Resets to N/A early in the day before any lines are completed.</p>
+    </div>
   </section>
 
   <!-- ================= INGESTION VIEW ================= -->
@@ -675,6 +794,7 @@ function activateView(name) {
   if (sidePanel) sidePanel.classList.toggle('lg:block', name === 'workbench');
   if (sidePanel) sidePanel.classList.toggle('hidden', name !== 'workbench');
   if (name === 'bulletin') refreshBulletinBoard();
+  if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
 }
@@ -806,6 +926,7 @@ function clearShipmentInput() {
 // currently on file. Mirrors the same PENDING -> PICKED -> STAGED -> PULLED ->
 // CHECKED chain used for row eligibility (rowStatusLabel), including the
 // pgi_date fallback that marks a row PICKED even if status wasn't set.
+let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
 async function refreshPipelineSummary() {
   const { data, error } = await supabaseClient.from('shipments').select('status,pgi_date');
   if (error) return console.error(error);
@@ -819,6 +940,7 @@ async function refreshPipelineSummary() {
     if (counts[effective] === undefined) effective = 'PENDING';
     counts[effective]++;
   });
+  lastPipelineCounts = counts;
   document.getElementById('pending-pick-count').innerText = counts.PENDING;
   document.getElementById('pending-staged-count').innerText = counts.PICKED;
   document.getElementById('pending-pull-count').innerText = counts.STAGED;
@@ -1975,6 +2097,264 @@ function renderBulletinBoard() {
 function toggleBulletinDetail(panelId) {
   const el = document.getElementById(panelId);
   if (el) el.classList.toggle('hidden');
+}
+
+// ================= ANALYTICS & REPORTS =================
+function fmtMin(mins) {
+  mins = Math.round(mins || 0);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+async function refreshAnalyticsView() {
+  const dateInput = document.getElementById('analytics-date');
+  if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
+  const dateStr = dateInput ? dateInput.value : defaultOperationalDateStr();
+  const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
+
+  await refreshPipelineSummary(); // keep backlog forecast's pending counts current
+
+  // Completed logs for the selected Activity Day — backs Cycle Time, Discrepancy
+  // Report, Leaderboard, and Backlog Forecast's throughput rate.
+  const { data: dayLogs, error: dayErr } = await supabaseClient.from('activity_logs').select('*')
+    .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
+    .eq('status', 'Completed');
+  if (dayErr) { console.error(dayErr); return; }
+
+  renderCycleTime(dayLogs || []);
+  renderDiscrepancyReport(dayLogs || []);
+  renderLeaderboard(dayLogs || []);
+  renderBacklogForecast(dayLogs || []);
+
+  await refreshAtRiskBoard();
+  await refreshThroughputTrend(dateStr);
+  await refreshTruckRouteBreakdown();
+}
+
+// --- Cycle Time: avg active minutes per stage, from Completed logs on the
+// selected Activity Day.
+function renderCycleTime(logs) {
+  const grid = document.getElementById('cycle-time-grid');
+  const roles = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
+  grid.innerHTML = roles.map(role => {
+    const roleLogs = logs.filter(l => l.role === role);
+    const avgMin = roleLogs.length ? roleLogs.reduce((s, l) => s + (l.rendered_minutes || 0), 0) / roleLogs.length : 0;
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900 p-3">
+      <span class="text-[10px] uppercase tracking-wider font-semibold block mb-1 ${roleTextClass(role)}">${role}</span>
+      <span class="text-xl font-black ${roleTextClass(role)}">${roleLogs.length ? avgMin.toFixed(1) : '—'}</span>
+      <span class="text-[10px] text-slate-500"> min avg · ${roleLogs.length} lines</span>
+    </div>`;
+  }).join('');
+}
+
+// --- Overdue / At-Risk: every currently Ongoing/Paused batch, grouped the same
+// way the side panel groups them (personnel+role+start_time = one dispatch
+// action), sorted worst-overdue first.
+async function refreshAtRiskBoard() {
+  const tbody = document.getElementById('atrisk-rows');
+  const { data, error } = await supabaseClient.from('activity_logs').select('*').in('status', ['Ongoing', 'Paused']);
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-400">Failed to load.</td></tr>`;
+    return;
+  }
+  const batches = {};
+  (data || []).forEach(log => {
+    const key = `${log.personnel_name}||${log.role}||${log.start_time}`;
+    (batches[key] = batches[key] || []).push(log);
+  });
+  const now = new Date();
+  const rows = Object.values(batches).map(members => {
+    const rep = members[0];
+    const target = projectedTargetCompletion(new Date(rep.start_time), rep.target_hours || 0);
+    const overdueMin = (now - target) / 60000;
+    return { rep, lines: members.length, target, overdueMin };
+  }).sort((a, b) => b.overdueMin - a.overdueMin);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No ongoing or paused tasks right now.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const isOverdue = r.overdueMin > 0;
+    return `<tr class="hover:bg-slate-900/40">
+      <td class="p-2 font-semibold text-slate-200">${r.rep.personnel_name}</td>
+      <td class="p-2"><span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${roleBadgeClass(r.rep.role)}">${r.rep.role}</span></td>
+      <td class="p-2 text-right font-mono text-slate-300">${r.lines}</td>
+      <td class="p-2 text-center font-mono text-slate-400">${new Date(r.rep.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+      <td class="p-2 text-center font-mono text-slate-400">${r.target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+      <td class="p-2 text-right font-mono font-semibold ${isOverdue ? 'text-rose-400' : 'text-emerald-400'}">${isOverdue ? fmtMin(r.overdueMin) : 'On track'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- Discrepancy Report: tally discrepancy_type (text[]) across Staging +
+// Outbound Check completions for the selected Activity Day. discrepancy_qty is
+// one shared value per log row, so a row with 2 types contributes its qty to
+// both — a reasonable approximation for "how much volume was affected".
+function renderDiscrepancyReport(logs) {
+  const tbody = document.getElementById('discrepancy-rows');
+  const relevant = logs.filter(l => (l.role === 'Staging Checker' || l.role === 'Outbound Checker') && l.discrepancy_type && l.discrepancy_type.length);
+  const tally = {};
+  relevant.forEach(l => {
+    (l.discrepancy_type || []).forEach(type => {
+      if (!tally[type]) tally[type] = { count: 0, qty: 0 };
+      tally[type].count++;
+      tally[type].qty += (l.discrepancy_qty || 0);
+    });
+  });
+  const entries = Object.entries(tally).sort((a, b) => b[1].count - a[1].count);
+  if (!entries.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500 italic">No discrepancies logged for this Activity Day.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = entries.map(([type, v]) => `
+    <tr class="hover:bg-slate-900/40">
+      <td class="p-2 text-rose-400 font-semibold">${type}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${v.count}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${v.qty.toFixed(2)}</td>
+    </tr>`).join('');
+}
+
+// --- Personnel Leaderboard: same metrics as Performance Summary, ranked by
+// Productivity % (top 10, selected Activity Day, only personnel with logged time).
+function renderLeaderboard(logs) {
+  const tbody = document.getElementById('leaderboard-rows');
+  const byPersonnel = {};
+  logs.forEach(l => {
+    const key = l.personnel_name || '—';
+    (byPersonnel[key] = byPersonnel[key] || []).push(l);
+  });
+  const rows = Object.entries(byPersonnel).map(([name, entries]) => {
+    const roles = [...new Set(entries.map(l => l.role))];
+    const volume = entries.reduce((s, l) => s + (parseFloat(l.total_qty) || 0), 0);
+    const activeMinutes = entries.reduce((s, l) => s + (l.rendered_minutes || 0), 0);
+    const productivityPct = activeMinutes > 0 ? (activeMinutes / 60 / STANDARD_DAILY_HOURS) * 100 : 0;
+    return { name, roles, volume, activeMinutes, productivityPct };
+  }).filter(r => r.activeMinutes > 0).sort((a, b) => b.productivityPct - a.productivityPct).slice(0, 10);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No completed activity for this Activity Day yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const color = r.productivityPct >= 100 ? 'text-emerald-400' : r.productivityPct >= 70 ? 'text-amber-400' : 'text-rose-400';
+    return `<tr class="hover:bg-slate-900/40">
+      <td class="p-2 text-center font-bold">${medal}</td>
+      <td class="p-2 font-semibold text-slate-200">${r.name}</td>
+      <td class="p-2">${r.roles.map(rl => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1 ${roleBadgeClass(rl)}">${rl}</span>`).join('')}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${r.volume.toFixed(2)}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${r.activeMinutes.toFixed(1)}</td>
+      <td class="p-2 text-right font-mono font-semibold ${color}">${r.productivityPct.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- Throughput Trend: lines completed per stage, per Activity Day, for the
+// 7 Activity Days ending on the one selected above.
+async function refreshThroughputTrend(endDateStr) {
+  const tbody = document.getElementById('throughput-rows');
+  tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">Loading...</td></tr>`;
+
+  const [y, m, d] = endDateStr.split('-').map(Number);
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(y, m - 1, d - i);
+    days.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`);
+  }
+  const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
+  const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
+
+  const { data, error } = await supabaseClient.from('activity_logs').select('role,start_time')
+    .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString()).eq('status', 'Completed');
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-400">Failed to load.</td></tr>`;
+    return;
+  }
+
+  const counts = {};
+  days.forEach(ds => counts[ds] = { Picker: 0, 'Staging Checker': 0, Puller: 0, 'Outbound Checker': 0 });
+  (data || []).forEach(log => {
+    const t = new Date(log.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1); // same 05:00 cutover as elsewhere
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    if (counts[ds] && counts[ds][log.role] !== undefined) counts[ds][log.role]++;
+  });
+
+  tbody.innerHTML = days.map(ds => {
+    const c = counts[ds];
+    const isToday = ds === endDateStr;
+    return `<tr class="${isToday ? 'bg-slate-900/60' : ''} hover:bg-slate-900/40">
+      <td class="p-2 font-mono text-slate-300">${ds}${isToday ? ' <span class="text-[9px] text-emerald-400">●</span>' : ''}</td>
+      <td class="p-2 text-right font-mono text-green-400">${c.Picker}</td>
+      <td class="p-2 text-right font-mono text-sky-300">${c['Staging Checker']}</td>
+      <td class="p-2 text-right font-mono text-pink-400">${c.Puller}</td>
+      <td class="p-2 text-right font-mono text-blue-400">${c['Outbound Checker']}</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- Truck Type / Route Breakdown: SO count + volume across every shipments
+// row currently on file (not date-scoped — this reflects the whole manifest).
+async function refreshTruckRouteBreakdown() {
+  const truckBody = document.getElementById('truck-breakdown-rows');
+  const routeBody = document.getElementById('route-breakdown-rows');
+  const { data, error } = await supabaseClient.from('shipments').select('truck_type,route_description,quantity');
+  if (error) { console.error(error); return; }
+
+  const byTruck = {}, byRoute = {};
+  (data || []).forEach(row => {
+    const truck = row.truck_type || 'Unspecified';
+    const route = row.route_description || 'Unspecified';
+    const qty = parseFloat(row.quantity) || 0;
+    if (!byTruck[truck]) byTruck[truck] = { count: 0, qty: 0 };
+    byTruck[truck].count++; byTruck[truck].qty += qty;
+    if (!byRoute[route]) byRoute[route] = { count: 0, qty: 0 };
+    byRoute[route].count++; byRoute[route].qty += qty;
+  });
+
+  const truckEntries = Object.entries(byTruck).sort((a, b) => b[1].qty - a[1].qty);
+  const routeEntries = Object.entries(byRoute).sort((a, b) => b[1].qty - a[1].qty);
+  const rowsHtml = entries => entries.map(([label, v]) => `
+    <tr class="hover:bg-slate-900/40">
+      <td class="p-2 font-semibold text-slate-200">${label}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${v.count}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${v.qty.toFixed(2)}</td>
+    </tr>`).join('');
+
+  truckBody.innerHTML = truckEntries.length ? rowsHtml(truckEntries) : `<tr><td colspan="3" class="p-4 text-center text-slate-500 italic">No shipments on file.</td></tr>`;
+  routeBody.innerHTML = routeEntries.length ? rowsHtml(routeEntries) : `<tr><td colspan="3" class="p-4 text-center text-slate-500 italic">No shipments on file.</td></tr>`;
+}
+
+// --- Backlog Forecast: pending count per stage (from the Pipeline Summary)
+// divided by that stage's own throughput rate so far today (lines completed
+// ÷ active minutes spent). N/A until at least one line has been completed
+// for that stage today.
+function renderBacklogForecast(logs) {
+  const grid = document.getElementById('backlog-forecast-grid');
+  const roles = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
+  const pendingByRole = {
+    'Picker': lastPipelineCounts.PENDING,
+    'Staging Checker': lastPipelineCounts.PICKED,
+    'Puller': lastPipelineCounts.STAGED,
+    'Outbound Checker': lastPipelineCounts.PULLED
+  };
+  grid.innerHTML = roles.map(role => {
+    const roleLogs = logs.filter(l => l.role === role);
+    const lines = roleLogs.length;
+    const activeMin = roleLogs.reduce((s, l) => s + (l.rendered_minutes || 0), 0);
+    const rate = activeMin > 0 ? lines / activeMin : 0; // lines per minute
+    const pending = pendingByRole[role] || 0;
+    const etaMin = rate > 0 ? pending / rate : null;
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900 p-3">
+      <span class="text-[10px] uppercase tracking-wider font-semibold block mb-1 ${roleTextClass(role)}">${role}</span>
+      <div class="flex items-baseline gap-1"><span class="text-xl font-black ${roleTextClass(role)}">${pending}</span><span class="text-[10px] text-slate-500">pending</span></div>
+      <div class="text-[10px] text-slate-500 mt-1">ETA to clear: <span class="font-mono ${etaMin === null ? 'text-slate-500' : 'text-amber-400 font-semibold'}">${etaMin === null ? 'N/A' : fmtMin(etaMin)}</span></div>
+    </div>`;
+  }).join('');
 }
 
 function subscribeRealtime() {
