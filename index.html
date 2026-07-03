@@ -269,6 +269,7 @@
             <option value="10W">10W</option>
             <option value="20F">20F</option>
             <option value="40F">40F</option>
+            <option value="STO">STO</option>
           </select>
         </div>
         <div>
@@ -860,8 +861,16 @@ function rowQtySum(row) {
   if (row.quantity !== null && row.quantity !== undefined && row.quantity !== '') return Number(row.quantity) || 0;
   return (row.cv || 0) + (row.bx || 0) + (row.pac || 0) + (row.try_qty || 0) + (row.pc || 0) + (row.kg || 0);
 }
+// Picker speed rate (units/hour), by truck type:
+//   AUV / 4W            = 180 units/hr
+//   10W / 20F / 40 / 40F = 110 units/hr
+//   STO                 = 350 units/hr
+//   6W (and anything else unmapped) = 110 units/hr, same as the slower tier
 function speedRateFor(truckType) {
-  return ["AUV", "4W", "6W", "10W", "20F", "40"].includes((truckType || '').toUpperCase()) ? 180 : 110;
+  const t = (truckType || '').toUpperCase();
+  if (t === 'AUV' || t === '4W') return 180;
+  if (t === 'STO') return 350;
+  return 110;
 }
 function totalConfiguredBreakHours() {
   return configuredBreaks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0) / 60;
@@ -880,8 +889,19 @@ function bracketHoursForTruckType(truckType) {
   return 3; // unmapped/larger truck types default to the longest bracket
 }
 
+// Minimum baseline target for a Picker action — even a tiny quantity should
+// never compute to less than 15 minutes (0.25 hr) of target time.
+const MIN_PICKER_TARGET_HOURS = 0.25;
+
+// Raw (no floor) qty-driven hours for a single row — used internally so the
+// 15-minute floor can be applied once to a GROUP total instead of being
+// applied separately to every row and over-inflating multi-line selections.
+function rawPickerHoursForRow(row) {
+  return rowQtySum(row) / speedRateFor(row.truck_type);
+}
+
 // Baseline (no-break) target hours for a SINGLE row, role-aware:
-// - Picker: quantity-driven (qty / truck-type speed rate).
+// - Picker: quantity-driven (qty / truck-type speed rate), floored at 15 min.
 // - Staging Checker, Puller & Outbound Checker: the flat truck-type bracket above.
 // NOTE: for bracket roles this is only correct when called for one row in
 // isolation (e.g. single-row start). When multiple rows/lines are dispatched
@@ -891,12 +911,15 @@ function targetHoursForRow(row, role) {
   if (role === 'Staging Checker' || role === 'Puller' || role === 'Outbound Checker') {
     return bracketHoursForTruckType(row.truck_type);
   }
-  return rowQtySum(row) / speedRateFor(row.truck_type);
+  return Math.max(MIN_PICKER_TARGET_HOURS, rawPickerHoursForRow(row));
 }
 
 // Baseline (no-break) target hours for a GROUP of rows dispatched together:
 // - Picker: quantity-driven, summed across every row/line (unaffected by
 //   shipment grouping — more lines/qty genuinely means more picking time).
+//   The 15-minute floor is applied ONCE to the group's combined total, not
+//   per row — so 3 small lines that together take 10 minutes still floor to
+//   15 minutes total, rather than each line separately flooring to 15 (45 total).
 // - Staging Checker, Puller & Outbound Checker: the flat truck-type bracket,
 //   charged ONCE PER UNIQUE SHIPMENT NUMBER in the group — never per row and
 //   never scaled by qty. Selecting 8 lines that all belong to the same
@@ -911,7 +934,8 @@ function targetHoursForGroup(rows, role) {
     bracketByShipment.forEach(truckType => { total += bracketHoursForTruckType(truckType); });
     return total;
   }
-  return rows.reduce((s, row) => s + targetHoursForRow(row, role), 0);
+  const rawTotal = rows.reduce((s, row) => s + rawPickerHoursForRow(row), 0);
+  return Math.max(MIN_PICKER_TARGET_HOURS, rawTotal);
 }
 
 // Projected completion time for a baseline (no-break) duration starting at startDate.
