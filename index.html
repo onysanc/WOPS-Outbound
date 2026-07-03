@@ -14,7 +14,6 @@
   .tab-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .role-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .staging-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
-  .staging-area-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
   .outbound-choice-btn.active{background:#0d9488;color:#fff;border-color:#14b8a6}
   .view{display:none}
   .view.active{display:block}
@@ -453,11 +452,22 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <input type="number" id="staging-discrepancy-qty" min="0" step="any" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
     </div>
     <div>
-      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Staging Area <span class="text-rose-400">*</span> <span class="text-slate-600 normal-case font-normal">(select at least 1)</span></label>
-      <div id="staging-area-choice-container" class="grid grid-cols-2 gap-2 text-xs font-semibold">
-        <p class="col-span-2 text-[11px] text-slate-600 italic">Loading staging areas...</p>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Staging Area <span class="text-rose-400">*</span> <span class="text-slate-600 normal-case font-normal">(type to search, select at least 1)</span></label>
+      <div class="flex gap-2">
+        <input type="text" id="staging-area-input" list="staging-area-datalist" autocomplete="off" placeholder="Type e.g. SA01..."
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addStagingAreaChoice();}"
+          class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        <datalist id="staging-area-datalist"></datalist>
+        <button type="button" onclick="addStagingAreaChoice()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">Add</button>
+      </div>
+      <div id="staging-area-choice-container" class="flex flex-wrap gap-1.5 mt-2">
+        <p class="text-[11px] text-slate-600 italic">Loading staging areas...</p>
       </div>
       <p id="staging-area-required-warning" class="hidden text-[10px] text-rose-400 mt-1.5">Select at least one Staging Area to continue.</p>
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Remarks <span class="text-slate-600 normal-case font-normal">(optional)</span></label>
+      <textarea id="staging-remarks" rows="2" placeholder="Any notes about this staging check..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"></textarea>
     </div>
     <div class="flex gap-2 pt-2">
       <button onclick="closeStagingCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
@@ -493,9 +503,28 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Discrepancy Qty</label>
       <input type="number" id="outbound-discrepancy-qty" min="0" step="any" placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
     </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Remarks <span class="text-slate-600 normal-case font-normal">(optional)</span></label>
+      <textarea id="outbound-remarks" rows="2" placeholder="Any notes about this outbound check..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"></textarea>
+    </div>
     <div class="flex gap-2 pt-2">
       <button onclick="closeOutboundCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
       <button onclick="confirmOutboundComplete()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Confirm Okay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SIMPLE COMPLETE MODAL (Picker / Puller) ================= -->
+<div id="simple-complete-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4">
+    <h3 id="simple-complete-modal-title" class="text-sm font-bold text-slate-100 uppercase tracking-wider">Confirm Completion</h3>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Remarks <span class="text-slate-600 normal-case font-normal">(optional)</span></label>
+      <textarea id="simple-complete-remarks" rows="3" placeholder="Any notes about this task..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"></textarea>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button onclick="closeSimpleCompleteModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="confirmSimpleComplete()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Confirm Okay</button>
     </div>
   </div>
 </div>
@@ -1083,20 +1112,16 @@ async function unassignRow(i) {
 async function completeRow(i) {
   const log = currentManifestData[i]._log;
   const members = await getGroupMembers(log);
-  // Staging Checker and Outbound Checker completions require a discrepancy
-  // confirmation popup first; other roles complete straight away.
+  // Every role now confirms completion through a modal: Staging Checker and
+  // Outbound Checker get the full discrepancy modal, Picker and Puller get the
+  // simple remarks-only modal.
   if (currentRole === 'Staging Checker') {
     return openStagingCompleteModal(members);
   }
   if (currentRole === 'Outbound Checker') {
     return openOutboundCompleteModal(members);
   }
-  for (const m of members) {
-    await completeLogById(m.id, m);
-  }
-  await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  return openSimpleCompleteModal(members, currentRole);
 }
 
 // Shared completion routine: computes elapsed active seconds minus pauses minus break
@@ -1243,35 +1268,62 @@ function setStagingDiscrepancyChoice(choice) {
 }
 
 // Staging Area is also multi-select, but required: at least one must be chosen
-// before the completion can be confirmed.
-function toggleStagingAreaChoice(name, btn) {
-  if (stagingAreaChoices.has(name)) stagingAreaChoices.delete(name);
-  else stagingAreaChoices.add(name);
-  btn.classList.toggle('active', stagingAreaChoices.has(name));
-  if (stagingAreaChoices.size > 0) {
-    document.getElementById('staging-area-required-warning').classList.add('hidden');
+// before the completion can be confirmed. Instead of a long button grid (the
+// masterlist can run to 60+ entries), the operator types into an autocomplete
+// box (backed by a <datalist> of the masterlist) and adds one at a time; picks
+// are shown as removable chips below.
+function addStagingAreaChoice() {
+  const input = document.getElementById('staging-area-input');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const match = allStagingAreas.find(a => a.name.toLowerCase() === raw.toLowerCase());
+  if (!match) {
+    return showToast(`"${raw}" is not on the Staging Area masterlist.`, "error");
   }
+  stagingAreaChoices.add(match.name);
+  input.value = '';
+  input.focus();
+  renderStagingAreaChips();
+  document.getElementById('staging-area-required-warning').classList.add('hidden');
+}
+
+function removeStagingAreaChoice(name) {
+  stagingAreaChoices.delete(name);
+  renderStagingAreaChips();
+}
+
+function renderStagingAreaChips() {
+  const container = document.getElementById('staging-area-choice-container');
+  if (stagingAreaChoices.size === 0) {
+    container.innerHTML = '<p class="text-[11px] text-slate-600 italic">No staging area added yet.</p>';
+    return;
+  }
+  container.innerHTML = [...stagingAreaChoices].map(name => {
+    const safe = name.replace(/'/g, "\\'");
+    return `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs font-semibold">${name}<button type="button" onclick="removeStagingAreaChoice('${safe}')" class="text-cyan-300 hover:text-white ml-0.5">✕</button></span>`;
+  }).join('');
 }
 
 function renderStagingAreaChoices() {
-  const container = document.getElementById('staging-area-choice-container');
+  const datalist = document.getElementById('staging-area-datalist');
   if (!allStagingAreas.length) {
-    container.innerHTML = '<p class="col-span-2 text-[11px] text-rose-400 italic">No staging areas configured yet — add one under Personnel &amp; Breaks first.</p>';
+    datalist.innerHTML = '';
+    document.getElementById('staging-area-choice-container').innerHTML = '<p class="text-[11px] text-rose-400 italic">No staging areas configured yet — add one under Personnel &amp; Breaks first.</p>';
     return;
   }
-  container.innerHTML = allStagingAreas.map(a => {
-    const safe = a.name.replace(/'/g, "\\'");
-    return `<button type="button" onclick="toggleStagingAreaChoice('${safe}', this)" class="staging-area-choice-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">${a.name}</button>`;
-  }).join('');
+  datalist.innerHTML = allStagingAreas.map(a => `<option value="${a.name}">`).join('');
+  renderStagingAreaChips();
 }
 
 async function openStagingCompleteModal(members) {
   stagingCompleteMembers = members;
   document.getElementById('staging-discrepancy-qty').value = '';
+  document.getElementById('staging-remarks').value = '';
   stagingDiscrepancyChoices.clear();
   setStagingDiscrepancyChoice('None');
 
   stagingAreaChoices.clear();
+  document.getElementById('staging-area-input').value = '';
   await refreshStagingAreas();
   renderStagingAreaChoices();
   document.getElementById('staging-area-required-warning').classList.add('hidden');
@@ -1313,7 +1365,8 @@ async function confirmStagingComplete() {
   const extra = {
     discrepancy_type: choices.length ? choices : null,
     discrepancy_qty: choices.length ? qty : null,
-    staging_areas: [...stagingAreaChoices]
+    staging_areas: [...stagingAreaChoices],
+    remarks: document.getElementById('staging-remarks').value.trim() || null
   };
   for (const m of members) {
     await completeLogById(m.id, m, extra);
@@ -1352,6 +1405,7 @@ function setOutboundDiscrepancyChoice(choice) {
 async function openOutboundCompleteModal(members) {
   outboundCompleteMembers = members;
   document.getElementById('outbound-discrepancy-qty').value = '';
+  document.getElementById('outbound-remarks').value = '';
   outboundDiscrepancyChoices.clear();
   setOutboundDiscrepancyChoice('None');
 
@@ -1390,13 +1444,45 @@ async function confirmOutboundComplete() {
 
   const extra = {
     discrepancy_type: choices.length ? choices : null,
-    discrepancy_qty: choices.length ? qty : null
+    discrepancy_qty: choices.length ? qty : null,
+    remarks: document.getElementById('outbound-remarks').value.trim() || null
   };
   for (const m of members) {
     await completeLogById(m.id, m, extra);
   }
   closeOutboundCompleteModal();
   showToast(choices.length ? `Outbound check completed — ${choices.join(', ')} (${qty}) logged.` : "Outbound check completed.", "success");
+  await fetchShipmentManifest();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
+}
+
+// --- SIMPLE COMPLETE MODAL (Picker / Puller) ---
+// These two roles don't have a discrepancy vocabulary of their own — they just
+// get a lightweight "are you sure" modal with an optional remarks box.
+let simpleCompleteMembers = null;
+
+function openSimpleCompleteModal(members, roleLabel) {
+  simpleCompleteMembers = members;
+  document.getElementById('simple-complete-remarks').value = '';
+  document.getElementById('simple-complete-modal-title').innerText = `Confirm ${roleLabel || currentRole} Completion`;
+  document.getElementById('simple-complete-modal').classList.remove('hidden');
+}
+
+function closeSimpleCompleteModal() {
+  document.getElementById('simple-complete-modal').classList.add('hidden');
+  simpleCompleteMembers = null;
+}
+
+async function confirmSimpleComplete() {
+  const members = simpleCompleteMembers;
+  if (!members) return closeSimpleCompleteModal();
+  const extra = { remarks: document.getElementById('simple-complete-remarks').value.trim() || null };
+  for (const m of members) {
+    await completeLogById(m.id, m, extra);
+  }
+  closeSimpleCompleteModal();
+  showToast("Task completed.", "success");
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -1621,8 +1707,7 @@ async function sidePanelComplete(id) {
   if (log.role === 'Outbound Checker') {
     return openOutboundCompleteModal(members);
   }
-  for (const m of members) await completeLogById(m.id, m);
-  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
+  return openSimpleCompleteModal(members, log.role);
 }
 async function sidePanelUnassign(id) {
   const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
