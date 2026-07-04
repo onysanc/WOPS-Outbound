@@ -198,9 +198,12 @@
 
     <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 gap-2">
         <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400">Pipeline Summary — Pending by Stage</h2>
-        <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold">⟳ Refresh</button>
+        <div class="flex items-center gap-2">
+          <select id="pipeline-date-filter" onchange="refreshPipelineSummary()" class="bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-300 focus:outline-none focus:border-emerald-500 max-w-[130px]"></select>
+          <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold whitespace-nowrap">⟳ Refresh</button>
+        </div>
       </div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="pipeline-summary-grid">
         <div class="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
@@ -1362,29 +1365,53 @@ function clearShipmentInput() {
   renderManifestTable();
 }
 
-// --- PIPELINE SUMMARY: pending count per stage, across every shipments row
-// currently on file. Mirrors the same PENDING -> PICKED -> STAGED -> PULLED ->
-// CHECKED chain used for row eligibility (rowStatusLabel), including the
-// pgi_date fallback that marks a row PICKED even if status wasn't set.
+// --- PIPELINE SUMMARY: pending count per stage, across shipments on file.
+// Mirrors the same PENDING -> PICKED -> STAGED -> PULLED -> CHECKED chain
+// used for row eligibility (rowStatusLabel), including the pgi_date fallback
+// that marks a row PICKED even if status wasn't set. Defaults to the most
+// recent upload date (uploaded_at) so a fresh upload doesn't get diluted by
+// old stock still sitting in the table; "All Uploads" shows everything.
 let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+let pipelineDateOptionsCache = null; // avoids rebuilding the <select> (and losing the user's pick) on every refresh
 async function refreshPipelineSummary() {
-  const { data, error } = await supabaseClient.from('shipments').select('status,pgi_date');
+  const { data, error } = await supabaseClient.from('shipments').select('status,pgi_date,uploaded_at');
   if (error) return console.error(error);
-  const counts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  (data || []).forEach(row => {
+  const rows = data || [];
+
+  // Build the date dropdown once per distinct set of upload dates seen.
+  const uploadDates = [...new Set(rows.map(r => (r.uploaded_at || '').slice(0, 10)).filter(Boolean))].sort().reverse();
+  const sel = document.getElementById('pipeline-date-filter');
+  const cacheKey = uploadDates.join(',');
+  if (sel && pipelineDateOptionsCache !== cacheKey) {
+    pipelineDateOptionsCache = cacheKey;
+    sel.innerHTML = `<option value="ALL">All Uploads</option>` +
+      uploadDates.map(d => `<option value="${d}">${fmtAgingDate(d)}</option>`).join('');
+    sel.value = uploadDates.length ? uploadDates[0] : 'ALL'; // default: latest upload date
+  }
+  const filterDate = sel ? sel.value : 'ALL';
+
+  const allCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  const displayCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  rows.forEach(row => {
     let effective = row.status;
     if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
       effective = 'PICKED';
     }
     if (!effective) effective = 'PENDING';
-    if (counts[effective] === undefined) effective = 'PENDING';
-    counts[effective]++;
+    if (allCounts[effective] === undefined) effective = 'PENDING';
+    allCounts[effective]++;
+    if (filterDate === 'ALL' || (row.uploaded_at || '').slice(0, 10) === filterDate) {
+      displayCounts[effective]++;
+    }
   });
-  lastPipelineCounts = counts;
-  document.getElementById('pending-pick-count').innerText = counts.PENDING;
-  document.getElementById('pending-staged-count').innerText = counts.PICKED;
-  document.getElementById('pending-pull-count').innerText = counts.STAGED;
-  document.getElementById('pending-check-count').innerText = counts.PULLED;
+  // lastPipelineCounts stays unfiltered — Backlog Forecast (Analytics tab) divides
+  // total pending work by throughput, and shouldn't shrink just because this
+  // widget is scoped to one upload date.
+  lastPipelineCounts = allCounts;
+  document.getElementById('pending-pick-count').innerText = displayCounts.PENDING;
+  document.getElementById('pending-staged-count').innerText = displayCounts.PICKED;
+  document.getElementById('pending-pull-count').innerText = displayCounts.STAGED;
+  document.getElementById('pending-check-count').innerText = displayCounts.PULLED;
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
