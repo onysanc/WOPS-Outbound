@@ -456,8 +456,9 @@
   </section>
 
   <!-- ================= INGESTION VIEW ================= -->
-  <section id="view-ingestion" class="view space-y-6">
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 max-w-2xl">
+  <section id="view-ingestion" class="view">
+   <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
       <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">📥 Master Data Ingestion</h2>
       <div>
         <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
@@ -489,7 +490,7 @@
     </div>
 
     <!-- ============ MANUAL DISPATCH / ENTER STO ============ -->
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4 max-w-2xl">
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
       <div>
         <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">✍️ Enter STO / Manual Dispatch</h2>
         <p class="text-[10px] text-slate-500 mt-1">For a rush/off-manifest SO that didn't come in on the daily upload. Every field below is required — this row needs to carry the same complete manifest data as an uploaded one, since Workbench targets, speed, and bracket calculations all depend on it.</p>
@@ -552,10 +553,11 @@
       </form>
       <p id="manual-dispatch-status" class="text-xs text-slate-500"></p>
     </div>
+   </div>
   </section>
 
   <!-- ================= ADMIN VIEW ================= -->
-  <section id="view-admin" class="view grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+  <section id="view-admin" class="view grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
       <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">👤 Personnel Roster</h2>
       <form id="personnel-form" onsubmit="addPersonnel(event)" class="flex gap-2">
@@ -752,7 +754,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
           </tr>
         </thead>
         <tbody id="aging-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="9" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1153,7 +1155,7 @@ function activateView(name) {
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
-  if (name === 'aging') loadAgingData();
+  if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
   if (name === 'usermgmt') loadUsers();
 }
 
@@ -2807,6 +2809,8 @@ function subscribeRealtime() {
 // recent Completed start/end pair for each of the four roles in the chain.
 let exportRawRows = [];
 let agingRawRows = [];
+let agingSelectedSoNumbers = new Set();
+let agingDatesInitialized = false;
 
 async function loadExportData() {
   const tbody = document.getElementById('export-rows');
@@ -3059,6 +3063,18 @@ function applyAgingAdminUI() {
   }
 }
 
+// Defaults the Record Date filter to today→today the first time the tab is
+// opened in this session, per the "current day to last day" (i.e. today's
+// records) starting view. Only applied once so it never clobbers a filter
+// range the user has since chosen themselves.
+function ensureAgingDefaultDateRange() {
+  if (agingDatesInitialized) return;
+  agingDatesInitialized = true;
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('aging-date-from').value = today;
+  document.getElementById('aging-date-to').value = today;
+}
+
 // Populate the Customer / Truck Type dropdowns from whatever values actually
 // exist in the loaded data, so the filters always match real records.
 function populateAgingFilterOptions() {
@@ -3109,6 +3125,129 @@ function clearAgingFilters() {
   document.getElementById('aging-truck-filter').value = '';
   document.getElementById('aging-search').value = '';
   renderAgingTable();
+}
+
+// --- MASTER RECORDS: ADMIN ADD / EDIT / DELETE ---
+function updateAgingBulkBar() {
+  const count = agingSelectedSoNumbers.size;
+  document.getElementById('aging-bulk-count').innerText = count;
+  document.getElementById('aging-bulk-bar').classList.toggle('hidden', count === 0);
+  const allCb = document.getElementById('aging-select-all');
+  if (allCb) {
+    const visible = filteredAgingRows();
+    allCb.checked = visible.length > 0 && visible.every(r => agingSelectedSoNumbers.has(r.so_number));
+  }
+}
+
+function toggleAgingRowSelect(so_number, checked) {
+  if (checked) agingSelectedSoNumbers.add(so_number);
+  else agingSelectedSoNumbers.delete(so_number);
+  updateAgingBulkBar();
+}
+
+function toggleAgingSelectAll(checkbox) {
+  const rows = filteredAgingRows();
+  if (checkbox.checked) rows.forEach(r => agingSelectedSoNumbers.add(r.so_number));
+  else rows.forEach(r => agingSelectedSoNumbers.delete(r.so_number));
+  renderAgingTable();
+}
+
+function clearAgingSelection() {
+  agingSelectedSoNumbers.clear();
+  renderAgingTable();
+}
+
+async function deleteSelectedAgingRecords() {
+  const list = Array.from(agingSelectedSoNumbers);
+  if (!list.length) return;
+  const ok = await showConfirm(`Delete ${list.length} selected record(s)? This cannot be undone.`);
+  if (!ok) return;
+  const { error } = await supabaseClient.from('shipments').delete().in('so_number', list);
+  if (error) return showToast("Could not delete selected records: " + error.message, "error");
+  agingSelectedSoNumbers.clear();
+  showToast(`${list.length} record(s) deleted.`, "success");
+  await loadAgingData();
+}
+
+async function deleteAgingRecord(so_number) {
+  const ok = await showConfirm(`Delete record "${so_number}"? This cannot be undone.`);
+  if (!ok) return;
+  const { error } = await supabaseClient.from('shipments').delete().eq('so_number', so_number);
+  if (error) return showToast("Could not delete record: " + error.message, "error");
+  agingSelectedSoNumbers.delete(so_number);
+  showToast(`Record "${so_number}" deleted.`, "success");
+  await loadAgingData();
+}
+
+// Opens the Add/Edit Master Record modal. Pass null to add a fresh record,
+// or an existing SO Number to prefill the form for editing.
+function openAgingRecordModal(so_number) {
+  document.getElementById('aging-record-original-so').value = so_number || '';
+  const title = document.getElementById('aging-record-modal-title');
+  if (so_number) {
+    const row = agingRawRows.find(r => r.so_number === so_number);
+    title.innerText = 'Edit Record';
+    document.getElementById('ar-so-number').value = row?.so_number || '';
+    document.getElementById('ar-shipment-no').value = row?.shipment_no || '';
+    document.getElementById('ar-obd-number').value = row?.obd_number || '';
+    document.getElementById('ar-billing-number').value = row?.billing_number || '';
+    document.getElementById('ar-customer').value = row?.customer || '';
+    document.getElementById('ar-route').value = row?.route_description || '';
+    document.getElementById('ar-truck-type').value = row?.truck_type || 'AUV';
+    document.getElementById('ar-status').value = row?.status || 'PENDING';
+    document.getElementById('ar-quantity').value = row?.qty ?? 0;
+    document.getElementById('ar-so-amount').value = row?.so_amount ?? 0;
+  } else {
+    title.innerText = 'Add Record';
+    ['ar-so-number', 'ar-shipment-no', 'ar-obd-number', 'ar-billing-number', 'ar-customer', 'ar-route'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ar-truck-type').value = 'AUV';
+    document.getElementById('ar-status').value = 'PENDING';
+    document.getElementById('ar-quantity').value = 0;
+    document.getElementById('ar-so-amount').value = 0;
+  }
+  document.getElementById('aging-record-modal').classList.remove('hidden');
+}
+
+function closeAgingRecordModal() {
+  document.getElementById('aging-record-modal').classList.add('hidden');
+}
+
+async function saveAgingRecordModal() {
+  const originalSo = document.getElementById('aging-record-original-so').value.trim();
+  const soNumber = document.getElementById('ar-so-number').value.trim();
+  if (!soNumber) return showToast("Sales Order is required.", "error");
+
+  const statusVal = document.getElementById('ar-status').value;
+  const row = {
+    so_number: soNumber,
+    shipment_no: document.getElementById('ar-shipment-no').value.trim(),
+    obd_number: document.getElementById('ar-obd-number').value.trim(),
+    billing_number: document.getElementById('ar-billing-number').value.trim(),
+    sold_to_party_name: document.getElementById('ar-customer').value.trim(),
+    route_description: document.getElementById('ar-route').value.trim(),
+    truck_type: document.getElementById('ar-truck-type').value,
+    status: statusVal,
+    quantity: parseFloat(document.getElementById('ar-quantity').value) || 0,
+    so_amount: parseFloat(document.getElementById('ar-so-amount').value) || 0
+  };
+  // Mirror the same PICKED/pgi_date convention used by manual dispatch and
+  // the bulk uploader, so this record agrees with the rest of the app.
+  if (statusVal === 'PICKED') row.pgi_date = new Date().toISOString();
+
+  // Editing and changing the SO Number is effectively a rename — since
+  // so_number is the upsert/conflict key, remove the old row first so it
+  // doesn't linger as a duplicate alongside the renamed one.
+  if (originalSo && originalSo !== soNumber) {
+    const { error: delError } = await supabaseClient.from('shipments').delete().eq('so_number', originalSo);
+    if (delError) return showToast("Could not update record: " + delError.message, "error");
+  }
+
+  const { error } = await supabaseClient.from('shipments').upsert([row], { onConflict: 'so_number' });
+  if (error) return showToast("Could not save record: " + error.message, "error");
+
+  showToast(`Record "${soNumber}" saved.`, "success");
+  closeAgingRecordModal();
+  await loadAgingData();
 }
 
 function filteredAgingRows() {
@@ -3163,13 +3302,18 @@ function renderAgingTable() {
   document.getElementById('aging-total-qty').innerText = rows.reduce((s, r) => s + (r.qty || 0), 0).toLocaleString();
   document.getElementById('aging-oldest').innerText = rows.length ? `${Math.max(...rows.map(r => r.aging_days ?? 0))}d` : '—';
 
+  const admin = isAgingAdmin();
+  const adminColClass = admin ? '' : 'hidden';
+
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+    updateAgingBulkBar();
     return;
   }
 
   tbody.innerHTML = rows.map(r => `
     <tr class="hover:bg-slate-900/60 transition">
+      <td class="p-3 text-left aging-admin-col ${adminColClass}"><input type="checkbox" ${agingSelectedSoNumbers.has(r.so_number) ? 'checked' : ''} onchange="toggleAgingRowSelect('${String(r.so_number).replace(/'/g, "\\'")}', this.checked)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></td>
       <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.shipment_no || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
@@ -3179,7 +3323,15 @@ function renderAgingTable() {
       <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${agingStatusBadgeClass(r.status)}">${r.status}</span></td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
       <td class="p-3 text-center font-mono text-[11px] ${agingColorClass(r.aging_days)}">${r.aging_days === null ? '—' : r.aging_days + 'd'}</td>
+      <td class="p-3 text-center aging-admin-col ${adminColClass}">
+        <div class="flex items-center justify-center gap-2">
+          <button onclick="openAgingRecordModal('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Edit</button>
+          <button onclick="deleteAgingRecord('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white">Delete</button>
+        </div>
+      </td>
     </tr>`).join('');
+
+  updateAgingBulkBar();
 }
 
 function exportAgingToExcel() {
