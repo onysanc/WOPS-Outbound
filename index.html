@@ -464,8 +464,8 @@
         <label class="block text-xs font-medium text-slate-400 mb-1">Daily Shipment Dataset (.xlsx)</label>
         <input type="file" id="shipment-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/10 file:text-emerald-400 hover:file:bg-emerald-500/20 cursor-pointer" />
         <div class="mt-2">
-          <button type="button" onclick="document.getElementById('shipment-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300">⇄ Or paste rows copied from Excel instead</button>
-          <div id="shipment-paste-wrap" class="hidden mt-2">
+          <p class="text-[10px] font-semibold text-emerald-400 mt-2">⇄ Or paste rows copied from Excel instead</p>
+          <div id="shipment-paste-wrap" class="mt-2">
             <textarea id="shipment-paste" rows="5" placeholder="Copy the rows from Excel (including the header row) and paste here. Expected columns: Shipment No., PGI Date, SO Number, OBD Number, Billing Number, Route Description, Ship To Party Name, SO Amount, Quantity" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
           </div>
         </div>
@@ -475,8 +475,8 @@
         <label class="block text-xs font-medium text-slate-400 mb-1">Truck-Type Mapping Dataset (.xlsx)</label>
         <input type="file" id="truck-file" accept=".xlsx" class="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer" />
         <div class="mt-2">
-          <button type="button" onclick="document.getElementById('truck-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-blue-400 hover:text-blue-300">⇄ Or paste rows copied from Excel instead</button>
-          <div id="truck-paste-wrap" class="hidden mt-2">
+          <p class="text-[10px] font-semibold text-blue-400 mt-2">⇄ Or paste rows copied from Excel instead</p>
+          <div id="truck-paste-wrap" class="mt-2">
             <textarea id="truck-paste" rows="4" placeholder="Copy the rows from Excel (including the header row) and paste here. Expected columns: SO Number, Truck Type" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
           </div>
         </div>
@@ -493,9 +493,22 @@
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
       <div>
         <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">✍️ Enter STO / Manual Dispatch</h2>
-        <p class="text-[10px] text-slate-500 mt-1">For a rush/off-manifest SO that didn't come in on the daily upload. Every field below is required — this row needs to carry the same complete manifest data as an uploaded one, since Workbench targets, speed, and bracket calculations all depend on it.</p>
+        <p class="text-[10px] text-slate-500 mt-1">For a rush/off-manifest SO that didn't come in on the daily upload. Every field below is required — this row needs to carry the same complete manifest data as an uploaded one, since Workbench targets, speed, and bracket calculations all depend on it. <span class="text-amber-400">Select Truck Type first</span> — choosing <span class="text-amber-400 font-semibold">STO</span> auto-generates a unique Shipment No. (date+time) and SO Number (STO+date+time), and auto-fills OBD/Billing, Ship To Party, SO Amount, and Status for you.</p>
       </div>
       <form id="manual-dispatch-form" onsubmit="submitManualDispatch(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="sm:col-span-2">
+          <label class="block text-[10px] text-slate-500 mb-1">Truck Type</label>
+          <select id="md-truck-type" required onchange="handleManualDispatchTruckTypeChange()" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+            <option value="" disabled selected>-- Select Truck Type --</option>
+            <option value="AUV">AUV</option>
+            <option value="4W">4W</option>
+            <option value="6W">6W</option>
+            <option value="10W">10W</option>
+            <option value="20F">20F</option>
+            <option value="40F">40F</option>
+            <option value="STO">STO</option>
+          </select>
+        </div>
         <div>
           <label class="block text-[10px] text-slate-500 mb-1">Shipment No.</label>
           <input type="text" id="md-shipment-no" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
@@ -514,7 +527,10 @@
         </div>
         <div class="sm:col-span-2">
           <label class="block text-[10px] text-slate-500 mb-1">Route Description</label>
-          <input type="text" id="md-route" placeholder="e.g. 1102 --> MANILA" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+          <input type="text" id="md-route" placeholder="e.g. 1102 --> MANILA" required oninput="onManualRouteInput()" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+          <select id="md-route-sto" onchange="onManualRouteSelectChange()" class="hidden bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+            <option value="" disabled selected>-- Select Route --</option>
+          </select>
         </div>
         <div class="sm:col-span-2">
           <label class="block text-[10px] text-slate-500 mb-1">Ship To Party Name</label>
@@ -523,18 +539,6 @@
         <div>
           <label class="block text-[10px] text-slate-500 mb-1">SO Amount</label>
           <input type="number" step="0.01" min="0" id="md-so-amount" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">Truck Type</label>
-          <select id="md-truck-type" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-            <option value="AUV">AUV</option>
-            <option value="4W">4W</option>
-            <option value="6W">6W</option>
-            <option value="10W">10W</option>
-            <option value="20F">20F</option>
-            <option value="40F">40F</option>
-            <option value="STO">STO</option>
-          </select>
         </div>
         <div>
           <label class="block text-[10px] text-slate-500 mb-1">Quantity</label>
@@ -1008,6 +1012,7 @@ async function startApp() {
   await refreshBulletinBoard();
   await refreshShipmentDatalist();
   await refreshPipelineSummary();
+  initManualDispatchRouteOptions();
   subscribeRealtime();
 }
 
@@ -3360,6 +3365,107 @@ function exportAgingToExcel() {
 
 // --- DATA INGESTION ---
 // --- MANUAL DISPATCH / ENTER STO ---
+// Fixed route list for STO transfers — Route Description becomes a locked
+// dropdown of these when Truck Type = STO, and Ship To Party Name is
+// auto-derived from the chosen route ("<ROUTE> WAREHOUSE").
+const STO_ROUTES = ['CEBU', 'DAVAO', 'ILOILO', 'CARMONA', 'VILLASIS', 'CDO', 'BAESA', 'BULACAN', 'FOODHUB', 'NOVA'];
+
+function initManualDispatchRouteOptions() {
+  const sel = document.getElementById('md-route-sto');
+  if (!sel) return;
+  sel.innerHTML = '<option value="" disabled selected>-- Select Route --</option>' +
+    STO_ROUTES.map(r => `<option value="${r}">${r}</option>`).join('');
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+// Builds the date/time pieces used to auto-generate STO identifiers:
+// Shipment No. = DATE+HH+MM (e.g. 20260704 + 15 + 47 -> "202607041547")
+// SO Number    = "STO" + DATE+HH+MM+SS, seconds included so back-to-back
+//                STO entries still get a unique SO Number.
+function generateSTOTimestampParts() {
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}`;
+  const hh = pad2(now.getHours());
+  const mm = pad2(now.getMinutes());
+  const ss = pad2(now.getSeconds());
+  return { dateStr, hh, mm, ss };
+}
+
+// Locks/unlocks the STO-only fields whenever Truck Type changes. When STO is
+// selected: Shipment No. is auto-set to DATE+HH+MM, SO Number is auto-set to
+// STO+DATE+HH+MM+SS (unique), OBD Number and Billing Number are fixed to
+// "STO TRANSFER"; Route Description switches to a dropdown limited to the
+// fixed warehouse list; Ship To Party Name is derived from the chosen route;
+// SO Amount is fixed to 0; Status is fixed to PENDING. Switching away from
+// STO restores normal free-entry fields.
+function handleManualDispatchTruckTypeChange() {
+  const isSTO = document.getElementById('md-truck-type').value === 'STO';
+  const shipmentEl = document.getElementById('md-shipment-no');
+  const soEl = document.getElementById('md-so-number');
+  const obdEl = document.getElementById('md-obd-number');
+  const billingEl = document.getElementById('md-billing-number');
+  const amountEl = document.getElementById('md-so-amount');
+  const statusEl = document.getElementById('md-status');
+  const routeInput = document.getElementById('md-route');
+  const routeSelect = document.getElementById('md-route-sto');
+  const customerEl = document.getElementById('md-customer');
+  const lockedFields = [shipmentEl, soEl, obdEl, billingEl, amountEl, customerEl];
+
+  if (isSTO) {
+    const { dateStr, hh, mm, ss } = generateSTOTimestampParts();
+    shipmentEl.value = `${dateStr}${hh}${mm}`; shipmentEl.readOnly = true;
+    soEl.value = `STO${dateStr}${hh}${mm}${ss}`; soEl.readOnly = true;
+    obdEl.value = 'STO TRANSFER'; obdEl.readOnly = true;
+    billingEl.value = 'STO TRANSFER'; billingEl.readOnly = true;
+    amountEl.value = '0'; amountEl.readOnly = true;
+    statusEl.value = 'PENDING'; statusEl.disabled = true;
+
+    routeInput.classList.add('hidden');
+    routeInput.required = false;
+    routeSelect.classList.remove('hidden');
+    routeSelect.required = true;
+    routeSelect.value = '';
+    routeInput.value = '';
+
+    customerEl.readOnly = true;
+    customerEl.value = '';
+
+    lockedFields.forEach(el => el.classList.add('bg-slate-800/60', 'text-slate-500', 'cursor-not-allowed'));
+    statusEl.classList.add('opacity-60', 'cursor-not-allowed');
+  } else {
+    // Only clear auto-generated values, never anything the user typed by hand.
+    if (/^\d{12}$/.test(shipmentEl.value)) shipmentEl.value = '';
+    if (/^STO\d{14}$/.test(soEl.value)) soEl.value = '';
+    if (obdEl.value === 'STO TRANSFER') obdEl.value = '';
+    if (billingEl.value === 'STO TRANSFER') billingEl.value = '';
+    if (amountEl.value === '0') amountEl.value = '';
+    shipmentEl.readOnly = false; soEl.readOnly = false; obdEl.readOnly = false; billingEl.readOnly = false; amountEl.readOnly = false;
+    customerEl.readOnly = false; customerEl.value = '';
+    statusEl.disabled = false;
+
+    routeSelect.classList.add('hidden');
+    routeSelect.required = false;
+    routeInput.classList.remove('hidden');
+    routeInput.required = true;
+    routeInput.value = '';
+
+    lockedFields.forEach(el => el.classList.remove('bg-slate-800/60', 'text-slate-500', 'cursor-not-allowed'));
+    statusEl.classList.remove('opacity-60', 'cursor-not-allowed');
+  }
+}
+
+// Non-STO route field: plain free text, no derived customer name.
+function onManualRouteInput() { /* free entry — nothing to derive */ }
+
+// STO route dropdown: keep the hidden md-route input in sync (submit reads
+// from it) and derive Ship To Party Name as "<ROUTE> WAREHOUSE".
+function onManualRouteSelectChange() {
+  const route = document.getElementById('md-route-sto').value;
+  document.getElementById('md-route').value = route;
+  document.getElementById('md-customer').value = route ? `${route} WAREHOUSE` : '';
+}
+
 // Inserts (or upserts, same as the bulk uploader) a single shipments row typed
 // in by hand — for rush/off-manifest SOs that never came in on the daily
 // upload. Every field is required so this row carries the SAME complete
@@ -3368,6 +3474,11 @@ function exportAgingToExcel() {
 async function submitManualDispatch(e) {
   e.preventDefault();
   const statusEl = document.getElementById('manual-dispatch-status');
+  const isSTO = document.getElementById('md-truck-type').value === 'STO';
+
+  if (isSTO && !document.getElementById('md-route-sto').value) {
+    return showToast("Select a Route for the STO transfer.", "error");
+  }
 
   const row = {
     shipment_no: document.getElementById('md-shipment-no').value.trim(),
@@ -3397,8 +3508,10 @@ async function submitManualDispatch(e) {
   statusEl.innerHTML = `<span class="text-emerald-400">SO ${row.so_number} (Shipment ${row.shipment_no}) added to the manifest.</span>`;
   showToast(`SO ${row.so_number} added — now visible on the Workbench manifest.`, "success");
   document.getElementById('manual-dispatch-form').reset();
-  // Restore the numeric qty defaults the reset() call clears back to blank.
+  // Restore the numeric qty defaults the reset() call clears back to blank,
+  // and re-run the truck-type handler so a lingering STO lock state clears.
   ['md-quantity'].forEach(id => { document.getElementById(id).value = '0'; });
+  handleManualDispatchTruckTypeChange();
   await refreshShipmentDatalist();
 }
 
