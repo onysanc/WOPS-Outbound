@@ -50,6 +50,10 @@
       <input type="password" id="login-password" autocomplete="current-password" required
         class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
     </div>
+    <label class="flex items-center gap-2 cursor-pointer select-none">
+      <input type="checkbox" id="login-remember-me" class="w-3.5 h-3.5 text-emerald-600 bg-slate-950 border-slate-700 rounded">
+      <span class="text-xs text-slate-400">Remember me on this device</span>
+    </label>
     <p id="login-error" class="hidden text-[11px] text-rose-400 text-center"></p>
     <button type="submit" id="login-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-sm font-bold py-2.5 rounded-lg text-white transition">Log In</button>
   </form>
@@ -901,10 +905,13 @@ function roleTextClass(role) { return (ROLE_COLORS[role] || {}).text || 'text-sl
 function roleBadgeClass(role) { return (ROLE_COLORS[role] || {}).badge || 'bg-slate-500/15 text-slate-300 border border-slate-500/30'; }
 
 // --- INIT ---
-// The app no longer boots automatically — it waits behind the login screen.
+// The app no longer boots automatically — it waits behind the login screen,
+// unless a "Remember me" session was stored, in which case it silently
+// re-authenticates before the login screen is ever shown.
 // Once attemptLogin() succeeds, startApp() runs this same sequence.
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-username').focus();
+  tryRememberedLogin();
 });
 
 async function startApp() {
@@ -936,6 +943,43 @@ const ALL_TABS = [
 ];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
+// "Remember me" — stored in localStorage with no expiry, so a device stays
+// signed in indefinitely (across tab closes, browser restarts, etc.) until
+// the user unchecks it and logs in again, or logs out explicitly.
+const REMEMBER_KEY = 'wh_remembered_user';
+
+function rememberUser(id) {
+  try { localStorage.setItem(REMEMBER_KEY, JSON.stringify({ id })); } catch (e) { /* storage unavailable — ignore */ }
+}
+function forgetRememberedUser() {
+  try { localStorage.removeItem(REMEMBER_KEY); } catch (e) { /* ignore */ }
+}
+
+// On boot, if a remembered user id exists, re-fetch that row fresh (so any
+// permission changes an admin made since last visit still apply) and skip
+// straight past the login screen. Falls through to the normal login screen
+// on any failure (deleted user, network error, storage disabled, etc.).
+async function tryRememberedLogin() {
+  let stored;
+  try { stored = JSON.parse(localStorage.getItem(REMEMBER_KEY) || 'null'); } catch (e) { stored = null; }
+  if (!stored || !stored.id) return;
+
+  try {
+    const { data, error } = await supabaseClient.from('users').select('*').eq('id', stored.id).limit(1);
+    const row = (data || [])[0];
+    if (error || !row) { forgetRememberedUser(); return; }
+
+    currentUser = { id: row.id, username: row.username, allowed_tabs: row.allowed_tabs || [] };
+    document.getElementById('current-username-display').innerText = currentUser.username;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-shell').classList.remove('hidden');
+    await startApp();
+  } catch (e) {
+    // Network or Supabase hiccup — leave the login screen up as a fallback.
+    console.error('Remembered login failed', e);
+  }
+}
+
 async function attemptLogin(e) {
   e.preventDefault();
   const username = document.getElementById('login-username').value.trim();
@@ -966,6 +1010,8 @@ async function attemptLogin(e) {
   }
 
   currentUser = { id: row.id, username: row.username, allowed_tabs: row.allowed_tabs || [] };
+  const rememberMe = document.getElementById('login-remember-me').checked;
+  if (rememberMe) rememberUser(row.id); else forgetRememberedUser();
   document.getElementById('current-username-display').innerText = currentUser.username;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-shell').classList.remove('hidden');
@@ -975,10 +1021,12 @@ async function attemptLogin(e) {
 
 function logoutUser() {
   currentUser = null;
+  forgetRememberedUser();
   document.getElementById('app-shell').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
+  document.getElementById('login-remember-me').checked = false;
   document.getElementById('login-error').classList.add('hidden');
   setTimeout(() => document.getElementById('login-username').focus(), 50);
 }
