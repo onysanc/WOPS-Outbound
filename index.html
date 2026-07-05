@@ -7,20 +7,154 @@
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Retint Tailwind's default palette so every existing bg-slate-*/text-emerald-* utility
+     across the app inherits a deeper, warehouse-console color system with no markup edits. -->
+<style type="text/tailwindcss">
+@theme {
+  --color-slate-950: #060911;
+  --color-slate-900: #0c1220;
+  --color-slate-800: #1a2436;
+  --color-slate-700: #263349;
+  --color-slate-600: #3a4a63;
+  --color-slate-500: #647089;
+  --color-slate-400: #93a1b8;
+  --color-slate-300: #c1cbdc;
+  --color-slate-200: #dde3ee;
+  --color-slate-100: #eef1f7;
+
+  --color-emerald-600: #0d8f79;
+  --color-emerald-500: #14b8a1;
+  --color-emerald-400: #2dd4bf;
+  --color-emerald-300: #6ee7d8;
+}
+</style>
+
 <style>
-  html{font-size:18px}
-  ::-webkit-scrollbar{width:8px;height:8px}
-  ::-webkit-scrollbar-thumb{background:#1e293b;border-radius:4px}
-  .tab-btn.active{background:#059669;color:#fff;border-color:#10b981}
+  :root{
+    --accent: #2dd4bf;
+    --accent-soft: rgba(45,212,191,.12);
+    --panel-grad: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0) 40%);
+  }
+  html{font-size:17px}
+  body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif; letter-spacing:.1px}
+  h1,h2,h3,.font-mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#233149;border-radius:5px}
+  ::-webkit-scrollbar-thumb:hover{background:#2f4162}
+  ::selection{background:var(--accent-soft);color:#fff}
+
+  /* Panels: any card built from the bg-slate-950 + border-slate-800 + rounded-xl combo
+     gets a hairline top highlight and softer depth, matching the existing markup 1:1. */
+  .bg-slate-950.border.border-slate-800.rounded-xl,
+  .bg-slate-950.border.border-slate-800.rounded-2xl{
+    position:relative;
+    background-color:#0a0e18;
+    box-shadow: 0 1px 0 0 rgba(255,255,255,.03) inset, 0 8px 24px -12px rgba(0,0,0,.5);
+    background-image:var(--panel-grad);
+  }
+
+  h1{letter-spacing:.06em}
+  h2, h3{letter-spacing:.02em}
+
+  /* Buttons */
+  button{cursor:pointer}
+  button:disabled{cursor:not-allowed;opacity:.5}
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+  .bg-emerald-600{background-color:#0d8f79 !important}
+  .bg-emerald-600:hover{background-color:#0fa78d !important}
+  .bg-emerald-500{background-color:#14b8a1 !important}
+  .bg-emerald-500:hover{background-color:#17cbb1 !important}
+
+  /* Tab / role navigation */
+  .tab-btn{transition:background .15s ease, color .15s ease, transform .1s ease}
+  .tab-btn.active{background:var(--accent);color:#04231d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(45,212,191,.3), 0 4px 14px -4px rgba(45,212,191,.5); font-weight:700}
   .role-btn.active{color:#fff}
-  [id="btn-Picker"].active{background:#16a34a;border-color:#22c55e;color:#fff}
-  [id="btn-Staging Checker"].active{background:#38bdf8;border-color:#7dd3fc;color:#0c4a6e}
-  [id="btn-Puller"].active{background:#ec4899;border-color:#f9a8d4;color:#fff}
-  [id="btn-Outbound Checker"].active{background:#2563eb;border-color:#60a5fa;color:#fff}
-  .staging-choice-btn.active{background:#059669;color:#fff;border-color:#10b981}
+  .role-btn{transition:background .15s ease, border-color .15s ease, transform .1s ease}
+  .role-btn.active{transform:translateY(-1px)}
+  [id="btn-Picker"].active{background:#16a34a;border-color:#22c55e;color:#fff;box-shadow:0 4px 14px -4px rgba(34,197,94,.5)}
+  [id="btn-Staging Checker"].active{background:#0ea5e9;border-color:#7dd3fc;color:#04202e;box-shadow:0 4px 14px -4px rgba(14,165,233,.5)}
+  [id="btn-Puller"].active{background:#db2777;border-color:#f9a8d4;color:#fff;box-shadow:0 4px 14px -4px rgba(219,39,119,.5)}
+  [id="btn-Outbound Checker"].active{background:#2563eb;border-color:#60a5fa;color:#fff;box-shadow:0 4px 14px -4px rgba(37,99,235,.5)}
+  .staging-choice-btn.active{background:var(--accent);color:#04231d;border-color:var(--accent)}
   .outbound-choice-btn.active{background:#0d9488;color:#fff;border-color:#14b8a6}
+
+  /* Tables: sticky, letter-spaced headers with subtle zebra + hover for scanability */
+  table thead th{letter-spacing:.06em;font-size:.65rem}
+  table tbody tr{transition:background .12s ease}
+  table tbody tr:hover{background:rgba(45,212,191,.05)}
+  table tbody tr:nth-child(even){background:rgba(255,255,255,.012)}
+
+  /* Inputs */
+  input[type=text], input[type=password], input[type=date], input[type=time], select, textarea{
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type=text]:focus, input[type=password]:focus, input[type=date]:focus, input[type=time]:focus, select:focus, textarea:focus{
+    box-shadow:0 0 0 3px var(--accent-soft);
+  }
+
+  /* Section eyebrow labels (the small uppercase headings used throughout every panel) */
+  h2.uppercase, h3.uppercase{display:flex;align-items:center;gap:.5rem}
+  h2.uppercase::before, h3.uppercase::before{content:'';width:6px;height:6px;border-radius:2px;background:var(--accent);flex-shrink:0}
+
+  #login-screen{background:radial-gradient(circle at 30% 20%, rgba(45,212,191,.08), transparent 55%), #060911}
+  #login-form{box-shadow:0 24px 60px -20px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.04) inset}
+
+  /* --- Light mode: quick, non-destructive invert toggle over the existing dark palette --- */
+  html.light-mode{filter:invert(1) hue-rotate(180deg)}
+  html.light-mode img, html.light-mode video, html.light-mode canvas{filter:invert(1) hue-rotate(180deg)}
+
+  /* --- Header utility buttons --- */
+  .hdr-icon-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:.5rem;border:1px solid #1a2436;background:#0c1220;color:#93a1b8;transition:background .15s,color .15s,border-color .15s;font-size:.95rem}
+  .hdr-icon-btn:hover{background:#1a2436;color:var(--accent);border-color:#263349}
+
+  /* --- Activity ticker --- */
+  #activity-ticker-wrap{overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+  #activity-ticker-track{display:flex;gap:2.5rem;white-space:nowrap;animation:tickerScroll 38s linear infinite}
+  #activity-ticker-track:hover{animation-play-state:paused}
+  @keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .ticker-item{display:inline-flex;align-items:center;gap:.4rem;font-size:.68rem;color:#93a1b8}
+  .ticker-item b{color:#dde3ee;font-weight:600}
+
+  /* --- Kanban board --- */
+  .kanban-col{background:#0c1220;border:1px solid #1a2436;border-radius:.6rem;min-height:120px;display:flex;flex-direction:column}
+  .kanban-col-head{padding:.55rem .75rem;border-bottom:1px solid #1a2436;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;display:flex;justify-content:space-between}
+  .kanban-body{padding:.5rem;display:flex;flex-direction:column;gap:.4rem;max-height:260px;overflow-y:auto}
+  .kanban-chip{font-family:'JetBrains Mono',monospace;font-size:.65rem;background:#0a0e18;border:1px solid #1a2436;border-radius:.4rem;padding:.3rem .5rem;color:#c1cbdc}
+
+  /* --- Heatmap --- */
+  .heatmap-cell{width:15px;height:15px;border-radius:3px;background:#141c2c}
+  .heatmap-row{display:flex;gap:3px}
+
+  /* --- Streak / MVP badges --- */
+  .mvp-badge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#1c1207;font-weight:800;font-size:.65rem;padding:.25rem .6rem;border-radius:999px;box-shadow:0 3px 10px -3px rgba(245,158,11,.6)}
+  .streak-chip{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.35);color:var(--accent);font-size:.65rem;font-weight:700;padding:.2rem .55rem;border-radius:999px}
+
+  /* --- Scan mode: bigger, thumb-friendly controls for floor/handheld use --- */
+  body.scan-mode #view-workbench input, body.scan-mode #view-workbench select{font-size:1.05rem !important;padding:.9rem !important}
+  body.scan-mode #view-workbench .role-btn{padding:1rem 1.1rem !important;font-size:.95rem !important}
+  body.scan-mode #view-workbench button{min-height:44px}
+  body.scan-mode table{font-size:.85rem}
+
+  /* --- Command palette --- */
+  #cmdk-overlay{backdrop-filter:blur(3px)}
+  #cmdk-panel{box-shadow:0 30px 70px -20px rgba(0,0,0,.7)}
+  .cmdk-item{display:flex;align-items:center;justify-content:space-between;padding:.55rem .8rem;border-radius:.5rem;cursor:pointer;font-size:.8rem}
+  .cmdk-item:hover, .cmdk-item.selected{background:rgba(45,212,191,.12);color:#fff}
+  .cmdk-kbd{font-size:.6rem;color:#647089;border:1px solid #263349;border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono',monospace}
+
+  #confetti-canvas{position:fixed;inset:0;z-index:80;pointer-events:none}
+
   .view{display:none}
-  .view.active{display:block}
+  .view.active{display:block; animation:viewIn .22s ease-out}
+  @keyframes viewIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(244,63,94,.45)}100%{box-shadow:0 0 0 8px rgba(244,63,94,0)}}
   .overdue-ring{animation:pulseRing 1.6s infinite}
   @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -31,6 +165,35 @@
 
 <!-- ================= TOASTS ================= -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end"></div>
+
+<!-- ================= CONFETTI CANVAS (gamification bursts) ================= -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- ================= COMMAND PALETTE (Ctrl/Cmd+K) ================= -->
+<div id="cmdk-overlay" class="hidden fixed inset-0 bg-black/60 z-[90] flex items-start justify-center pt-24 p-4">
+  <div id="cmdk-panel" class="bg-slate-950 border border-slate-800 rounded-xl w-full max-w-lg overflow-hidden">
+    <input id="cmdk-input" type="text" placeholder="Jump to a tab, set your role, or type a shipment no..."
+      class="w-full bg-slate-900 border-b border-slate-800 px-4 py-3 text-sm focus:outline-none" autocomplete="off">
+    <div id="cmdk-results" class="max-h-80 overflow-y-auto p-2 space-y-0.5"></div>
+    <div class="px-4 py-2 border-t border-slate-800 flex items-center gap-3 text-[10px] text-slate-600">
+      <span><span class="cmdk-kbd">↑↓</span> navigate</span>
+      <span><span class="cmdk-kbd">↵</span> select</span>
+      <span><span class="cmdk-kbd">esc</span> close</span>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BARCODE / QR SCANNER MODAL ================= -->
+<div id="scanner-modal" class="hidden fixed inset-0 bg-black/80 z-[90] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 max-w-sm w-full space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Scan Shipment Barcode</h3>
+      <button onclick="closeScannerModal()" class="text-slate-500 hover:text-rose-400 text-lg leading-none">×</button>
+    </div>
+    <div id="scanner-viewport" class="rounded-lg overflow-hidden border border-slate-800 bg-black min-h-[220px]"></div>
+    <p class="text-[10px] text-slate-500">Point the camera at a shipment/SO barcode or QR code. Requires camera permission over HTTPS.</p>
+  </div>
+</div>
 
 <!-- ================= LOGIN SCREEN ================= -->
 <div id="login-screen" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-4">
@@ -166,23 +329,33 @@
 </div>
 
 <div id="app-shell" class="hidden">
-<header class="border-b border-slate-800 bg-slate-950/70 backdrop-blur sticky top-0 z-40">
+<header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40">
   <div class="max-w-[1700px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-6 flex-1 min-w-0">
-      <h1 class="text-lg font-bold tracking-wider text-emerald-400 whitespace-nowrap">⚡ WAREHOUSE OPERATIONS - OUTBOUND SECTION</h1>
-      <nav class="flex flex-1 gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold">
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="workbench" onclick="setView('workbench')">Workbench</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="export" onclick="setView('export')">Data Export</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="aging" onclick="setView('aging')">Master Records</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
+      <div class="flex items-center gap-2.5 whitespace-nowrap">
+        <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-sm">⚡</span>
+        <div class="leading-tight">
+          <h1 class="text-sm font-bold tracking-widest text-slate-100">WAREHOUSE OPS</h1>
+          <p class="text-[10px] uppercase tracking-wider text-slate-500 -mt-0.5">Outbound Section</p>
+        </div>
+      </div>
+      <nav class="flex flex-1 gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold overflow-x-auto">
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="workbench" onclick="setView('workbench')">Workbench</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
     </div>
     <div class="flex items-center gap-2">
+      <button onclick="openCommandPalette()" class="hdr-icon-btn" title="Command palette (Ctrl/Cmd+K)">⌘</button>
+      <button onclick="toggleScanMode()" id="scan-mode-btn" class="hdr-icon-btn" title="Toggle Scan Mode (bigger controls for handheld use)">📱</button>
+      <button onclick="toggleLightMode()" id="theme-toggle-btn" class="hdr-icon-btn" title="Toggle light / dark mode">🌙</button>
       <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
         <span class="text-slate-500">👤</span><span id="current-username-display" class="font-semibold text-slate-200">—</span>
         <button onclick="logoutUser()" class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white transition ml-1">Log Out</button>
       </div>
@@ -196,11 +369,25 @@
   <!-- ================= WORKBENCH VIEW ================= -->
   <section id="view-workbench" class="view space-y-6">
 
+    <!-- Live Activity Ticker: last actions across every role, system-wide -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 flex items-center gap-3">
+      <span class="text-[10px] uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1 flex-shrink-0">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-400 overdue-ring"></span>LIVE
+      </span>
+      <div id="activity-ticker-wrap" class="flex-1">
+        <div id="activity-ticker-track"><span class="ticker-item text-slate-600">Loading activity...</span></div>
+      </div>
+    </div>
+
     <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
       <div class="flex items-center justify-between mb-3 gap-2">
         <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400">Pipeline Summary — Pending by Stage</h2>
         <div class="flex items-center gap-2">
+          <div class="flex bg-slate-900 border border-slate-800 rounded-md p-0.5 text-[10px] font-semibold">
+            <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
+            <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
+          </div>
           <select id="pipeline-date-filter" onchange="refreshPipelineSummary()" class="bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-300 focus:outline-none focus:border-emerald-500 max-w-[130px]"></select>
           <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold whitespace-nowrap">⟳ Refresh</button>
         </div>
@@ -223,6 +410,7 @@
           <span id="pending-check-count" class="text-2xl font-black text-blue-400">–</span>
         </div>
       </div>
+      <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-1"></div>
     </div>
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -247,7 +435,10 @@
         </div>
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment ID Reference</label>
-          <input type="text" id="target-shipment-no" list="shipment-datalist" oninput="onShipmentInputChange()" placeholder="Type Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+          <div class="flex gap-1.5">
+            <input type="text" id="target-shipment-no" list="shipment-datalist" oninput="onShipmentInputChange()" placeholder="Type Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+            <button onclick="openScannerModal()" title="Scan barcode / QR" class="flex-shrink-0 px-3 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-emerald-500 hover:text-emerald-400 transition text-sm">▦</button>
+          </div>
           <datalist id="shipment-datalist"></datalist>
         </div>
       </div>
@@ -308,7 +499,7 @@
   <section id="view-bulletin" class="view space-y-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-bold text-slate-100">📊 Personnel Performance Summary</h2>
+        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">📊 Personnel Performance Summary <span id="mvp-badge-slot"></span></h2>
         <p class="text-xs text-slate-400">Per-personnel speed, volume, and idle-time breakdown for the selected operational day (05:00–04:59)</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -392,35 +583,67 @@
     <!-- Throughput Trend -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
       <h3 class="text-sm font-semibold text-slate-200">📊 Throughput Trend <span class="text-slate-500 font-normal">(lines completed per stage, last 7 Activity Days)</span></h3>
-      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-            <tr>
-              <th class="p-2">Activity Day</th>
-              <th class="p-2 text-right text-green-400">Picker</th>
-              <th class="p-2 text-right text-sky-300">Staging</th>
-              <th class="p-2 text-right text-pink-400">Puller</th>
-              <th class="p-2 text-right text-blue-400">Check</th>
-            </tr>
-          </thead>
-          <tbody id="throughput-rows" class="divide-y divide-slate-800/50"></tbody>
-        </table>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2">Activity Day</th>
+                <th class="p-2 text-right text-green-400">Picker</th>
+                <th class="p-2 text-right text-sky-300">Staging</th>
+                <th class="p-2 text-right text-pink-400">Puller</th>
+                <th class="p-2 text-right text-blue-400">Check</th>
+              </tr>
+            </thead>
+            <tbody id="throughput-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+        <div class="border border-slate-800 rounded-lg bg-slate-900/40 p-3" style="height:220px">
+          <canvas id="throughput-trend-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Throughput Heatmap -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔥 Throughput Heatmap <span class="text-slate-500 font-normal">(completed lines per day, last 35 days, system-wide)</span></h3>
+      <div id="throughput-heatmap" class="flex gap-1 overflow-x-auto pb-1"></div>
+      <div class="flex items-center gap-2 text-[10px] text-slate-500">
+        <span>Less</span>
+        <span class="heatmap-cell" style="background:#141c2c"></span>
+        <span class="heatmap-cell" style="background:#0d4d43"></span>
+        <span class="heatmap-cell" style="background:#0f8f76"></span>
+        <span class="heatmap-cell" style="background:#2dd4bf"></span>
+        <span>More</span>
       </div>
     </div>
 
     <!-- Personnel Leaderboard -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
       <h3 class="text-sm font-semibold text-slate-200">🏆 Personnel Leaderboard <span class="text-slate-500 font-normal">(ranked by Productivity %, selected Activity Day)</span></h3>
-      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-            <tr>
-              <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2">Role(s)</th>
-              <th class="p-2 text-right">Volume</th><th class="p-2 text-right">Active Min</th><th class="p-2 text-right">Productivity</th>
-            </tr>
-          </thead>
-          <tbody id="leaderboard-rows" class="divide-y divide-slate-800/50"></tbody>
-        </table>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2">Role(s)</th>
+                <th class="p-2 text-right">Volume</th><th class="p-2 text-right">Active Min</th><th class="p-2 text-right">Productivity</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+        <div class="border border-slate-800 rounded-lg bg-slate-900/40 p-3" style="height:240px">
+          <canvas id="leaderboard-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zero-Discrepancy Streaks -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔥 Zero-Discrepancy Streaks <span class="text-slate-500 font-normal">(consecutive Activity Days with no logged discrepancy, Staging + Outbound Checkers)</span></h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="streak-leaders-grid">
+        <p class="text-[11px] text-slate-600 italic col-span-3">Loading streak data...</p>
       </div>
     </div>
 
@@ -428,6 +651,9 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
         <h3 class="text-sm font-semibold text-slate-200">🚚 Volume by Truck Type <span class="text-slate-500 font-normal">(all shipments on file)</span></h3>
+        <div class="border border-slate-800 rounded-lg bg-slate-900/40 p-3 mb-2" style="height:200px">
+          <canvas id="truck-type-chart"></canvas>
+        </div>
         <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
@@ -3848,6 +4074,463 @@ async function refreshConfiguredBreaks() {
     </div>`).join('');
   recalcSummary();
 }
+
+/* ===================================================================
+   NEW FEATURE MODULE — added on top of the app above.
+   Everything below is additive: it reads the same Supabase tables the
+   rest of the app uses and wraps a few existing functions (by
+   reassigning them after their original definition) instead of editing
+   their internals, to keep this safe to merge/re-run.
+   =================================================================== */
+
+// --- THEME + SCAN MODE (persisted via localStorage) ---
+function toggleLightMode() {
+  const isLight = document.documentElement.classList.toggle('light-mode');
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.innerText = isLight ? '☀️' : '🌙';
+  try { localStorage.setItem('wh_theme', isLight ? 'light' : 'dark'); } catch (e) {}
+}
+function toggleScanMode() {
+  const on = document.body.classList.toggle('scan-mode');
+  const btn = document.getElementById('scan-mode-btn');
+  if (btn) { btn.style.color = on ? 'var(--accent)' : ''; btn.style.borderColor = on ? 'var(--accent)' : ''; }
+  try { localStorage.setItem('wh_scan_mode', on ? '1' : '0'); } catch (e) {}
+  showToast(on ? "Scan Mode on — bigger controls for handheld use." : "Scan Mode off.", "info");
+}
+(function initPersistedUI() {
+  try {
+    if (localStorage.getItem('wh_theme') === 'light') {
+      document.documentElement.classList.add('light-mode');
+      const b = document.getElementById('theme-toggle-btn'); if (b) b.innerText = '☀️';
+    }
+    if (localStorage.getItem('wh_scan_mode') === '1') {
+      document.body.classList.add('scan-mode');
+      const b = document.getElementById('scan-mode-btn'); if (b) { b.style.color = 'var(--accent)'; b.style.borderColor = 'var(--accent)'; }
+    }
+  } catch (e) { /* storage unavailable — ignore */ }
+})();
+
+// --- COMMAND PALETTE (Ctrl/Cmd+K) ---
+let cmdkItems = [];
+let cmdkSelectedIndex = 0;
+function buildCommandList(query) {
+  const q = query.trim().toLowerCase();
+  const items = [];
+  ALL_TABS.forEach(t => {
+    if (!userCanAccess(t.key)) return;
+    if (!q || t.label.toLowerCase().includes(q)) items.push({ label: `Go to ${t.label}`, hint: 'tab', action: () => setView(t.key) });
+  });
+  ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'].forEach(r => {
+    if (!q || r.toLowerCase().includes(q)) items.push({ label: `Set role: ${r}`, hint: 'role', action: () => { setView('workbench'); setRole(r); } });
+  });
+  if (q) {
+    const dl = document.getElementById('shipment-datalist');
+    const opts = dl ? Array.from(dl.options).map(o => o.value) : [];
+    opts.filter(v => v.toLowerCase().includes(q)).slice(0, 8).forEach(v => {
+      items.push({ label: `Jump to shipment ${v}`, hint: 'shipment', action: () => {
+        setView('workbench');
+        const inp = document.getElementById('target-shipment-no');
+        inp.value = v; onShipmentInputChange();
+      }});
+    });
+  }
+  items.push({ label: 'Toggle Scan Mode', hint: 'ui', action: toggleScanMode });
+  items.push({ label: 'Toggle Light / Dark Mode', hint: 'ui', action: toggleLightMode });
+  items.push({ label: 'Scan a barcode / QR code', hint: 'ui', action: openScannerModal });
+  return items.slice(0, 30);
+}
+function renderCmdkResults() {
+  const box = document.getElementById('cmdk-results');
+  if (!cmdkItems.length) { box.innerHTML = '<p class="text-[11px] text-slate-600 italic px-3 py-2">No matches.</p>'; return; }
+  box.innerHTML = cmdkItems.map((it, i) => `
+    <div class="cmdk-item ${i === cmdkSelectedIndex ? 'selected' : ''}" data-i="${i}" onclick="runCmdkItem(${i})">
+      <span>${it.label}</span><span class="cmdk-kbd">${it.hint}</span>
+    </div>`).join('');
+}
+function runCmdkItem(i) {
+  const it = cmdkItems[i];
+  if (it) { closeCommandPalette(); it.action(); }
+}
+function openCommandPalette() {
+  document.getElementById('cmdk-overlay').classList.remove('hidden');
+  const input = document.getElementById('cmdk-input');
+  input.value = '';
+  cmdkItems = buildCommandList('');
+  cmdkSelectedIndex = 0;
+  renderCmdkResults();
+  setTimeout(() => input.focus(), 10);
+}
+function closeCommandPalette() {
+  document.getElementById('cmdk-overlay').classList.add('hidden');
+}
+document.getElementById('cmdk-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'cmdk-overlay') closeCommandPalette();
+});
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    document.getElementById('cmdk-overlay').classList.contains('hidden') ? openCommandPalette() : closeCommandPalette();
+    return;
+  }
+  if (e.key === 'Escape') { closeCommandPalette(); closeScannerModal(); }
+  if (e.target && e.target.id === 'cmdk-input') {
+    if (e.key === 'ArrowDown') { e.preventDefault(); cmdkSelectedIndex = Math.min(cmdkSelectedIndex + 1, cmdkItems.length - 1); renderCmdkResults(); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); cmdkSelectedIndex = Math.max(cmdkSelectedIndex - 1, 0); renderCmdkResults(); }
+    if (e.key === 'Enter') { e.preventDefault(); runCmdkItem(cmdkSelectedIndex); }
+  }
+});
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'cmdk-input') {
+    cmdkItems = buildCommandList(e.target.value);
+    cmdkSelectedIndex = 0;
+    renderCmdkResults();
+  }
+});
+
+// --- BARCODE / QR SCANNER (html5-qrcode) ---
+let html5QrScanner = null;
+function openScannerModal() {
+  document.getElementById('scanner-modal').classList.remove('hidden');
+  if (typeof Html5Qrcode === 'undefined') {
+    document.getElementById('scanner-viewport').innerHTML = '<p class="text-rose-400 text-xs p-4">Scanner library failed to load — check your network connection.</p>';
+    return;
+  }
+  document.getElementById('scanner-viewport').innerHTML = '<div id="qr-reader" style="width:100%"></div>';
+  html5QrScanner = new Html5Qrcode('qr-reader');
+  html5QrScanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: 220 },
+    (decodedText) => {
+      const input = document.getElementById('target-shipment-no');
+      input.value = decodedText.trim();
+      onShipmentInputChange();
+      showToast(`Scanned: ${decodedText.trim()}`, 'success');
+      closeScannerModal();
+    },
+    () => { /* per-frame decode miss while aiming — expected, ignore */ }
+  ).catch(err => {
+    document.getElementById('scanner-viewport').innerHTML = `<p class="text-rose-400 text-xs p-4">Camera error — check camera permission and that the page is served over HTTPS.</p>`;
+    console.error('Scanner start failed', err);
+  });
+}
+function closeScannerModal() {
+  const modal = document.getElementById('scanner-modal');
+  if (modal) modal.classList.add('hidden');
+  if (html5QrScanner) {
+    html5QrScanner.stop().then(() => html5QrScanner.clear()).catch(() => {});
+    html5QrScanner = null;
+  }
+}
+
+// --- LIVE ACTIVITY TICKER ---
+async function refreshActivityTicker() {
+  const track = document.getElementById('activity-ticker-track');
+  if (!track) return;
+  const { data, error } = await supabaseClient.from('activity_logs')
+    .select('personnel_name,role,so_number,status,start_time,end_time')
+    .order('start_time', { ascending: false }).limit(15);
+  if (error || !data || !data.length) {
+    track.innerHTML = '<span class="ticker-item text-slate-600">No recent activity yet.</span>';
+    return;
+  }
+  const verbs = { Ongoing: 'started', Paused: 'paused', Completed: 'completed' };
+  const items = data.map(l => {
+    const verb = verbs[l.status] || (l.status || '').toLowerCase();
+    const ts = new Date((l.status === 'Completed' && l.end_time) ? l.end_time : l.start_time);
+    return `<span class="ticker-item"><b>${l.personnel_name || '—'}</b> ${verb} <span class="${roleTextClass(l.role)}">${l.role}</span> on <b>${l.so_number || '—'}</b> · ${ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+  });
+  track.innerHTML = items.join('') + items.join(''); // duplicated so the CSS marquee loop (-50%) is seamless
+}
+function subscribeTickerRealtime() {
+  supabaseClient.channel('activity-ticker-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => refreshActivityTicker())
+    .subscribe();
+}
+
+// --- PIPELINE KANBAN BOARD (alt view of Pipeline Summary) ---
+let pipelineViewMode = 'numbers';
+function setPipelineViewMode(mode) {
+  pipelineViewMode = mode;
+  document.getElementById('pipeline-summary-grid').classList.toggle('hidden', mode === 'board');
+  document.getElementById('pipeline-kanban-grid').classList.toggle('hidden', mode !== 'board');
+  document.getElementById('pipeline-view-numbers-btn').className = 'px-2 py-1 rounded ' + (mode === 'numbers' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200');
+  document.getElementById('pipeline-view-board-btn').className = 'px-2 py-1 rounded ' + (mode === 'board' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200');
+  if (mode === 'board') refreshKanbanBoard();
+}
+async function refreshKanbanBoard() {
+  const grid = document.getElementById('pipeline-kanban-grid');
+  if (!grid) return;
+  grid.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-4">Loading board...</p>';
+  const { data, error } = await supabaseClient.from('shipments').select('so_number,status').order('so_number', { ascending: false }).limit(400);
+  if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-4">Failed to load board: ${error.message}</p>`; return; }
+  const cols = [
+    { key: 'PENDING', label: 'Pending to Pick', color: 'text-amber-300' },
+    { key: 'PICKED', label: 'Pending to Staged', color: 'text-emerald-300' },
+    { key: 'STAGED', label: 'Pending to Pull', color: 'text-sky-300' },
+    { key: 'PULLED', label: 'Pending to Check', color: 'text-pink-300' }
+  ];
+  const buckets = { PENDING: [], PICKED: [], STAGED: [], PULLED: [] };
+  (data || []).forEach(row => {
+    const st = row.status && buckets[row.status] ? row.status : 'PENDING';
+    buckets[st].push(row.so_number);
+  });
+  grid.innerHTML = cols.map(c => {
+    const list = buckets[c.key];
+    const shown = list.slice(0, 20);
+    return `<div class="kanban-col">
+      <div class="kanban-col-head ${c.color}"><span>${c.label}</span><span>${list.length}</span></div>
+      <div class="kanban-body">
+        ${shown.length ? shown.map(so => `<div class="kanban-chip">${so}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
+        ${list.length > shown.length ? `<p class="text-[10px] text-slate-500 px-1">+${list.length - shown.length} more</p>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// --- COUNT-UP ANIMATION for Pipeline Summary KPI numbers ---
+function animateCountUp(el, from, to, duration) {
+  if (from === to) { el.innerText = to; return; }
+  const start = performance.now();
+  function step(now) {
+    const p = Math.min((now - start) / duration, 1);
+    el.innerText = Math.round(from + (to - from) * p);
+    if (p < 1) requestAnimationFrame(step); else el.innerText = to;
+  }
+  requestAnimationFrame(step);
+}
+const _origRefreshPipelineSummary = refreshPipelineSummary;
+refreshPipelineSummary = async function (...args) {
+  const ids = ['pending-pick-count', 'pending-staged-count', 'pending-pull-count', 'pending-check-count'];
+  const before = {};
+  ids.forEach(id => { const el = document.getElementById(id); before[id] = parseInt(el.innerText) || 0; });
+  await _origRefreshPipelineSummary.apply(this, args);
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    const to = parseInt(el.innerText) || 0;
+    animateCountUp(el, before[id], to, 500);
+  });
+  if (pipelineViewMode === 'board') refreshKanbanBoard();
+};
+
+// --- ANALYTICS: Chart.js charts + heatmap + streak leaderboard ---
+const _chartInstances = {};
+function upsertChart(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_chartInstances[id]) _chartInstances[id].destroy();
+  _chartInstances[id] = new Chart(canvas.getContext('2d'), config);
+}
+const CHART_AXIS_OPTS = { ticks: { color: '#647089', font: { size: 9 } }, grid: { color: '#1a2436' } };
+
+async function renderThroughputTrendChart(endDateStr) {
+  const [y, m, d] = endDateStr.split('-').map(Number);
+  const days = [];
+  for (let i = 6; i >= 0; i--) { const dt = new Date(y, m - 1, d - i); days.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`); }
+  const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
+  const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
+  const { data, error } = await supabaseClient.from('activity_logs').select('role,start_time')
+    .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString()).eq('status', 'Completed');
+  if (error) return;
+  const counts = {};
+  days.forEach(ds => counts[ds] = { Picker: 0, 'Staging Checker': 0, Puller: 0, 'Outbound Checker': 0 });
+  (data || []).forEach(log => {
+    const t = new Date(log.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    if (counts[ds] && counts[ds][log.role] !== undefined) counts[ds][log.role]++;
+  });
+  upsertChart('throughput-trend-chart', {
+    type: 'line',
+    data: {
+      labels: days.map(dd => dd.slice(5)),
+      datasets: [
+        { label: 'Picker', data: days.map(dd => counts[dd].Picker), borderColor: '#4ade80', backgroundColor: 'transparent', tension: .3 },
+        { label: 'Staging', data: days.map(dd => counts[dd]['Staging Checker']), borderColor: '#38bdf8', backgroundColor: 'transparent', tension: .3 },
+        { label: 'Puller', data: days.map(dd => counts[dd].Puller), borderColor: '#f472b6', backgroundColor: 'transparent', tension: .3 },
+        { label: 'Check', data: days.map(dd => counts[dd]['Outbound Checker']), borderColor: '#60a5fa', backgroundColor: 'transparent', tension: .3 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#93a1b8', font: { size: 10 } } } }, scales: { x: CHART_AXIS_OPTS, y: { ...CHART_AXIS_OPTS, beginAtZero: true } } }
+  });
+}
+
+async function renderLeaderboardChart(dateStr) {
+  const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,rendered_minutes,status')
+    .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString()).eq('status', 'Completed');
+  if (error) return;
+  const byPersonnel = {};
+  (data || []).forEach(l => { const k = l.personnel_name || '—'; byPersonnel[k] = (byPersonnel[k] || 0) + (l.rendered_minutes || 0); });
+  const rows = Object.entries(byPersonnel).map(([name, mins]) => ({ name, pct: mins > 0 ? (mins / 60 / STANDARD_DAILY_HOURS) * 100 : 0 }))
+    .filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 8);
+  upsertChart('leaderboard-chart', {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [{ label: 'Productivity %', data: rows.map(r => r.pct.toFixed(1)), backgroundColor: rows.map(r => r.pct >= 100 ? '#2dd4bf' : r.pct >= 70 ? '#f59e0b' : '#f43f5e'), borderRadius: 4 }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ...CHART_AXIS_OPTS, beginAtZero: true }, y: { ticks: { color: '#93a1b8', font: { size: 9 } }, grid: { display: false } } } }
+  });
+}
+
+async function renderTruckTypeChart() {
+  const { data, error } = await supabaseClient.from('shipments').select('truck_type,quantity');
+  if (error) return;
+  const byTruck = {};
+  (data || []).forEach(row => { const t = row.truck_type || 'Unspecified'; byTruck[t] = (byTruck[t] || 0) + (parseFloat(row.quantity) || 0); });
+  const entries = Object.entries(byTruck).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const palette = ['#2dd4bf', '#38bdf8', '#f472b6', '#60a5fa', '#f59e0b', '#a78bfa', '#4ade80', '#f43f5e'];
+  upsertChart('truck-type-chart', {
+    type: 'doughnut',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1].toFixed(1)), backgroundColor: palette, borderColor: '#0a0e18', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#93a1b8', font: { size: 9 }, boxWidth: 10 } } } }
+  });
+}
+
+async function renderThroughputHeatmap() {
+  const container = document.getElementById('throughput-heatmap');
+  if (!container) return;
+  const start = new Date(); start.setDate(start.getDate() - 34);
+  const startDs = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  const { startOfOpDay } = operationalDayWindowForDate(startDs);
+  const { data, error } = await supabaseClient.from('activity_logs').select('start_time').eq('status', 'Completed').gte('start_time', startOfOpDay.toISOString());
+  if (error) { container.innerHTML = '<p class="text-[11px] text-rose-400">Failed to load heatmap.</p>'; return; }
+  const counts = {};
+  (data || []).forEach(l => {
+    const t = new Date(l.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    counts[ds] = (counts[ds] || 0) + 1;
+  });
+  const days = [];
+  for (let i = 34; i >= 0; i--) {
+    const dt = new Date(); dt.setDate(dt.getDate() - i);
+    const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    days.push({ ds, count: counts[ds] || 0, label: dt.toLocaleDateString([], { month: 'short', day: 'numeric' }) });
+  }
+  const max = Math.max(1, ...days.map(dd => dd.count));
+  const colorFor = c => { if (c === 0) return '#141c2c'; const r = c / max; return r < .33 ? '#0d4d43' : r < .66 ? '#0f8f76' : '#2dd4bf'; };
+  container.innerHTML = days.map(dd => `<span class="heatmap-cell" title="${dd.label}: ${dd.count} completed" style="background:${colorFor(dd.count)}"></span>`).join('');
+}
+
+async function refreshStreakLeaders() {
+  const grid = document.getElementById('streak-leaders-grid');
+  if (!grid) return;
+  const start = new Date(); start.setDate(start.getDate() - 13);
+  const startDs = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  const { startOfOpDay } = operationalDayWindowForDate(startDs);
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,discrepancy_type')
+    .in('role', ['Staging Checker', 'Outbound Checker']).eq('status', 'Completed').gte('start_time', startOfOpDay.toISOString());
+  if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-3">Failed to load: ${error.message}</p>`; return; }
+  const byPersonnel = {};
+  (data || []).forEach(l => {
+    const t = new Date(l.start_time); const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    const key = l.personnel_name || '—';
+    byPersonnel[key] = byPersonnel[key] || {};
+    const hasDisc = !!(l.discrepancy_type && l.discrepancy_type.length);
+    if (byPersonnel[key][ds] === undefined) byPersonnel[key][ds] = hasDisc;
+    else if (hasDisc) byPersonnel[key][ds] = true;
+  });
+  const todayDs = defaultOperationalDateStr();
+  const streaks = Object.entries(byPersonnel).map(([name, dayMap]) => {
+    let streak = 0;
+    for (let i = 0; i < 14; i++) {
+      const dt = new Date(); dt.setDate(dt.getDate() - i);
+      const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      if (dayMap[ds] === undefined) { if (ds === todayDs) continue; break; }
+      if (dayMap[ds] === true) break;
+      streak++;
+    }
+    return { name, streak };
+  }).filter(r => r.streak > 0).sort((a, b) => b.streak - a.streak).slice(0, 3);
+
+  if (!streaks.length) { grid.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-3">No active streaks yet — logged discrepancy-free days will show up here.</p>'; return; }
+  grid.innerHTML = streaks.map((s, i) => `
+    <div class="rounded-lg border border-slate-800 bg-slate-900 p-3 flex items-center justify-between">
+      <div><p class="text-xs font-semibold text-slate-200">${i === 0 ? '🔥 ' : ''}${s.name}</p><p class="text-[10px] text-slate-500">Zero-discrepancy streak</p></div>
+      <span class="streak-chip">${s.streak}d</span>
+    </div>`).join('');
+}
+
+const _origRefreshAnalyticsView = refreshAnalyticsView;
+refreshAnalyticsView = async function (...args) {
+  await _origRefreshAnalyticsView.apply(this, args);
+  const dateInput = document.getElementById('analytics-date');
+  const dateStr = (dateInput && dateInput.value) ? dateInput.value : defaultOperationalDateStr();
+  renderThroughputTrendChart(dateStr);
+  renderLeaderboardChart(dateStr);
+  renderTruckTypeChart();
+  renderThroughputHeatmap();
+  refreshStreakLeaders();
+};
+
+// --- GAMIFICATION: Daily MVP badge + confetti burst ---
+let _confettiFiredForKey = null;
+function computeDailyMVP() {
+  const completed = (bulletinRawData || []).filter(l => l.status === 'Completed');
+  if (!completed.length) return null;
+  const byPersonnel = {};
+  completed.forEach(l => { const k = l.personnel_name || '—'; byPersonnel[k] = (byPersonnel[k] || 0) + (l.rendered_minutes || 0); });
+  const entries = Object.entries(byPersonnel).map(([name, mins]) => ({ name, pct: (mins / 60 / STANDARD_DAILY_HOURS) * 100 })).sort((a, b) => b.pct - a.pct);
+  return (entries[0] && entries[0].pct > 0) ? entries[0] : null;
+}
+function fireConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const colors = ['#2dd4bf', '#f59e0b', '#f472b6', '#60a5fa', '#4ade80'];
+  const particles = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width, y: -20 - Math.random() * canvas.height * 0.3,
+    vx: (Math.random() - 0.5) * 4, vy: 2 + Math.random() * 3,
+    size: 4 + Math.random() * 4, color: colors[Math.floor(Math.random() * colors.length)],
+    rot: Math.random() * 360, vr: (Math.random() - 0.5) * 10
+  }));
+  let frame = 0;
+  function tick() {
+    frame++;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot * Math.PI / 180);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+      ctx.restore();
+    });
+    if (frame < 140) requestAnimationFrame(tick); else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  tick();
+}
+window.addEventListener('resize', () => {
+  const canvas = document.getElementById('confetti-canvas');
+  if (canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+});
+function updateMvpBadge() {
+  const slot = document.getElementById('mvp-badge-slot');
+  if (!slot) return;
+  const mvp = computeDailyMVP();
+  if (!mvp) { slot.innerHTML = ''; return; }
+  slot.innerHTML = `<span class="mvp-badge">🏆 MVP: ${mvp.name} (${mvp.pct.toFixed(0)}%)</span>`;
+  const dayKey = (document.getElementById('bulletin-date')?.value) || defaultOperationalDateStr();
+  const fireKey = dayKey + '|' + mvp.name;
+  if (_confettiFiredForKey !== fireKey) { _confettiFiredForKey = fireKey; fireConfetti(); }
+}
+const _origRefreshBulletinBoard = refreshBulletinBoard;
+refreshBulletinBoard = async function (...args) {
+  await _origRefreshBulletinBoard.apply(this, args);
+  updateMvpBadge();
+};
+
+// --- BOOT: start the ticker once the app is up ---
+const _origStartApp = startApp;
+startApp = async function (...args) {
+  await _origStartApp.apply(this, args);
+  refreshActivityTicker();
+  subscribeTickerRealtime();
+};
 </script>
 </body>
 </html>
