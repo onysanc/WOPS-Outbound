@@ -135,6 +135,9 @@
 
   /* --- Streak / MVP badges --- */
   .mvp-badge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#1c1207;font-weight:800;font-size:.65rem;padding:.25rem .6rem;border-radius:999px;box-shadow:0 3px 10px -3px rgba(245,158,11,.6)}
+  .mvp-badge.mvp-speed{background:linear-gradient(135deg,#2dd4bf,#0d8f79);color:#04231d;box-shadow:0 3px 10px -3px rgba(45,212,191,.6)}
+  .mvp-badge.mvp-accuracy{background:linear-gradient(135deg,#60a5fa,#2563eb);color:#04152e;box-shadow:0 3px 10px -3px rgba(37,99,235,.6)}
+  .mvp-badge.mvp-idle{background:linear-gradient(135deg,#f472b6,#db2777);color:#2e0420;box-shadow:0 3px 10px -3px rgba(219,39,119,.6)}
   .streak-chip{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.35);color:var(--accent);font-size:.65rem;font-weight:700;padding:.2rem .55rem;border-radius:999px}
 
   /* --- Performance Summary Leaderboard --- */
@@ -748,7 +751,7 @@
   <section id="view-bulletin" class="view space-y-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">🏆 Personnel Performance Leaderboard <span id="mvp-badge-slot"></span></h2>
+        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">🏆 Personnel Performance Leaderboard</h2>
         <p id="bulletin-subtitle" class="text-xs text-slate-400">Ranked by Productivity % for the selected operational day (05:00–04:59)</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -757,6 +760,9 @@
         <input type="text" id="bulletin-search" oninput="renderBulletinBoard()" placeholder="Search personnel or role..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
       </div>
     </div>
+
+    <!-- MVP badges: one per ranking criterion, always shown together -->
+    <div id="mvp-badge-row" class="flex flex-wrap gap-2"></div>
 
     <!-- Clickable rank-by filter -->
     <div class="flex flex-wrap items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
@@ -3217,12 +3223,12 @@ function updateBulletinFilterButtons() {
 //                   Puller has no discrepancy field and is excluded (untracked)
 //   - Idle Time   : sum of gaps between one completed task's end_time and the
 //                   next task's start_time, task-to-task, for that personnel
-function renderBulletinBoard() {
-  const container = document.getElementById('bulletin-container');
-  const podium = document.getElementById('bulletin-podium');
-  const searchText = (document.getElementById('bulletin-search')?.value || '').trim().toLowerCase();
-  updateBulletinFilterButtons();
-
+// Shared entry-builder: computes the full per-personnel metrics roster for the
+// currently loaded Activity Day (bulletinRawData/bulletinRosterNames), used both
+// by the leaderboard table/podium AND by the MVP badges — so every consumer
+// agrees on the exact same numbers. Returns an unranked array; every personnel
+// on file is included (hasActivity:false for anyone with zero logged activity).
+function computeBulletinEntries() {
   // Group everything by personnel first (idle time needs every log, not just Completed ones,
   // so a gap isn't hidden just because the log on one side of it is still Ongoing/Paused).
   const byPersonnel = {};
@@ -3232,7 +3238,7 @@ function renderBulletinBoard() {
     byPersonnel[key].push(log);
   });
 
-  // Always rank every personnel on file for this Activity Day, even with zero
+  // Always include every personnel on file for this Activity Day, even with zero
   // logged activity — merge in anyone from the roster who isn't already present.
   const rosterRolesByName = {};
   bulletinRosterNames.forEach(p => {
@@ -3240,22 +3246,13 @@ function renderBulletinBoard() {
     if (!byPersonnel[p.name]) byPersonnel[p.name] = [];
   });
 
-  const dateStr = document.getElementById('bulletin-date')?.value || defaultOperationalDateStr();
-  const fmtMinutes = mins => {
-    mins = Math.round(mins || 0);
-    const h = Math.floor(mins / 60), m = mins % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  };
-
   // Staging Checker logs for the day — used to grade downstream Picker Accuracy,
   // same methodology as the Role Leaderboards.
   const completedAll = bulletinRawData.filter(l => l.status === 'Completed');
   const stagingLogsForDay = completedAll.filter(l => l.role === 'Staging Checker');
 
-  // --- Compute metrics for every personnel, then rank the FULL roster (unfiltered)
-  // so a search doesn't renumber anyone's standing. ---
   const allNames = Object.keys(byPersonnel).sort();
-  let entries = allNames.map(name => {
+  return allNames.map(name => {
     const logs = byPersonnel[name];
     const roles = logs.length ? [...new Set(logs.map(l => l.role))] : (rosterRolesByName[name] || []);
     const completed = logs.filter(l => l.status === 'Completed');
@@ -3309,6 +3306,24 @@ function renderBulletinBoard() {
 
     return { name, roles, shipments, qtyLines, volume, activeMinutes, speed, productivityPct, accuracyPct, idleMinutes, gaps, hasActivity };
   });
+}
+
+function renderBulletinBoard() {
+  const container = document.getElementById('bulletin-container');
+  const podium = document.getElementById('bulletin-podium');
+  const searchText = (document.getElementById('bulletin-search')?.value || '').trim().toLowerCase();
+  updateBulletinFilterButtons();
+
+  const dateStr = document.getElementById('bulletin-date')?.value || defaultOperationalDateStr();
+  const fmtMinutes = mins => {
+    mins = Math.round(mins || 0);
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  // --- Compute metrics for every personnel, then rank the FULL roster (unfiltered)
+  // so a search doesn't renumber anyone's standing. ---
+  let entries = computeBulletinEntries();
 
   // Rank the FULL roster by exactly ONE selected metric — zero-activity personnel
   // always sink to the bottom (alphabetically among themselves) regardless of
@@ -5690,15 +5705,26 @@ refreshAnalyticsView = async function (...args) {
   refreshStreakLeaders();
 };
 
-// --- GAMIFICATION: Daily MVP badge + confetti burst ---
+// --- GAMIFICATION: Daily MVP badges (one per ranking criterion) + confetti burst ---
 let _confettiFiredForKey = null;
-function computeDailyMVP() {
-  const completed = (bulletinRawData || []).filter(l => l.status === 'Completed');
-  if (!completed.length) return null;
-  const byPersonnel = {};
-  completed.forEach(l => { const k = l.personnel_name || '—'; (byPersonnel[k] = byPersonnel[k] || []).push(l); });
-  const entries = Object.entries(byPersonnel).map(([name, logs]) => ({ name, pct: (sumGroupMinutes(logs) / 60 / STANDARD_DAILY_HOURS) * 100 })).sort((a, b) => b.pct - a.pct);
-  return (entries[0] && entries[0].pct > 0) ? entries[0] : null;
+// Computes the top personnel for EACH of the four ranking criteria independently
+// (Productivity, Speed, Accuracy, Least Idle Time), using the exact same entries
+// the leaderboard itself ranks by (computeBulletinEntries), so the badges always
+// agree with what's on the board. Each MVP requires real, gradeable activity —
+// zero-activity personnel and, for Accuracy, personnel with no gradeable role
+// logged that day (e.g. Puller-only) are excluded from that criterion's MVP.
+function computeAllMvps() {
+  const entries = (typeof computeBulletinEntries === 'function') ? computeBulletinEntries() : [];
+  const active = entries.filter(e => e.hasActivity && e.qtyLines > 0);
+  if (!active.length) return { productivity: null, speed: null, accuracy: null, idle: null };
+
+  const productivity = [...active].filter(e => e.productivityPct > 0).sort((a, b) => b.productivityPct - a.productivityPct)[0] || null;
+  const speed = [...active].filter(e => e.speed > 0).sort((a, b) => b.speed - a.speed)[0] || null;
+  const accuracyPool = active.filter(e => e.accuracyPct != null);
+  const accuracy = accuracyPool.length ? [...accuracyPool].sort((a, b) => b.accuracyPct - a.accuracyPct)[0] : null;
+  const idle = [...active].sort((a, b) => a.idleMinutes - b.idleMinutes)[0] || null;
+
+  return { productivity, speed, accuracy, idle };
 }
 function fireConfetti() {
   const canvas = document.getElementById('confetti-canvas');
@@ -5731,20 +5757,34 @@ window.addEventListener('resize', () => {
   if (canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 });
 function updateMvpBadge() {
-  const slot = document.getElementById('mvp-badge-slot');
-  if (!slot) return;
-  const mvp = computeDailyMVP();
-  if (!mvp) { slot.innerHTML = ''; return; }
-  slot.innerHTML = `<span class="mvp-badge">🏆 MVP: ${mvp.name} (${mvp.pct.toFixed(0)}%)</span>`;
+  const row = document.getElementById('mvp-badge-row');
+  if (!row) return;
+  const fmtMinutesShort = mins => {
+    mins = Math.round(mins || 0);
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+  const mvps = computeAllMvps();
+  const badges = [];
+  if (mvps.productivity) badges.push(`<span class="mvp-badge">🏆 Productivity MVP: ${mvps.productivity.name} (${mvps.productivity.productivityPct.toFixed(0)}%)</span>`);
+  if (mvps.speed) badges.push(`<span class="mvp-badge mvp-speed">🏃 Speed MVP: ${mvps.speed.name} (${mvps.speed.speed.toFixed(2)}/min)</span>`);
+  if (mvps.accuracy) badges.push(`<span class="mvp-badge mvp-accuracy">🎯 Accuracy MVP: ${mvps.accuracy.name} (${mvps.accuracy.accuracyPct.toFixed(1)}%)</span>`);
+  if (mvps.idle) badges.push(`<span class="mvp-badge mvp-idle">⏱ Least Idle MVP: ${mvps.idle.name} (${fmtMinutesShort(mvps.idle.idleMinutes)})</span>`);
+  row.innerHTML = badges.join('');
+
+  // Confetti fires once per Activity Day for the Productivity MVP crossing into the top spot.
   const dayKey = (document.getElementById('bulletin-date')?.value) || defaultOperationalDateStr();
-  const fireKey = dayKey + '|' + mvp.name;
-  if (_confettiFiredForKey !== fireKey) { _confettiFiredForKey = fireKey; fireConfetti(); }
+  if (mvps.productivity) {
+    const fireKey = dayKey + '|' + mvps.productivity.name;
+    if (_confettiFiredForKey !== fireKey) { _confettiFiredForKey = fireKey; fireConfetti(); }
+  }
 }
 const _origRefreshBulletinBoard = refreshBulletinBoard;
 refreshBulletinBoard = async function (...args) {
   await _origRefreshBulletinBoard.apply(this, args);
   updateMvpBadge();
 };
+
 
 // --- BOOT: start the ticker once the app is up ---
 const _origStartApp = startApp;
