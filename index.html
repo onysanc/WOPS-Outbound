@@ -364,7 +364,7 @@
           <input type="number" step="0.01" min="0" id="ar-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
         </div>
         <div>
-          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Record Date</label>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Upload Date</label>
           <input type="datetime-local" id="ar-record-date" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
           <p class="text-[10px] text-slate-600 mt-1">Drives Aging Days. Leave as-is to keep the current value.</p>
         </div>
@@ -561,7 +561,7 @@
       <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
         <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
           <input type="checkbox" id="ame-record-date-enable" onchange="document.getElementById('ame-record-date').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
-          Record Date
+          Upload Date
         </label>
         <input type="datetime-local" id="ame-record-date" disabled class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
         <p class="text-[10px] text-slate-600">Drives Aging Days for every selected record. Same date/time is applied to all of them.</p>
@@ -1272,28 +1272,30 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
           <tr>
             <th class="p-3 text-left" rowspan="2">Sales Order</th>
             <th class="p-3 text-left" rowspan="2">Shipment</th>
+            <th class="p-3 text-center" rowspan="2">Upload Date</th>
+            <th class="p-3 text-center" rowspan="2">Record Date</th>
             <th class="p-3 text-left" rowspan="2">OBD</th>
             <th class="p-3 text-left" rowspan="2">Customer</th>
             <th class="p-3 text-right" rowspan="2">Qty</th>
-            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="5">Picker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="7">Staging</th>
-            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="5">Pulled</th>
-            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="6">Check</th>
+            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="9">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="11">Staging</th>
+            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="8">Pulled</th>
+            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="10">Check</th>
           </tr>
           <tr class="text-[10px]">
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Staging Area</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Staging Area</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
           </tr>
         </thead>
         <tbody id="export-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="28" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
+          <tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Open this tab to load the export table.</td></tr>
         </tbody>
       </table>
     </div>
     <p id="export-count" class="text-[10px] text-slate-600"></p>
-    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary.</p>
+    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary. Hit/Miss and Speed % are based on each stage's Target Minutes (Speed % = Target ÷ Rendered × 100, so 100% = on target). Idle Time is the gap before that task started, task-to-task for the same person+role. Puller has no discrepancy field on file, so Puller Accuracy is untracked and shown as "—".</p>
   </section>
 
   <!-- ================= MASTER RECORDS ================= -->
@@ -1379,34 +1381,35 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <th rowspan="2" class="p-3 text-center aging-admin-col hidden align-middle">Actions</th>
             <th rowspan="2" class="p-3 text-left align-middle">Sales Order</th>
             <th rowspan="2" class="p-3 text-left align-middle">Shipment</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Upload Date</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
             <th rowspan="2" class="p-3 text-left align-middle">OBD</th>
             <th rowspan="2" class="p-3 text-left align-middle">Customer</th>
             <th rowspan="2" class="p-3 text-left align-middle">Truck Type</th>
             <th rowspan="2" class="p-3 text-right align-middle">Qty</th>
             <th rowspan="2" class="p-3 text-center align-middle">Status</th>
-            <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
             <th rowspan="2" class="p-3 text-center align-middle">Aging (Days)</th>
             <th rowspan="2" class="p-3 text-center align-middle text-cyan-300">Staging Area</th>
-            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="7">Picker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="7">Staging Checker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="6">Puller</th>
-            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="7">Outbound Checker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="10">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="11">Staging Checker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="9">Puller</th>
+            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="11">Outbound Checker</th>
           </tr>
           <tr class="text-[10px]">
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
           </tr>
         </thead>
         <tbody id="aging-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="39" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
     <p id="aging-count" class="text-[10px] text-slate-600"></p>
     <p class="text-[10px] text-slate-600">Set the Status filter to "Pending" to see only Sales Orders with no shipment movement yet. The moment a record is flagged PICKED, STAGED, PULLED, or CHECKED it will show under that status instead — keep the filter on "All Records" to see every stage together.</p>
-    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary.</p>
+    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary. Hit/Miss and Speed % are based on each stage's Target Minutes (Speed % = Target ÷ Rendered × 100). Idle Time is the gap before that task started, task-to-task for the same person+role. Puller has no discrepancy field on file, so Puller Accuracy is untracked and shown as "—". Upload Date is when the record entered the system (drives Aging); Record Date is the record's own business date and can be edited per-record.</p>
   </section>
 
   <!-- ================= USER MANAGEMENT ================= -->
@@ -1615,6 +1618,19 @@ let currentManifestData = [];
 let configuredBreaks = [];
 let allPersonnel = [];
 let allStagingAreas = [];
+// Names an admin has flagged "Exclude from computations" on the Personnel Roster
+// (Personnel & Breaks tab). Excluded personnel are dropped from every aggregate
+// metric across Performance Summary and Analytics & Reports — their raw
+// activity_logs rows still exist, they're just filtered out before any
+// summary/leaderboard/report math runs. Master Records / Data Export are
+// per-shipment record views (not personnel aggregates), so exclusion does not
+// hide rows there — it only affects roll-up computations.
+let excludedPersonnelNames = new Set();
+async function refreshExcludedPersonnel() {
+  const { data, error } = await supabaseClient.from('personnel').select('name, excluded');
+  if (error) { console.error(error); return; }
+  excludedPersonnelNames = new Set((data || []).filter(p => p.excluded).map(p => (p.name || '').trim()));
+}
 
 // --- STATUS CHAIN: each role (besides Picker) requires the prior role's
 // completion flag on the shipments row before a line becomes selectable, and
@@ -1651,6 +1667,7 @@ async function startApp() {
   await setRole('Picker');
   await refreshConfiguredBreaks();
   await refreshStagingAreas();
+  await refreshExcludedPersonnel();
   await refreshBulletinBoard();
   await refreshShipmentDatalist();
   await refreshPipelineSummary();
@@ -3155,19 +3172,19 @@ async function refreshBulletinBoard() {
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
     .order('personnel_name').order('start_time');
   if (error) return console.error(error);
-  bulletinRawData = data || [];
+  bulletinRawData = (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
   // Full personnel roster, regardless of role or whether they logged anything on
   // this particular Activity Day — the Performance Summary should always list
   // every name on file so absentees/zero-activity personnel are visible too.
-  const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role');
+  const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role, excluded');
   if (rosterErr) {
     console.error(rosterErr);
   } else {
     const byName = {};
     (roster || []).forEach(p => {
       const key = (p.name || '').trim();
-      if (!key) return;
+      if (!key || p.excluded) return; // excluded personnel never appear on the leaderboard at all
       if (!byName[key]) byName[key] = new Set();
       byName[key].add(p.role);
     });
@@ -3486,12 +3503,13 @@ async function refreshAnalyticsView() {
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
     .eq('status', 'Completed');
   if (dayErr) { console.error(dayErr); return; }
+  const filteredDayLogs = (dayLogs || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
-  renderCycleTime(dayLogs || []);
-  renderDiscrepancyReport(dayLogs || []);
-  renderLeaderboard(dayLogs || []);
-  renderAllRoleLeaderboards(dayLogs || []);
-  renderBacklogForecast(dayLogs || []);
+  renderCycleTime(filteredDayLogs);
+  renderDiscrepancyReport(filteredDayLogs);
+  renderLeaderboard(filteredDayLogs);
+  renderAllRoleLeaderboards(filteredDayLogs);
+  renderBacklogForecast(filteredDayLogs);
 
   await refreshAtRiskBoard();
   await refreshThroughputTrend(dateStr);
@@ -3527,7 +3545,7 @@ async function refreshAtRiskBoard() {
     return;
   }
   const batches = {};
-  (data || []).forEach(log => {
+  (data || []).filter(log => !excludedPersonnelNames.has((log.personnel_name || '').trim())).forEach(log => {
     const key = `${log.personnel_name}||${log.role}||${log.start_time}`;
     (batches[key] = batches[key] || []).push(log);
   });
@@ -3768,7 +3786,7 @@ async function refreshThroughputTrend(endDateStr) {
   const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
   const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
 
-  const { data, error } = await supabaseClient.from('activity_logs').select('role,start_time')
+  const { data, error } = await supabaseClient.from('activity_logs').select('role,start_time,personnel_name')
     .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString()).eq('status', 'Completed');
   if (error) {
     console.error(error);
@@ -3778,7 +3796,7 @@ async function refreshThroughputTrend(endDateStr) {
 
   const counts = {};
   days.forEach(ds => counts[ds] = { Picker: 0, 'Staging Checker': 0, Puller: 0, 'Outbound Checker': 0 });
-  (data || []).forEach(log => {
+  (data || []).filter(log => !excludedPersonnelNames.has((log.personnel_name || '').trim())).forEach(log => {
     const t = new Date(log.start_time);
     const bucket = new Date(t);
     if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1); // same 05:00 cutover as elsewhere
@@ -3889,12 +3907,12 @@ let agingDatesInitialized = false;
 
 async function loadExportData() {
   const tbody = document.getElementById('export-rows');
-  tbody.innerHTML = `<tr><td colspan="28" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false });
   if (shipErr) {
     console.error(shipErr);
-    tbody.innerHTML = `<tr><td colspan="28" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
     return;
   }
 
@@ -3906,7 +3924,7 @@ async function loadExportData() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data, error } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,personnel_name,start_time,end_time,status,discrepancy_type,discrepancy_qty,staging_areas,remarks,target_hours,rendered_minutes')
+        .select('so_number,role,personnel_name,start_time,end_time,status,discrepancy_type,discrepancy_qty,staging_areas,remarks,target_hours,rendered_minutes,total_qty')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!error) logs.push(...(data || []));
       else console.error(error);
@@ -3919,6 +3937,8 @@ async function loadExportData() {
     const key = `${l.so_number}||${l.role}`;
     if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
   });
+  // Idle-before lookup, scoped to this loaded log set (see buildIdleLookup doc comment).
+  const idleLookup = buildIdleLookup(logs);
 
   exportRawRows = (shipRows || []).map(row => {
     const pick = logMap[`${row.so_number}||Picker`];
@@ -3928,16 +3948,28 @@ async function loadExportData() {
     return {
       so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
       customer: row.sold_to_party_name, qty: rowQtySum(row),
+      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at,
       pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
       pick_remarks: pick?.remarks || null, pick_productivity: calcProductivityPct(pick),
+      pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
+      pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
+      pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
       stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
       staging_area: stage?.staging_areas || null, stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
       stage_remarks: stage?.remarks || null, stage_productivity: calcProductivityPct(stage),
+      stage_accuracy: stage ? calcCheckerAccuracy(stage) : null,
+      stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
+      stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
       pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
       pull_remarks: pull?.remarks || null, pull_productivity: calcProductivityPct(pull),
+      pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
+      pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
       check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
       check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
-      check_remarks: check?.remarks || null, check_productivity: calcProductivityPct(check)
+      check_remarks: check?.remarks || null, check_productivity: calcProductivityPct(check),
+      check_accuracy: check ? calcCheckerAccuracy(check) : null,
+      check_hitmiss: calcHitMiss(check), check_speedpct: calcSpeedPct(check),
+      check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
     };
   });
 
@@ -3993,6 +4025,82 @@ function fmtAccuracy(pct) {
 function accuracyColorClass(pct) {
   if (pct === null || pct === undefined || isNaN(pct)) return 'text-slate-500';
   return pct >= 98 ? 'text-emerald-400 font-semibold' : pct >= 90 ? 'text-amber-400 font-semibold' : 'text-rose-400 font-semibold';
+}
+
+// --- HIT/MISS + SPEED % (target-based) + IDLE TIME — shared by Data Export &
+// Master Records per-stage columns. All three read off the SAME Completed log
+// as that stage's Productivity/Accuracy, so they always agree with each other.
+//   - Hit/Miss : did Rendered Minutes come in at/under Target Minutes (target_hours × 60)?
+//   - Speed %  : Target Minutes ÷ Rendered Minutes × 100 — 100% = exactly on
+//                target, >100% = faster than target, <100% = slower than target.
+//   - Idle     : gap between the PRECEDING Completed log for this same
+//                personnel+role and this log's start_time (task-to-task, same
+//                methodology as the Performance Summary/Role Leaderboards idle
+//                calc) — scoped to whatever log set is loaded for that table.
+function calcHitMiss(log) {
+  if (!log || log.rendered_minutes == null) return null;
+  const targetMin = (log.target_hours || 0) * 60;
+  if (targetMin <= 0) return null;
+  return log.rendered_minutes <= targetMin ? 'Hit' : 'Miss';
+}
+function fmtHitMiss(hm) {
+  if (!hm) return '—';
+  return hm;
+}
+function hitMissColorClass(hm) {
+  if (hm === 'Hit') return 'text-emerald-400 font-semibold';
+  if (hm === 'Miss') return 'text-rose-400 font-semibold';
+  return 'text-slate-500';
+}
+function calcSpeedPct(log) {
+  if (!log || !log.rendered_minutes) return null;
+  const targetMin = (log.target_hours || 0) * 60;
+  if (targetMin <= 0) return null;
+  return (targetMin / log.rendered_minutes) * 100;
+}
+function fmtSpeedPct(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return '—';
+  return `${pct.toFixed(0)}%`;
+}
+function speedColorClass(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return 'text-slate-500';
+  return pct >= 100 ? 'text-emerald-400 font-semibold' : pct >= 80 ? 'text-amber-400 font-semibold' : 'text-rose-400 font-semibold';
+}
+// Builds a lookup of idle-minutes-before keyed by `${so_number}||${role}`, from
+// whatever full log set the caller has already fetched for that role (one
+// entry per personnel+role, sorted by start_time — the gap before EACH log is
+// attributed to that log's own key on that same SO so it can be looked up
+// alongside pick/stage/pull/check the same way productivity/accuracy are).
+function buildIdleLookup(allLogsForRole) {
+  const byPersonRole = {};
+  (allLogsForRole || []).forEach(l => {
+    const key = `${l.personnel_name}||${l.role}`;
+    (byPersonRole[key] = byPersonRole[key] || []).push(l);
+  });
+  const idleByLogKey = {}; // `${so_number}||${role}` -> idle minutes before that log
+  Object.values(byPersonRole).forEach(logs => {
+    const sorted = [...logs].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    for (let i = 0; i < sorted.length; i++) {
+      const cur = sorted[i];
+      if (i === 0 || !sorted[i - 1].end_time) continue;
+      const gapMin = (new Date(cur.start_time) - new Date(sorted[i - 1].end_time)) / 60000;
+      if (gapMin > 0.5) idleByLogKey[`${cur.so_number}||${cur.role}`] = gapMin;
+    }
+  });
+  return idleByLogKey;
+}
+function fmtIdleMinutes(mins) {
+  if (mins === null || mins === undefined || isNaN(mins)) return '—';
+  const h = Math.floor(mins / 60), m = Math.round(mins % 60);
+  return h > 0 ? `${h}h ${m}m` : `${Math.round(mins)}m`;
+}
+// Staging/Outbound Checker accuracy: self-logged discrepancy vs. volume handled.
+function calcCheckerAccuracy(log) {
+  if (!log) return null;
+  const vol = parseFloat(log.total_qty) || 0;
+  if (vol <= 0) return null;
+  const disc = parseFloat(log.discrepancy_qty) || 0;
+  return Math.max(0, Math.min(100, ((vol - disc) / vol) * 100));
 }
 
 // --- EXPORT HELPERS: CSV / XLSX / PDF ---
@@ -4075,7 +4183,7 @@ function renderExportTable() {
   document.getElementById('export-count').innerText = `${rows.length} line(s)`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="28" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">No matching lines.</td></tr>`;
     return;
   }
 
@@ -4083,6 +4191,8 @@ function renderExportTable() {
     <tr class="hover:bg-slate-900/60 transition">
       <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.shipment_no || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.upload_date)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
       <td class="p-3 max-w-[180px] truncate text-slate-400" title="${r.customer || ''}">${r.customer || '—'}</td>
       <td class="p-3 text-right font-mono text-amber-400">${r.qty}</td>
@@ -4091,6 +4201,10 @@ function renderExportTable() {
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pick_remarks || ''}">${r.pick_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pick_productivity)}">${fmtProductivity(r.pick_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.pick_accuracy)}">${fmtAccuracy(r.pick_accuracy)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.pick_hitmiss)}">${fmtHitMiss(r.pick_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.pick_speedpct)}">${fmtSpeedPct(r.pick_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.pick_idle)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
@@ -4098,17 +4212,28 @@ function renderExportTable() {
       <td class="p-3 text-center text-[10px] ${r.stage_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.stage_remarks || ''}">${r.stage_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.stage_productivity)}">${fmtProductivity(r.stage_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.stage_accuracy)}">${fmtAccuracy(r.stage_accuracy)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.stage_hitmiss)}">${fmtHitMiss(r.stage_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.stage_speedpct)}">${fmtSpeedPct(r.stage_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.stage_idle)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pull_remarks || ''}">${r.pull_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pull_productivity)}">${fmtProductivity(r.pull_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.pull_hitmiss)}">${fmtHitMiss(r.pull_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.pull_speedpct)}">${fmtSpeedPct(r.pull_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.pull_idle)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
       <td class="p-3 text-center text-[10px] ${r.check_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.check_remarks || ''}">${r.check_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.check_productivity)}">${fmtProductivity(r.check_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.check_accuracy)}">${fmtAccuracy(r.check_accuracy)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.check_hitmiss)}">${fmtHitMiss(r.check_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.check_speedpct)}">${fmtSpeedPct(r.check_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.check_idle)}</td>
     </tr>`).join('');
 }
 
@@ -4117,26 +4242,27 @@ function exportDataToExcel() {
   if (!rows.length) return showToast("No rows to export.", "error");
 
   const excelRows = rows.map(r => ({
-    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
-    'Customer': r.customer || '', 'Qty': r.qty,
+    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '',
+    'Upload Date': fmtAgingDate(r.upload_date), 'Record Date': fmtAgingDate(r.record_date),
+    'OBD': r.obd_number || '', 'Customer': r.customer || '', 'Qty': r.qty,
     'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
     'Picker Remarks': r.pick_remarks || '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
+    'Picker Accuracy': fmtAccuracy(r.pick_accuracy), 'Picker Hit/Miss': fmtHitMiss(r.pick_hitmiss), 'Picker Speed %': fmtSpeedPct(r.pick_speedpct), 'Picker Idle Time': fmtIdleMinutes(r.pick_idle),
     'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
     'Staging Area': (r.staging_area || []).join(', '), 'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
     'Staging Remarks': r.stage_remarks || '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
+    'Staging Accuracy': fmtAccuracy(r.stage_accuracy), 'Staging Hit/Miss': fmtHitMiss(r.stage_hitmiss), 'Staging Speed %': fmtSpeedPct(r.stage_speedpct), 'Staging Idle Time': fmtIdleMinutes(r.stage_idle),
     'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
     'Pulled Remarks': r.pull_remarks || '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
+    'Pulled Hit/Miss': fmtHitMiss(r.pull_hitmiss), 'Pulled Speed %': fmtSpeedPct(r.pull_speedpct), 'Pulled Idle Time': fmtIdleMinutes(r.pull_idle),
     'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
     'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty),
-    'Check Remarks': r.check_remarks || '', 'Check Productivity': fmtProductivity(r.check_productivity)
+    'Check Remarks': r.check_remarks || '', 'Check Productivity': fmtProductivity(r.check_productivity),
+    'Check Accuracy': fmtAccuracy(r.check_accuracy), 'Check Hit/Miss': fmtHitMiss(r.check_hitmiss), 'Check Speed %': fmtSpeedPct(r.check_speedpct), 'Check Idle Time': fmtIdleMinutes(r.check_idle)
   }));
 
   const ws = XLSX.utils.json_to_sheet(excelRows);
-  ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 8 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 12 }];
+  ws['!cols'] = new Array(45).fill({ wch: 14 });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Dispatch Timeline');
   const stamp = new Date().toISOString().slice(0, 10);
@@ -4153,13 +4279,13 @@ function exportDataToExcel() {
 // everywhere else in the app too.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
-  tbody.innerHTML = `<tr><td colspan="39" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="39" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -4185,6 +4311,8 @@ async function loadAgingData() {
     const key = `${l.so_number}||${l.role}`;
     if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
   });
+  // Idle-before lookup, scoped to this loaded log set (see buildIdleLookup doc comment).
+  const idleLookup = buildIdleLookup(logs);
 
   // Keep EVERY record, not just pending ones — the Status filter dropdown
   // lets the user narrow down to Pending (or any other stage) on demand.
@@ -4206,22 +4334,32 @@ async function loadAgingData() {
       customer: row.sold_to_party_name, truck_type: row.truck_type,
       quantity: row.quantity, so_amount: row.so_amount,
       qty: rowQtySum(row), status: effective,
-      record_date: row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at),
+      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at),
       pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
       pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
       // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
       // recorded for this SAME shipment line, not anything the Picker self-reports.
       // Accuracy% = (Volume Handled - Discrepancy Qty) / Volume Handled × 100.
       pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
+      pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
+      pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
       stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
       stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
       stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
+      stage_accuracy: stage ? calcCheckerAccuracy(stage) : null,
+      stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
+      stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
       staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
       pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
       pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
+      pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
+      pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
       check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
       check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
-      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null
+      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
+      check_accuracy: check ? calcCheckerAccuracy(check) : null,
+      check_hitmiss: calcHitMiss(check), check_speedpct: calcSpeedPct(check),
+      check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
     };
   });
 
@@ -4494,7 +4632,7 @@ async function openAgingRecordModal(so_number) {
     document.getElementById('ar-status').value = row?.status || 'PENDING';
     document.getElementById('ar-quantity').value = row?.qty ?? 0;
     document.getElementById('ar-so-amount').value = row?.so_amount ?? 0;
-    document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.record_date);
+    document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.upload_date);
 
     lineDetails.classList.remove('hidden');
     const { data: lineLogs, error } = await supabaseClient.from('activity_logs').select('*').eq('so_number', so_number);
@@ -4724,7 +4862,7 @@ function renderAgingTable() {
   const adminColClass = admin ? '' : 'hidden';
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="39" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
     updateAgingBulkBar();
     return;
   }
@@ -4740,12 +4878,13 @@ function renderAgingTable() {
       </td>
       <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.shipment_no || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.upload_date)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
       <td class="p-3 max-w-[220px] truncate text-slate-400" title="${r.customer || ''}">${r.customer || '—'}</td>
       <td class="p-3 text-slate-400 text-[11px]">${r.truck_type || '—'}</td>
       <td class="p-3 text-right font-mono text-amber-400">${r.qty}</td>
       <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${agingStatusBadgeClass(r.status)}">${r.status}</span></td>
-      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
       <td class="p-3 text-center font-mono text-[11px] ${agingColorClass(r.aging_days)}">${r.aging_days === null ? '—' : r.aging_days + 'd'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-300">${r.staging_area || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
@@ -4755,6 +4894,9 @@ function renderAgingTable() {
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtRenderedMinutes(r.pick_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pick_productivity)}">${fmtProductivity(r.pick_productivity)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.pick_accuracy)}">${fmtAccuracy(r.pick_accuracy)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.pick_hitmiss)}">${fmtHitMiss(r.pick_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.pick_speedpct)}">${fmtSpeedPct(r.pick_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.pick_idle)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
@@ -4762,12 +4904,19 @@ function renderAgingTable() {
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.stage_remarks || ''}">${r.stage_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtRenderedMinutes(r.stage_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.stage_productivity)}">${fmtProductivity(r.stage_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.stage_accuracy)}">${fmtAccuracy(r.stage_accuracy)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.stage_hitmiss)}">${fmtHitMiss(r.stage_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.stage_speedpct)}">${fmtSpeedPct(r.stage_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.stage_idle)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pull_remarks || ''}">${r.pull_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtRenderedMinutes(r.pull_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pull_productivity)}">${fmtProductivity(r.pull_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.pull_hitmiss)}">${fmtHitMiss(r.pull_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.pull_speedpct)}">${fmtSpeedPct(r.pull_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.pull_idle)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
@@ -4775,6 +4924,10 @@ function renderAgingTable() {
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.check_remarks || ''}">${r.check_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtRenderedMinutes(r.check_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.check_productivity)}">${fmtProductivity(r.check_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.check_accuracy)}">${fmtAccuracy(r.check_accuracy)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.check_hitmiss)}">${fmtHitMiss(r.check_hitmiss)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.check_speedpct)}">${fmtSpeedPct(r.check_speedpct)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.check_idle)}</td>
     </tr>`).join('');
 
   updateAgingBulkBar();
@@ -4785,30 +4938,31 @@ function exportAgingToExcel() {
   if (!rows.length) return showToast("No rows to export.", "error");
 
   const excelRows = rows.map(r => ({
-    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
+    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '',
+    'Upload Date': fmtAgingDate(r.upload_date), 'Record Date': fmtAgingDate(r.record_date),
+    'OBD': r.obd_number || '',
     'Customer': r.customer || '', 'Truck Type': r.truck_type || '', 'Qty': r.qty,
-    'Status': r.status, 'Record Date': fmtAgingDate(r.record_date),
+    'Status': r.status,
     'Aging (Days)': r.aging_days === null ? '' : r.aging_days,
     'Staging Area': r.staging_area || '',
     'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
     'Picker Remarks': r.pick_remarks || '', 'Picker Rendered Min': r.pick_rendered ?? '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
-    'Picker Accuracy': fmtAccuracy(r.pick_accuracy),
+    'Picker Accuracy': fmtAccuracy(r.pick_accuracy), 'Picker Hit/Miss': fmtHitMiss(r.pick_hitmiss), 'Picker Speed %': fmtSpeedPct(r.pick_speedpct), 'Picker Idle Time': fmtIdleMinutes(r.pick_idle),
     'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
     'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
     'Staging Remarks': r.stage_remarks || '', 'Staging Rendered Min': r.stage_rendered ?? '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
+    'Staging Accuracy': fmtAccuracy(r.stage_accuracy), 'Staging Hit/Miss': fmtHitMiss(r.stage_hitmiss), 'Staging Speed %': fmtSpeedPct(r.stage_speedpct), 'Staging Idle Time': fmtIdleMinutes(r.stage_idle),
     'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
     'Pulled Remarks': r.pull_remarks || '', 'Pulled Rendered Min': r.pull_rendered ?? '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
+    'Pulled Hit/Miss': fmtHitMiss(r.pull_hitmiss), 'Pulled Speed %': fmtSpeedPct(r.pull_speedpct), 'Pulled Idle Time': fmtIdleMinutes(r.pull_idle),
     'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
     'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty),
-    'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered ?? '', 'Check Productivity': fmtProductivity(r.check_productivity)
+    'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered ?? '', 'Check Productivity': fmtProductivity(r.check_productivity),
+    'Check Accuracy': fmtAccuracy(r.check_accuracy), 'Check Hit/Miss': fmtHitMiss(r.check_hitmiss), 'Check Speed %': fmtSpeedPct(r.check_speedpct), 'Check Idle Time': fmtIdleMinutes(r.check_idle)
   }));
 
   const ws = XLSX.utils.json_to_sheet(excelRows);
-  ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 12 }];
+  ws['!cols'] = new Array(52).fill({ wch: 14 });
   const wb = XLSX.utils.book_new();
   const statusVal = document.getElementById('aging-status-filter').value;
   const sheetLabel = (statusVal && statusVal !== 'ALL') ? statusVal.charAt(0) + statusVal.slice(1).toLowerCase() : 'All';
@@ -5211,6 +5365,23 @@ async function deletePersonnel(id) {
   await supabaseClient.from('personnel').delete().eq('id', id);
   await refreshPersonnelAdminList();
   await populatePersonnelDatalist(currentRole);
+  await refreshExcludedPersonnel();
+}
+// Admin-only toggle: flips whether a personnel record is excluded from every
+// computed metric (Performance Summary ranking/podium/MVP badges, Analytics &
+// Reports leaderboards/cycle-time/discrepancy/throughput). The person stays on
+// the roster and their raw logs are untouched — this only filters them out of
+// aggregate math, e.g. someone on extended leave or a lead who shouldn't be
+// ranked against floor staff.
+async function togglePersonnelExcluded(id, excluded) {
+  const { error } = await supabaseClient.from('personnel').update({ excluded }).eq('id', id);
+  if (error) return showToast(error.message, "error");
+  await refreshExcludedPersonnel();
+  await refreshPersonnelAdminList();
+  // Keep whichever performance views are loaded in sync immediately.
+  if (document.getElementById('bulletin-date')) refreshBulletinBoard();
+  if (document.getElementById('analytics-date')) refreshAnalyticsView();
+  showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
 }
 async function refreshPersonnelAdminList() {
   const { data, error } = await supabaseClient.from('personnel').select('*').order('role');
@@ -5223,9 +5394,15 @@ async function refreshPersonnelAdminList() {
       <h4 class="text-[10px] uppercase tracking-wider font-bold mb-1 ${roleTextClass(role)}">${role}</h4>
       <div class="space-y-1">
         ${members.length ? members.map(p => `
-          <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
-            <span class="text-slate-300 font-medium">${p.name}</span>
-            <button onclick="deletePersonnel(${p.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
+          <div class="flex justify-between items-center gap-2 bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60 ${p.excluded ? 'opacity-60' : ''}">
+            <span class="text-slate-300 font-medium ${p.excluded ? 'line-through' : ''}">${p.name}</span>
+            <div class="flex items-center gap-2">
+              <label class="flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer select-none" title="Exclude this person from every performance computation (Performance Summary + Analytics & Reports)">
+                <input type="checkbox" ${p.excluded ? 'checked' : ''} onchange="togglePersonnelExcluded(${p.id}, this.checked)" class="w-3.5 h-3.5 text-rose-600 bg-slate-900 border-slate-700 rounded focus:ring-rose-500">
+                Exclude
+              </label>
+              <button onclick="deletePersonnel(${p.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
+            </div>
           </div>`).join('') : '<p class="text-[11px] text-slate-600 italic">None yet.</p>'}
       </div>
     </div>`;
@@ -5598,7 +5775,7 @@ async function renderLeaderboardChart(dateStr) {
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString()).eq('status', 'Completed');
   if (error) return;
   const byPersonnel = {};
-  (data || []).forEach(l => { const k = l.personnel_name || '—'; (byPersonnel[k] = byPersonnel[k] || []).push(l); });
+  (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim())).forEach(l => { const k = l.personnel_name || '—'; (byPersonnel[k] = byPersonnel[k] || []).push(l); });
   const rows = Object.entries(byPersonnel).map(([name, logs]) => { const mins = sumGroupMinutes(logs); return { name, pct: mins > 0 ? (mins / 60 / STANDARD_DAILY_HOURS) * 100 : 0 }; })
     .filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 8);
   upsertChart('leaderboard-chart', {
@@ -5662,7 +5839,7 @@ async function refreshStreakLeaders() {
     .in('role', ['Staging Checker', 'Outbound Checker']).eq('status', 'Completed').gte('start_time', startOfOpDay.toISOString());
   if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-3">Failed to load: ${error.message}</p>`; return; }
   const byPersonnel = {};
-  (data || []).forEach(l => {
+  (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim())).forEach(l => {
     const t = new Date(l.start_time); const bucket = new Date(t);
     if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
     const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
