@@ -1114,7 +1114,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       </table>
     </div>
     <p id="export-count" class="text-[10px] text-slate-600"></p>
-    <p class="text-[10px] text-slate-600">Productivity per stage = Target Minutes ÷ Actual Minutes × 100% (over 100% = finished faster than target).</p>
+    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary.</p>
   </section>
 
   <!-- ================= MASTER RECORDS ================= -->
@@ -1217,6 +1217,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     </div>
     <p id="aging-count" class="text-[10px] text-slate-600"></p>
     <p class="text-[10px] text-slate-600">Set the Status filter to "Pending" to see only Sales Orders with no shipment movement yet. The moment a record is flagged PICKED, STAGED, PULLED, or CHECKED it will show under that status instead — keep the filter on "All Records" to see every stage together.</p>
+    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary.</p>
   </section>
 
   <!-- ================= USER MANAGEMENT ================= -->
@@ -3413,17 +3414,20 @@ async function loadExportData() {
   renderExportTable();
 }
 
-// Per-stage Productivity for the export table: Target Hours (the pre-computed
-// allotment for that task, already stored on the log at dispatch time) versus
-// Actual Hours actually taken (rendered_minutes). Over 100% = finished faster
-// than target; under 100% = took longer than target. Null when there isn't
-// enough data (no target set, or zero recorded time) to compute a ratio.
+// Per-stage Productivity for the Data Export / Master Records tables — kept in
+// lockstep with the exact formula the Personnel Performance Summary uses:
+// Productivity% = Active Hours ÷ STANDARD_DAILY_HOURS × 100. Active Hours here
+// is rendered_minutes/60 for this ONE completed log. Rows dispatched together
+// (same personnel+role+start_time, e.g. a multi-SO batch) all carry the SAME
+// rendered_minutes value stamped for the whole batch — since each SO's log is
+// used exactly once here (never summed across sibling SOs in the batch), that
+// shared value is used as-is, matching the dedupe rule in sumGroupMinutes().
+// Null when there isn't enough data yet (no rendered_minutes recorded).
 function calcProductivityPct(log) {
   if (!log) return null;
-  const targetHrs = parseFloat(log.target_hours);
-  const actualHrs = (log.rendered_minutes || 0) / 60;
-  if (!targetHrs || targetHrs <= 0 || actualHrs <= 0) return null;
-  return (targetHrs / actualHrs) * 100;
+  const activeHours = (log.rendered_minutes || 0) / 60;
+  if (activeHours <= 0) return null;
+  return (activeHours / STANDARD_DAILY_HOURS) * 100;
 }
 
 function fmtProductivity(pct) {
