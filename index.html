@@ -1828,14 +1828,26 @@ function clearShipmentInput() {
 // that marks a row PICKED even if status wasn't set. Defaults to the most
 // recent upload date (uploaded_at) so a fresh upload doesn't get diluted by
 // old stock still sitting in the table; "All Uploads" shows everything.
-let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+//
+// IMPORTANT: `shipments` holds one row per S.O. (sales order) LINE, and a
+// single Shipment No. is usually made up of several S.O. lines. This widget
+// counts physical SHIPMENTS, not S.O. lines, so a 12-line shipment shows up
+// as "1" pending, not "12". S.O. lines with no shipment_no assigned yet
+// (not consolidated into a shipment) are excluded from these counts — they
+// aren't a shipment yet. A shipment's effective stage is the LEAST advanced
+// stage among its lines: it isn't truly "Staged" etc. until every line on
+// it has caught up.
+const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHECKED: 4 };
+let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // line-level — feeds Backlog Forecast, which measures throughput per completed line
+let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
 let pipelineDateOptionsCache = null; // avoids rebuilding the <select> (and losing the user's pick) on every refresh
 async function refreshPipelineSummary() {
-  const { data, error } = await supabaseClient.from('shipments').select('status,pgi_date,uploaded_at');
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at');
   if (error) return console.error(error);
   const rows = data || [];
 
-  // Build the date dropdown once per distinct set of upload dates seen.
+  // Build the date dropdown once per distinct set of upload dates seen
+  // (across ALL lines, so the filter still reflects every upload on file).
   const uploadDates = [...new Set(rows.map(r => (r.uploaded_at || '').slice(0, 10)).filter(Boolean))].sort().reverse();
   const sel = document.getElementById('pipeline-date-filter');
   const cacheKey = uploadDates.join(',');
@@ -1847,24 +1859,47 @@ async function refreshPipelineSummary() {
   }
   const filterDate = sel ? sel.value : 'ALL';
 
-  const allCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  const displayCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  rows.forEach(row => {
+  const effectiveStatusOf = row => {
     let effective = row.status;
     if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
       effective = 'PICKED';
     }
-    if (!effective) effective = 'PENDING';
-    if (allCounts[effective] === undefined) effective = 'PENDING';
-    allCounts[effective]++;
-    if (filterDate === 'ALL' || (row.uploaded_at || '').slice(0, 10) === filterDate) {
+    if (!effective || PIPELINE_STAGE_ORDER[effective] === undefined) effective = 'PENDING';
+    return effective;
+  };
+
+  // --- Line-level counts (unchanged) — still what Backlog Forecast needs.
+  const allCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  rows.forEach(row => { allCounts[effectiveStatusOf(row)]++; });
+  lastPipelineCounts = allCounts;
+
+  // --- Shipment-level counts — one entry per Shipment No., taking the
+  // least-advanced line's stage and the earliest upload date on file for it.
+  const byShipment = new Map();
+  rows.forEach(row => {
+    const shipmentNo = (row.shipment_no || '').trim();
+    if (!shipmentNo) return; // no shipment assigned yet — not a shipment to count here
+    const effective = effectiveStatusOf(row);
+    const uploadDs = (row.uploaded_at || '').slice(0, 10);
+    const existing = byShipment.get(shipmentNo);
+    if (!existing) {
+      byShipment.set(shipmentNo, { effective, uploadDs });
+    } else {
+      if (PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing.effective]) existing.effective = effective;
+      if (uploadDs && (!existing.uploadDs || uploadDs < existing.uploadDs)) existing.uploadDs = uploadDs;
+    }
+  });
+
+  const shipmentAllCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  const displayCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  byShipment.forEach(({ effective, uploadDs }) => {
+    shipmentAllCounts[effective]++;
+    if (filterDate === 'ALL' || uploadDs === filterDate) {
       displayCounts[effective]++;
     }
   });
-  // lastPipelineCounts stays unfiltered — Backlog Forecast (Analytics tab) divides
-  // total pending work by throughput, and shouldn't shrink just because this
-  // widget is scoped to one upload date.
-  lastPipelineCounts = allCounts;
+  lastPipelineShipmentCounts = shipmentAllCounts;
+
   document.getElementById('pending-pick-count').innerText = displayCounts.PENDING;
   document.getElementById('pending-staged-count').innerText = displayCounts.PICKED;
   document.getElementById('pending-pull-count').innerText = displayCounts.STAGED;
@@ -4001,6 +4036,19 @@ async function saveAgingRecordModal() {
   const { error } = await supabaseClient.from('shipments').upsert([row], { onConflict: 'so_number' });
   if (error) return showToast("Could not save record: " + error.message, "error");
 
+  // A Shipment No. is usually made up of several S.O. lines (separate rows
+  // in `shipments`). If the admin set/changed the Upload Date here, apply it
+  // to every sibling line on that same Shipment No. too — otherwise only
+  // this one line moves and the rest of the shipment keeps showing the old
+  // date, which is why edits here can look like they "didn't take."
+  if (recordDateVal && row.shipment_no) {
+    const { error: dateSyncErr } = await supabaseClient
+      .from('shipments')
+      .update({ uploaded_at: row.uploaded_at })
+      .eq('shipment_no', row.shipment_no);
+    if (dateSyncErr) console.error('Could not sync Upload Date to sibling shipment lines:', dateSyncErr.message);
+  }
+
   // Per-line activity log edits — only stages whose panel is visible (i.e. a
   // log actually exists for this SO) carry an id, so this only ever updates
   // logs that already exist; it never creates new ones.
@@ -4882,7 +4930,7 @@ async function refreshKanbanBoard() {
   const grid = document.getElementById('pipeline-kanban-grid');
   if (!grid) return;
   grid.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-4">Loading board...</p>';
-  const { data, error } = await supabaseClient.from('shipments').select('so_number,status').order('so_number', { ascending: false }).limit(400);
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date').order('shipment_no', { ascending: false }).limit(2000);
   if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-4">Failed to load board: ${error.message}</p>`; return; }
   const cols = [
     { key: 'PENDING', label: 'Pending to Pick', color: 'text-amber-300' },
@@ -4890,10 +4938,22 @@ async function refreshKanbanBoard() {
     { key: 'STAGED', label: 'Pending to Pull', color: 'text-sky-300' },
     { key: 'PULLED', label: 'Pending to Check', color: 'text-pink-300' }
   ];
-  const buckets = { PENDING: [], PICKED: [], STAGED: [], PULLED: [] };
+  // Group by Shipment No. (same rule as refreshPipelineSummary): lines with
+  // no shipment_no aren't a shipment yet, and a shipment's stage is the
+  // least-advanced stage among its lines.
+  const byShipment = new Map();
   (data || []).forEach(row => {
-    const st = row.status && buckets[row.status] ? row.status : 'PENDING';
-    buckets[st].push(row.so_number);
+    const shipmentNo = (row.shipment_no || '').trim();
+    if (!shipmentNo) return;
+    let effective = row.status;
+    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) effective = 'PICKED';
+    if (!effective || PIPELINE_STAGE_ORDER[effective] === undefined) effective = 'PENDING';
+    const existing = byShipment.get(shipmentNo);
+    if (!existing || PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing]) byShipment.set(shipmentNo, effective);
+  });
+  const buckets = { PENDING: [], PICKED: [], STAGED: [], PULLED: [] };
+  byShipment.forEach((status, shipmentNo) => {
+    if (buckets[status]) buckets[status].push(shipmentNo);
   });
   grid.innerHTML = cols.map(c => {
     const list = buckets[c.key];
@@ -4901,7 +4961,7 @@ async function refreshKanbanBoard() {
     return `<div class="kanban-col">
       <div class="kanban-col-head ${c.color}"><span>${c.label}</span><span>${list.length}</span></div>
       <div class="kanban-body">
-        ${shown.length ? shown.map(so => `<div class="kanban-chip">${so}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
+        ${shown.length ? shown.map(sn => `<div class="kanban-chip">${sn}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
         ${list.length > shown.length ? `<p class="text-[10px] text-slate-500 px-1">+${list.length - shown.length} more</p>` : ''}
       </div>
     </div>`;
