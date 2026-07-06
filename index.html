@@ -1898,38 +1898,47 @@ async function fetchShipmentManifest() {
     if (!logErr) logs = logData || [];
   }
 
-  // Every role except Picker can only work rows the PRIOR role in the chain has
-  // already finished — either the shipments row already carries the persisted
-  // status flag for that prior stage (PICKED / STAGED / PULLED), or (fallback for
-  // rows not yet backfilled) the prior role's activity_logs entry for this SO is
-  // Completed. We keep the most recent completed prior-role log per SO so the
-  // Puller can also read the Staging Checker's confirmed Staging Area off it.
+  // Every role except Picker can now start working a row as soon as the PRIOR
+  // role in the chain has been DISPATCHED to it — Ongoing, Paused, or fully
+  // Completed all count as "ready". This lets stages overlap on purpose (e.g.
+  // Outbound Checker can start the moment a Puller is actively pulling, without
+  // waiting for the Puller to finish) instead of forcing a strict hand-off.
+  // Readiness is any of: no prior role in the chain (Picker), the shipments row
+  // already carries the prior stage's persisted status flag, a legacy PGI-date
+  // signal (Picker -> Staging Checker only), or ANY prior-role activity_logs
+  // entry for this SO (regardless of status). We keep the most recently
+  // started prior-role log per SO so the Puller can also read the Staging
+  // Checker's confirmed Staging Area off it once that's been set.
   const prevRole = PREV_ROLE[currentRole];
-  let prevCompletedMap = new Map(); // so_number -> most recent completed prior-role log
+  let prevRoleLogMap = new Map(); // so_number -> most recently started prior-role log, any status
   if (prevRole && soNumbers.length) {
     const { data: prevLogs, error: prevErr } = await supabaseClient
       .from('activity_logs').select('*')
-      .in('so_number', soNumbers).eq('role', prevRole).eq('status', 'Completed')
-      .order('end_time', { ascending: false });
+      .in('so_number', soNumbers).eq('role', prevRole)
+      .order('start_time', { ascending: false });
     if (!prevErr) (prevLogs || []).forEach(l => {
-      if (!prevCompletedMap.has(l.so_number)) prevCompletedMap.set(l.so_number, l);
+      if (!prevRoleLogMap.has(l.so_number)) prevRoleLogMap.set(l.so_number, l);
     });
   }
 
   currentManifestData = data.map(row => {
-    const prevLog = prevCompletedMap.get(row.so_number);
+    const prevLog = prevRoleLogMap.get(row.so_number);
     return {
       ...row,
       _log: logs.find(l => l.so_number === row.so_number) || null,
       // Ready once ANY of: no prior role in the chain (Picker), the shipments row
       // carries the prior stage's persisted status flag, a legacy PGI-date signal
-      // (Picker -> Staging Checker only), or a completed prior-role log fallback.
+      // (Picker -> Staging Checker only), or a prior-role log exists at all —
+      // Ongoing/Paused/Completed all count, so the next stage can start the
+      // moment the prior one is assigned to someone, not only once it's done.
       _prevReady: !prevRole
         || (currentRole === 'Staging Checker' && !!row.pgi_date)
         || row.status === ROLE_COMPLETE_LABEL[prevRole]
         || !!prevLog,
       // Staging Area(s) confirmed by the Staging Checker — surfaced as a major
-      // reference for the Puller once that SO is ready to be pulled.
+      // reference for the Puller once that SO is ready to be pulled. Only
+      // populated once the Staging Checker has actually completed and entered
+      // it, so this stays empty while the Staging Checker is still working.
       _stagingAreas: (currentRole === 'Puller' && prevLog) ? (prevLog.staging_areas || []) : null
     };
   });
@@ -1989,7 +1998,7 @@ function renderManifestTable() {
     let actionHtml = '';
     if (notReadyForStage) {
       const awaitingLabel = { 'Staging Checker': 'Awaiting Pick', 'Puller': 'Awaiting Staging', 'Outbound Checker': 'Awaiting Pull' }[currentRole] || 'Awaiting Prior Step';
-      actionHtml = `<span class="text-[10px] text-slate-600 italic" title="Waiting for ${PREV_ROLE[currentRole]} to complete this SO">${awaitingLabel}</span>`;
+      actionHtml = `<span class="text-[10px] text-slate-600 italic" title="Waiting for ${PREV_ROLE[currentRole]} to be assigned/started on this SO">${awaitingLabel}</span>`;
     } else if (status === 'PENDING') {
       actionHtml = `<button onclick="startRow(${i})" ${!operator ? 'disabled title="Select personnel first"' : ''} class="text-[10px] font-semibold px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed text-white">Start Row</button>`;
     } else if (status === 'ONGOING' && !lockedToOther) {
@@ -4770,19 +4779,48 @@ function closeScannerModal() {
 async function refreshActivityTicker() {
   const track = document.getElementById('activity-ticker-track');
   if (!track) return;
+  // Fetch a wider window than we'll display, since one dispatch action writes
+  // one activity_logs row per SO in the batch — we collapse those back down to
+  // a single ticker line per dispatch (shipment_no) below.
   const { data, error } = await supabaseClient.from('activity_logs')
-    .select('personnel_name,role,so_number,status,start_time,end_time')
-    .order('start_time', { ascending: false }).limit(15);
+    .select('personnel_name,role,shipment_no,so_number,status,start_time,end_time')
+    .order('start_time', { ascending: false }).limit(80);
   if (error || !data || !data.length) {
     track.innerHTML = '<span class="ticker-item text-slate-600">No recent activity yet.</span>';
     return;
   }
   const verbs = { Ongoing: 'started', Paused: 'paused', Completed: 'completed' };
-  const items = data.map(l => {
-    const verb = verbs[l.status] || (l.status || '').toLowerCase();
-    const ts = new Date((l.status === 'Completed' && l.end_time) ? l.end_time : l.start_time);
-    return `<span class="ticker-item"><b>${l.personnel_name || '—'}</b> ${verb} <span class="${roleTextClass(l.role)}">${l.role}</span> on <b>${l.so_number || '—'}</b> · ${ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+
+  // Collapse every row that belongs to the same dispatch action — same
+  // personnel + role + status + start_time + shipment_no — into one entry,
+  // counting how many SO lines it covered, so the ticker shows "on Dispatch
+  // 10131247 (10 SOs)" instead of ten separate near-identical lines.
+  const seen = new Map();
+  data.forEach(l => {
+    const key = `${l.personnel_name}||${l.role}||${l.status}||${l.start_time}||${l.shipment_no || l.so_number}`;
+    if (!seen.has(key)) seen.set(key, { ...l, so_count: 1 });
+    else seen.get(key).so_count++;
   });
+
+  const items = [...seen.values()]
+    .sort((a, b) => {
+      const tb = new Date((b.status === 'Completed' && b.end_time) ? b.end_time : b.start_time);
+      const ta = new Date((a.status === 'Completed' && a.end_time) ? a.end_time : a.start_time);
+      return tb - ta;
+    })
+    .slice(0, 15)
+    .map(l => {
+      const verb = verbs[l.status] || (l.status || '').toLowerCase();
+      const ts = new Date((l.status === 'Completed' && l.end_time) ? l.end_time : l.start_time);
+      const soSuffix = l.so_count > 1 ? ` (${l.so_count} SOs)` : '';
+      const dispatchRef = l.shipment_no || l.so_number || '—';
+      return `<span class="ticker-item"><b>${l.personnel_name || '—'}</b> ${verb} <span class="${roleTextClass(l.role)}">${l.role}</span> on <b>${dispatchRef}</b>${soSuffix} · ${ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
+    });
+
+  if (!items.length) {
+    track.innerHTML = '<span class="ticker-item text-slate-600">No recent activity yet.</span>';
+    return;
+  }
   track.innerHTML = items.join('') + items.join(''); // duplicated so the CSS marquee loop (-50%) is seamless
 }
 function subscribeTickerRealtime() {
