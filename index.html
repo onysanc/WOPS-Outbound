@@ -160,6 +160,9 @@
   .lb-bar-fill{position:absolute;inset:0 auto 0 0;height:100%;border-radius:999px;transition:width .3s ease}
   .lb-avatar{width:30px;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;flex-shrink:0;color:#04231d;background:linear-gradient(135deg,#2dd4bf,#0d8f79)}
   .lb-avatar.lb-avatar-dim{background:#1a2436;color:#647089}
+  .lb-filter-btn{font-size:.68rem;font-weight:700;padding:.4rem .75rem;border-radius:.6rem;background:#0c1220;color:#93a1b8;border:1px solid #1a2436;transition:background .15s ease,color .15s ease,border-color .15s ease,transform .1s ease}
+  .lb-filter-btn:hover{background:#1a2436;color:#dde3ee}
+  .lb-filter-btn.active{background:var(--accent);color:#04231d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(45,212,191,.3), 0 4px 14px -4px rgba(45,212,191,.5);transform:translateY(-1px)}
 
   /* --- Scan mode: bigger, thumb-friendly controls for floor/handheld use --- */
   body.scan-mode #view-workbench input, body.scan-mode #view-workbench select{font-size:1.05rem !important;padding:.9rem !important}
@@ -746,7 +749,7 @@
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
       <div>
         <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">🏆 Personnel Performance Leaderboard <span id="mvp-badge-slot"></span></h2>
-        <p class="text-xs text-slate-400">Ranked by Productivity % for the selected operational day (05:00–04:59)</p>
+        <p id="bulletin-subtitle" class="text-xs text-slate-400">Ranked by Productivity % for the selected operational day (05:00–04:59)</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <label class="text-[11px] text-slate-400 font-semibold">Activity Day</label>
@@ -754,6 +757,16 @@
         <input type="text" id="bulletin-search" oninput="renderBulletinBoard()" placeholder="Search personnel or role..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
       </div>
     </div>
+
+    <!-- Clickable rank-by filter -->
+    <div class="flex flex-wrap items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+      <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold px-1">Rank by</span>
+      <button type="button" data-metric="productivity" onclick="setBulletinRankMetric('productivity')" class="lb-filter-btn">⚡ Productivity</button>
+      <button type="button" data-metric="speed" onclick="setBulletinRankMetric('speed')" class="lb-filter-btn">🏃 Speed</button>
+      <button type="button" data-metric="accuracy" onclick="setBulletinRankMetric('accuracy')" class="lb-filter-btn">🎯 Accuracy</button>
+      <button type="button" data-metric="idle" onclick="setBulletinRankMetric('idle')" class="lb-filter-btn">⏱ Least Idle Time</button>
+    </div>
+
     <div class="flex flex-wrap items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
       <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold px-1">Export</span>
       <button onclick="exportTableToCSVGeneric('bulletin-table', 'performance-summary.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
@@ -778,6 +791,7 @@
             <th class="p-3 text-right">Active Minutes</th>
             <th class="p-3">Productivity</th>
             <th class="p-3 text-right">Speed (Selling Units/Min)</th>
+            <th class="p-3 text-right">Accuracy</th>
             <th class="p-3 text-right">Idle Time</th>
             <th class="p-3 text-center w-10"></th>
           </tr>
@@ -785,7 +799,7 @@
         <tbody id="bulletin-container"></tbody>
       </table>
     </div>
-    <p class="text-[10px] text-slate-600">Productivity = Active Minutes ÷ 390 (standard daily working minutes) × 100%. Every personnel on file always holds a rank on this leaderboard, even with zero logged activity for the selected Activity Day.</p>
+    <p class="text-[10px] text-slate-600">Productivity = Active Minutes ÷ 390 (standard daily working minutes) × 100%. Accuracy is volume-weighted across a person's graded roles for the day (Picker graded downstream by Staging Checker discrepancies; Staging/Outbound Checker graded on their own logged discrepancies; Puller is untracked — shown as "—"). Every personnel on file always holds a rank on this leaderboard, even with zero logged activity for the selected Activity Day — ranking is by a single selected metric only, with zero-activity personnel always placed last.</p>
   </section>
 
   <!-- ================= ANALYTICS & REPORTS VIEW ================= -->
@@ -3157,23 +3171,57 @@ async function refreshBulletinBoard() {
   renderBulletinBoard();
 }
 
+// Which single metric currently ranks the leaderboard. Clickable filter buttons
+// (see #view-bulletin) switch this and re-render; ranking is by exactly ONE
+// metric at a time — no composite/blended score.
+let bulletinRankMetric = 'productivity';
+const BULLETIN_METRIC_LABELS = {
+  productivity: 'Productivity %',
+  speed: 'Speed (Selling Units/Min)',
+  accuracy: 'Accuracy %',
+  idle: 'Idle Time (least first)'
+};
+
+function setBulletinRankMetric(metric) {
+  bulletinRankMetric = metric;
+  updateBulletinFilterButtons();
+  renderBulletinBoard();
+}
+
+function updateBulletinFilterButtons() {
+  document.querySelectorAll('.lb-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.metric === bulletinRankMetric);
+  });
+  const subtitle = document.getElementById('bulletin-subtitle');
+  if (subtitle) subtitle.textContent = `Ranked by ${BULLETIN_METRIC_LABELS[bulletinRankMetric]} for the selected operational day (05:00–04:59)`;
+}
+
 // Builds the per-personnel performance LEADERBOARD for the selected Activity Day.
 // Every personnel on file always holds a rank, even with zero logged activity that
-// day — absentees/zero-activity personnel are ranked last (by Productivity, then
-// Volume, then name) rather than omitted. Metrics are computed from Completed logs
-// only (Ongoing/Paused tasks don't have a reliable end_time/rendered_minutes yet):
+// day — zero-activity personnel are always placed last (alphabetically among
+// themselves) regardless of which metric is selected, since there's no data to
+// rank them by. Everyone else is ranked by exactly ONE selected metric at a time:
+// Productivity, Speed, Accuracy, or least Idle Time. Metrics are computed from
+// Completed logs only (Ongoing/Paused tasks don't have a reliable end_time/
+// rendered_minutes yet):
 //   - Shipments   : distinct shipment_no touched that day
 //   - Qty         : number of shipment lines (activity_log rows) completed
 //   - Volume      : sum of total_qty (units) across those lines
 //   - Active Min  : sum of rendered_minutes (actual worked time, breaks/pauses excluded)
 //   - Productivity: Active Hrs ÷ 6.5 (standard daily working hours) × 100%
 //   - Speed       : Volume / Active Min (units per minute)
+//   - Accuracy    : volume-weighted across the person's graded roles that day —
+//                   Picker is graded downstream (matching Staging Checker
+//                   discrepancy_qty on the same SO); Staging/Outbound Checker are
+//                   graded on their own logged discrepancy_qty vs. volume handled;
+//                   Puller has no discrepancy field and is excluded (untracked)
 //   - Idle Time   : sum of gaps between one completed task's end_time and the
 //                   next task's start_time, task-to-task, for that personnel
 function renderBulletinBoard() {
   const container = document.getElementById('bulletin-container');
   const podium = document.getElementById('bulletin-podium');
   const searchText = (document.getElementById('bulletin-search')?.value || '').trim().toLowerCase();
+  updateBulletinFilterButtons();
 
   // Group everything by personnel first (idle time needs every log, not just Completed ones,
   // so a gap isn't hidden just because the log on one side of it is still Ongoing/Paused).
@@ -3199,6 +3247,11 @@ function renderBulletinBoard() {
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
+  // Staging Checker logs for the day — used to grade downstream Picker Accuracy,
+  // same methodology as the Role Leaderboards.
+  const completedAll = bulletinRawData.filter(l => l.status === 'Completed');
+  const stagingLogsForDay = completedAll.filter(l => l.role === 'Staging Checker');
+
   // --- Compute metrics for every personnel, then rank the FULL roster (unfiltered)
   // so a search doesn't renumber anyone's standing. ---
   const allNames = Object.keys(byPersonnel).sort();
@@ -3216,6 +3269,29 @@ function renderBulletinBoard() {
     const productivityPct = (activeHours / STANDARD_DAILY_HOURS) * 100;
     const hasActivity = logs.length > 0;
 
+    // Accuracy: volume-weighted across whichever of this person's roles are
+    // gradeable. Picker lines are graded downstream against the matching Staging
+    // Checker discrepancy on the same SO; Staging/Outbound Checker lines are
+    // graded on their own logged discrepancy_qty. Puller has no discrepancy
+    // field and contributes nothing to either side of the ratio.
+    let gradedVol = 0, gradedDiscVol = 0;
+    const pickerLines = completed.filter(l => l.role === 'Picker');
+    const seenSO = new Set();
+    pickerLines.forEach(m => {
+      if (seenSO.has(m.so_number)) return;
+      seenSO.add(m.so_number);
+      const vol = parseFloat(m.total_qty) || 0;
+      gradedVol += vol;
+      const stageLog = stagingLogsForDay.find(l => l.so_number === m.so_number);
+      if (stageLog && stageLog.discrepancy_qty) gradedDiscVol += parseFloat(stageLog.discrepancy_qty) || 0;
+    });
+    const checkerLines = completed.filter(l => l.role === 'Staging Checker' || l.role === 'Outbound Checker');
+    checkerLines.forEach(m => {
+      gradedVol += parseFloat(m.total_qty) || 0;
+      gradedDiscVol += parseFloat(m.discrepancy_qty) || 0;
+    });
+    const accuracyPct = gradedVol > 0 ? Math.max(0, Math.min(100, ((gradedVol - gradedDiscVol) / gradedVol) * 100)) : null;
+
     // Idle time, task-to-task: sort ALL of this personnel's logs for the day by
     // start_time, then measure the gap between each Completed task's end_time
     // and the next task's start_time. Overlapping/adjacent tasks contribute 0.
@@ -3231,12 +3307,28 @@ function renderBulletinBoard() {
     }
     const idleMinutes = gaps.reduce((s, g) => s + g.minutes, 0);
 
-    return { name, roles, shipments, qtyLines, volume, activeMinutes, speed, productivityPct, idleMinutes, gaps, hasActivity };
+    return { name, roles, shipments, qtyLines, volume, activeMinutes, speed, productivityPct, accuracyPct, idleMinutes, gaps, hasActivity };
   });
 
-  // Rank the FULL roster by Productivity % desc, then Volume desc, then name asc —
-  // zero-activity personnel naturally sink to the bottom but still get a rank number.
-  entries.sort((a, b) => b.productivityPct - a.productivityPct || b.volume - a.volume || a.name.localeCompare(b.name));
+  // Rank the FULL roster by exactly ONE selected metric — zero-activity personnel
+  // always sink to the bottom (alphabetically among themselves) regardless of
+  // metric, since there's no data to compare them by.
+  entries.sort((a, b) => {
+    if (a.hasActivity !== b.hasActivity) return a.hasActivity ? -1 : 1;
+    if (!a.hasActivity) return a.name.localeCompare(b.name);
+    switch (bulletinRankMetric) {
+      case 'speed': return b.speed - a.speed;
+      case 'idle': return a.idleMinutes - b.idleMinutes; // less idle = better rank
+      case 'accuracy': {
+        const av = a.accuracyPct, bv = b.accuracyPct;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return bv - av;
+      }
+      default: return b.productivityPct - a.productivityPct; // 'productivity'
+    }
+  });
   entries = entries.map((e, i) => ({ ...e, rank: i + 1 }));
 
   // Now apply the search filter for DISPLAY only — ranks computed above are preserved.
@@ -3249,22 +3341,35 @@ function renderBulletinBoard() {
   }
 
   if (!visible.length) {
-    container.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">${searchText ? 'No personnel match found.' : 'No personnel on file yet.'}</td></tr>`;
+    container.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">${searchText ? 'No personnel match found.' : 'No personnel on file yet.'}</td></tr>`;
     if (podium) podium.innerHTML = '';
     return;
   }
 
   // --- Top-3 podium cards (only shown unfiltered, and only for ranks that actually
   // have logged activity — an empty podium slot for a zero-activity "leader" would
-  // be misleading) ---
+  // be misleading). The headline number reflects whichever metric is selected. ---
   if (podium) {
     if (searchText) {
       podium.innerHTML = '';
     } else {
       const podiumMedals = ['🥇', '🥈', '🥉'];
       const podiumClasses = ['lb-rank-1', 'lb-rank-2', 'lb-rank-3'];
-      const top3 = entries.slice(0, 3).filter(e => e.hasActivity && e.productivityPct > 0);
-      podium.innerHTML = top3.map((e, i) => `
+      const top3 = entries.slice(0, 3).filter(e => e.hasActivity);
+      podium.innerHTML = top3.map((e, i) => {
+        let headline, headlineColor, subline;
+        if (bulletinRankMetric === 'speed') {
+          headline = `${e.speed.toFixed(2)}/min`; headlineColor = 'text-emerald-400'; subline = `${e.volume.toFixed(0)} units`;
+        } else if (bulletinRankMetric === 'idle') {
+          headline = fmtMinutes(e.idleMinutes); headlineColor = e.idleMinutes > 60 ? 'text-rose-400' : 'text-emerald-400'; subline = `${e.activeMinutes.toFixed(0)} active min`;
+        } else if (bulletinRankMetric === 'accuracy') {
+          headline = e.accuracyPct == null ? '—' : `${e.accuracyPct.toFixed(1)}%`;
+          headlineColor = e.accuracyPct == null ? 'text-slate-500' : e.accuracyPct >= 98 ? 'text-emerald-400' : e.accuracyPct >= 90 ? 'text-amber-400' : 'text-rose-400';
+          subline = `${e.volume.toFixed(0)} units graded`;
+        } else {
+          headline = `${e.productivityPct.toFixed(1)}%`; headlineColor = e.productivityPct >= 100 ? 'text-emerald-400' : e.productivityPct >= 70 ? 'text-amber-400' : 'text-rose-400'; subline = `${e.volume.toFixed(0)} units`;
+        }
+        return `
         <div class="lb-row ${podiumClasses[i]} rounded-xl p-4 flex items-center gap-3">
           <div class="text-3xl leading-none">${podiumMedals[i]}</div>
           <div class="flex-1 min-w-0">
@@ -3272,18 +3377,20 @@ function renderBulletinBoard() {
             <div class="text-[10px] text-slate-400 mt-0.5">${e.roles.map(r => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1 ${roleBadgeClass(r)}">${r}</span>`).join('') || '—'}</div>
           </div>
           <div class="text-right">
-            <div class="font-mono font-extrabold text-lg ${e.productivityPct >= 100 ? 'text-emerald-400' : e.productivityPct >= 70 ? 'text-amber-400' : 'text-rose-400'}">${e.productivityPct.toFixed(1)}%</div>
-            <div class="text-[10px] text-slate-500">${e.volume.toFixed(0)} units</div>
+            <div class="font-mono font-extrabold text-lg ${headlineColor}">${headline}</div>
+            <div class="text-[10px] text-slate-500">${subline}</div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
   }
 
   container.innerHTML = visible.map((e) => {
-    const { name, roles, shipments, qtyLines, volume, activeMinutes, speed, productivityPct, idleMinutes, gaps, hasActivity, rank } = e;
+    const { name, roles, shipments, qtyLines, volume, activeMinutes, speed, productivityPct, accuracyPct, idleMinutes, gaps, hasActivity, rank } = e;
     const productivityColor = productivityPct >= 100 ? 'text-emerald-400' : productivityPct >= 70 ? 'text-amber-400' : productivityPct > 0 ? 'text-rose-400' : 'text-slate-600';
     const barColor = productivityPct >= 100 ? '#2dd4bf' : productivityPct >= 70 ? '#f59e0b' : '#f43f5e';
     const barWidth = Math.max(0, Math.min(100, productivityPct));
+    const accuracyColor = accuracyPct == null ? 'text-slate-600' : accuracyPct >= 98 ? 'text-emerald-400' : accuracyPct >= 90 ? 'text-amber-400' : 'text-rose-400';
     const rankClass = rank === 1 ? 'lb-rank-1' : rank === 2 ? 'lb-rank-2' : rank === 3 ? 'lb-rank-3' : '';
     const rankChipClass = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : '';
     const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
@@ -3321,13 +3428,14 @@ function renderBulletinBoard() {
           </div>
         </td>
         <td class="p-3 text-right font-mono text-emerald-400 font-semibold">${speed.toFixed(2)}</td>
+        <td class="p-3 text-right font-mono font-semibold ${accuracyColor}">${accuracyPct == null ? '—' : accuracyPct.toFixed(1) + '%'}</td>
         <td class="p-3 text-right font-mono ${idleMinutes > 60 ? 'text-rose-400 font-bold' : 'text-slate-300'}">${hasActivity ? fmtMinutes(idleMinutes) : '—'}</td>
         <td class="p-3 text-center">
           <button onclick="toggleBulletinDetail('${panelId}')" class="text-[10px] text-slate-400 hover:text-emerald-400 font-semibold">▾</button>
         </td>
       </tr>
       <tr id="${panelId}" class="hidden bg-slate-950/60">
-        <td colspan="12" class="px-4 pb-3 pt-0">
+        <td colspan="13" class="px-4 pb-3 pt-0">
           <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-[11px]">
             <div class="text-slate-500 uppercase tracking-wider text-[10px] font-semibold mb-1">Task-to-task idle gaps</div>
             ${gapRows}
