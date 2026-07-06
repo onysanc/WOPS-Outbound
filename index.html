@@ -2634,6 +2634,24 @@ function operationalDayWindowForDate(dateStr) {
 let bulletinRosterNames = []; // full personnel roster (deduped by name, with every role they hold) — refreshed alongside bulletinRawData so the summary always lists everyone, not just people with logged activity
 const STANDARD_DAILY_HOURS = 6.5; // basis for the Productivity column below
 
+// Rows dispatched together (same personnel_name + role + start_time) act as a single
+// task/batch, but each row's rendered_minutes carries the FULL batch duration, not a
+// per-line share (that's how completeLogById stamps every member when the batch is
+// completed). So naively summing rendered_minutes across rows multiplies actual active
+// time by however many lines were in the batch. Always dedupe to one rendered_minutes
+// value per group before summing/averaging active time across multiple logs.
+function dedupeGroupMinutes(logs) {
+  const seen = new Map(); // groupKey -> rendered_minutes (same value for every member)
+  (logs || []).forEach(l => {
+    const key = `${l.personnel_name}||${l.role}||${l.start_time}`;
+    if (!seen.has(key)) seen.set(key, l.rendered_minutes || 0);
+  });
+  return [...seen.values()]; // one entry per dispatched batch/task
+}
+function sumGroupMinutes(logs) {
+  return dedupeGroupMinutes(logs).reduce((s, m) => s + m, 0);
+}
+
 async function refreshBulletinBoard() {
   const dateInput = document.getElementById('bulletin-date');
   if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
@@ -2728,7 +2746,7 @@ function renderBulletinBoard() {
     const shipments = new Set(completed.map(l => l.shipment_no).filter(Boolean)).size;
     const qtyLines = completed.length;
     const volume = completed.reduce((s, l) => s + (parseFloat(l.total_qty) || 0), 0);
-    const activeMinutes = completed.reduce((s, l) => s + (l.rendered_minutes || 0), 0);
+    const activeMinutes = sumGroupMinutes(completed);
     const activeHours = activeMinutes / 60;
     const speed = activeMinutes > 0 ? volume / activeMinutes : 0;
     const productivityPct = (activeHours / STANDARD_DAILY_HOURS) * 100;
@@ -2831,7 +2849,8 @@ function renderCycleTime(logs) {
   const roles = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
   grid.innerHTML = roles.map(role => {
     const roleLogs = logs.filter(l => l.role === role);
-    const avgMin = roleLogs.length ? roleLogs.reduce((s, l) => s + (l.rendered_minutes || 0), 0) / roleLogs.length : 0;
+    const groupMins = dedupeGroupMinutes(roleLogs); // one duration per dispatched batch, not per line
+    const avgMin = groupMins.length ? groupMins.reduce((s, m) => s + m, 0) / groupMins.length : 0;
     return `<div class="rounded-lg border border-slate-800 bg-slate-900 p-3">
       <span class="text-[10px] uppercase tracking-wider font-semibold block mb-1 ${roleTextClass(role)}">${role}</span>
       <span class="text-xl font-black ${roleTextClass(role)}">${roleLogs.length ? avgMin.toFixed(1) : '—'}</span>
@@ -2921,7 +2940,7 @@ function renderLeaderboard(logs) {
   const rows = Object.entries(byPersonnel).map(([name, entries]) => {
     const roles = [...new Set(entries.map(l => l.role))];
     const volume = entries.reduce((s, l) => s + (parseFloat(l.total_qty) || 0), 0);
-    const activeMinutes = entries.reduce((s, l) => s + (l.rendered_minutes || 0), 0);
+    const activeMinutes = sumGroupMinutes(entries);
     const productivityPct = activeMinutes > 0 ? (activeMinutes / 60 / STANDARD_DAILY_HOURS) * 100 : 0;
     return { name, roles, volume, activeMinutes, productivityPct };
   }).filter(r => r.activeMinutes > 0).sort((a, b) => b.productivityPct - a.productivityPct).slice(0, 10);
@@ -3038,7 +3057,7 @@ function renderBacklogForecast(logs) {
   grid.innerHTML = roles.map(role => {
     const roleLogs = logs.filter(l => l.role === role);
     const lines = roleLogs.length;
-    const activeMin = roleLogs.reduce((s, l) => s + (l.rendered_minutes || 0), 0);
+    const activeMin = sumGroupMinutes(roleLogs); // true active minutes, not multiplied by batch size
     const rate = activeMin > 0 ? lines / activeMin : 0; // lines per minute
     const pending = pendingByRole[role] || 0;
     const etaMin = rate > 0 ? pending / rate : null;
@@ -4357,12 +4376,12 @@ async function renderThroughputTrendChart(endDateStr) {
 
 async function renderLeaderboardChart(dateStr) {
   const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
-  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,rendered_minutes,status')
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,rendered_minutes,status')
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString()).eq('status', 'Completed');
   if (error) return;
   const byPersonnel = {};
-  (data || []).forEach(l => { const k = l.personnel_name || '—'; byPersonnel[k] = (byPersonnel[k] || 0) + (l.rendered_minutes || 0); });
-  const rows = Object.entries(byPersonnel).map(([name, mins]) => ({ name, pct: mins > 0 ? (mins / 60 / STANDARD_DAILY_HOURS) * 100 : 0 }))
+  (data || []).forEach(l => { const k = l.personnel_name || '—'; (byPersonnel[k] = byPersonnel[k] || []).push(l); });
+  const rows = Object.entries(byPersonnel).map(([name, logs]) => { const mins = sumGroupMinutes(logs); return { name, pct: mins > 0 ? (mins / 60 / STANDARD_DAILY_HOURS) * 100 : 0 }; })
     .filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 8);
   upsertChart('leaderboard-chart', {
     type: 'bar',
@@ -4474,8 +4493,8 @@ function computeDailyMVP() {
   const completed = (bulletinRawData || []).filter(l => l.status === 'Completed');
   if (!completed.length) return null;
   const byPersonnel = {};
-  completed.forEach(l => { const k = l.personnel_name || '—'; byPersonnel[k] = (byPersonnel[k] || 0) + (l.rendered_minutes || 0); });
-  const entries = Object.entries(byPersonnel).map(([name, mins]) => ({ name, pct: (mins / 60 / STANDARD_DAILY_HOURS) * 100 })).sort((a, b) => b.pct - a.pct);
+  completed.forEach(l => { const k = l.personnel_name || '—'; (byPersonnel[k] = byPersonnel[k] || []).push(l); });
+  const entries = Object.entries(byPersonnel).map(([name, logs]) => ({ name, pct: (sumGroupMinutes(logs) / 60 / STANDARD_DAILY_HOURS) * 100 })).sort((a, b) => b.pct - a.pct);
   return (entries[0] && entries[0].pct > 0) ? entries[0] : null;
 }
 function fireConfetti() {
