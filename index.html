@@ -364,9 +364,9 @@
           <input type="number" step="0.01" min="0" id="ar-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
         </div>
         <div>
-          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Upload Date</label>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Record Date</label>
           <input type="datetime-local" id="ar-record-date" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-          <p class="text-[10px] text-slate-600 mt-1">Drives Aging Days. Leave as-is to keep the current value.</p>
+          <p class="text-[10px] text-slate-600 mt-1">Latest timestamp — drives Aging Days. Editing this never changes the record's original Upload Date. Leave as-is to keep the current value.</p>
         </div>
       </div>
     </div>
@@ -561,10 +561,10 @@
       <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
         <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
           <input type="checkbox" id="ame-record-date-enable" onchange="document.getElementById('ame-record-date').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
-          Upload Date
+          Record Date
         </label>
         <input type="datetime-local" id="ame-record-date" disabled class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
-        <p class="text-[10px] text-slate-600">Drives Aging Days for every selected record. Same date/time is applied to all of them.</p>
+        <p class="text-[10px] text-slate-600">Drives Aging Days for every selected record. Same date/time is applied to all of them. Original Upload Date is never changed.</p>
       </div>
     </div>
 
@@ -2027,6 +2027,12 @@ function clearShipmentInput() {
 // that marks a row PICKED even if status wasn't set. Defaults to the most
 // recent upload date (uploaded_at) so a fresh upload doesn't get diluted by
 // old stock still sitting in the table; "All Uploads" shows everything.
+// uploaded_at is the TRUE master-data upload timestamp: it's set once, only
+// by the bulk uploader (processUploads) and only on first insert of a given
+// SO Number, and is never touched by the admin Master Records edit modals
+// (those write to the separate record_date column instead). That's what
+// keeps this dropdown's choices always matching the real upload batches on
+// file, no matter how many aging/record-date corrections admins make later.
 //
 // IMPORTANT: `shipments` holds one row per S.O. (sales order) LINE, and a
 // single Shipment No. is usually made up of several S.O. lines. This widget
@@ -4334,7 +4340,7 @@ async function loadAgingData() {
       customer: row.sold_to_party_name, truck_type: row.truck_type,
       quantity: row.quantity, so_amount: row.so_amount,
       qty: rowQtySum(row), status: effective,
-      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at),
+      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.record_date || row.uploaded_at),
       pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
       pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
       // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
@@ -4546,7 +4552,11 @@ async function applyAgingMassEdit() {
   if (document.getElementById('ame-record-date-enable').checked) {
     const recordDateVal = document.getElementById('ame-record-date').value;
     if (!recordDateVal) return showToast("Pick a Record Date, or untick that field.", "error");
-    update.uploaded_at = fromDatetimeLocalValue(recordDateVal);
+    // Writes to record_date (the "latest timestamped" field), never to
+    // uploaded_at — uploaded_at is the true master-data upload date and must
+    // stay fixed so the Pipeline Summary's Upload Date choices always match
+    // what was actually uploaded.
+    update.record_date = fromDatetimeLocalValue(recordDateVal);
   }
 
   if (!Object.keys(update).length) return showToast("Tick at least one field to change.", "error");
@@ -4560,10 +4570,9 @@ async function applyAgingMassEdit() {
   closeAgingMassEditModal();
   showToast(`Updated ${list.length} record(s).`, "success");
   await loadAgingData();
-  // Same reasoning as saveAgingRecordModal — mass edit can also change
-  // Record Date (uploaded_at) across many rows at once, so force the
-  // pipeline widget + its date dropdown to refresh immediately.
-  pipelineDateOptionsCache = null;
+  // Record Date doesn't touch uploaded_at, so the Upload Date dropdown never
+  // needs to rebuild here — just refresh the pipeline counts in case status
+  // was also changed in this same mass edit.
   await refreshPipelineSummary();
 }
 
@@ -4632,7 +4641,7 @@ async function openAgingRecordModal(so_number) {
     document.getElementById('ar-status').value = row?.status || 'PENDING';
     document.getElementById('ar-quantity').value = row?.qty ?? 0;
     document.getElementById('ar-so-amount').value = row?.so_amount ?? 0;
-    document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.upload_date);
+    document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.record_date || row?.upload_date);
 
     lineDetails.classList.remove('hidden');
     const { data: lineLogs, error } = await supabaseClient.from('activity_logs').select('*').eq('so_number', so_number);
@@ -4705,11 +4714,14 @@ async function saveAgingRecordModal() {
   // the bulk uploader, so this record agrees with the rest of the app.
   if (statusVal === 'PICKED') row.pgi_date = new Date().toISOString();
 
-  // Record Date drives Aging Days (it's stored as uploaded_at) — only touch it
-  // if the admin actually set/changed the field, so leaving it blank on an
-  // existing record doesn't wipe out its real upload timestamp.
+  // Record Date drives Aging Days and is stored in its own record_date column
+  // — kept completely separate from uploaded_at (the true master-data upload
+  // timestamp) so editing it here never changes which Upload Date bucket a
+  // record falls into on the Pipeline Summary widget. Only touch it if the
+  // admin actually set/changed the field, so leaving it blank on an existing
+  // record doesn't wipe out its real value.
   const recordDateVal = document.getElementById('ar-record-date').value;
-  if (recordDateVal) row.uploaded_at = fromDatetimeLocalValue(recordDateVal);
+  if (recordDateVal) row.record_date = fromDatetimeLocalValue(recordDateVal);
 
   // Editing and changing the SO Number is effectively a rename — since
   // so_number is the upsert/conflict key, remove the old row first so it
@@ -4727,16 +4739,16 @@ async function saveAgingRecordModal() {
   if (error) return showToast("Could not save record: " + error.message, "error");
 
   // A Shipment No. is usually made up of several S.O. lines (separate rows
-  // in `shipments`). If the admin set/changed the Upload Date here, apply it
+  // in `shipments`). If the admin set/changed the Record Date here, apply it
   // to every sibling line on that same Shipment No. too — otherwise only
   // this one line moves and the rest of the shipment keeps showing the old
   // date, which is why edits here can look like they "didn't take."
   if (recordDateVal && row.shipment_no) {
     const { error: dateSyncErr } = await supabaseClient
       .from('shipments')
-      .update({ uploaded_at: row.uploaded_at })
+      .update({ record_date: row.record_date })
       .eq('shipment_no', row.shipment_no);
-    if (dateSyncErr) console.error('Could not sync Upload Date to sibling shipment lines:', dateSyncErr.message);
+    if (dateSyncErr) console.error('Could not sync Record Date to sibling shipment lines:', dateSyncErr.message);
   }
 
   // Per-line activity log edits — only stages whose panel is visible (i.e. a
@@ -4776,13 +4788,10 @@ async function saveAgingRecordModal() {
   showToast(`Record "${soNumber}" saved.`, "success");
   closeAgingRecordModal();
   await loadAgingData();
-  // Record Date lives on shipments.uploaded_at, which also drives the
-  // Workbench Pipeline Summary widget (and, through it, the Analytics
-  // Backlog Forecast). The realtime shipments subscription will catch this
-  // too, but force it here so the change is reflected instantly even before
-  // that event round-trips, and reset the date-dropdown cache so a
-  // brand-new/changed date shows up in the "Record Date" picker right away.
-  pipelineDateOptionsCache = null;
+  // Record Date lives on shipments.record_date, completely separate from
+  // uploaded_at, so the Pipeline Summary's Upload Date dropdown never needs
+  // to rebuild here. Still refresh the pipeline counts in case status
+  // (or anything else pipeline-relevant) also changed in this same save.
   await refreshPipelineSummary();
 }
 
