@@ -364,6 +364,11 @@
           <input type="number" step="0.01" min="0" id="ar-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
         </div>
         <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Upload Date</label>
+          <input type="datetime-local" id="ar-upload-date" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <p class="text-[10px] text-slate-600 mt-1">The master-data upload batch this record belongs to — drives the Pipeline Summary's Upload Date filter. Leave as-is to keep the current value.</p>
+        </div>
+        <div>
           <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Record Date</label>
           <input type="datetime-local" id="ar-record-date" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
           <p class="text-[10px] text-slate-600 mt-1">Latest timestamp — drives Aging Days. Editing this never changes the record's original Upload Date. Leave as-is to keep the current value.</p>
@@ -556,6 +561,15 @@
           Route Description
         </label>
         <input type="text" id="ame-route" disabled autocomplete="off" placeholder="e.g. 1102 --> MANILA" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
+        <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <input type="checkbox" id="ame-upload-date-enable" onchange="document.getElementById('ame-upload-date').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+          Upload Date
+        </label>
+        <input type="datetime-local" id="ame-upload-date" disabled class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+        <p class="text-[10px] text-slate-600">Reassigns every selected record to a different upload batch — this is what the Pipeline Summary's Upload Date filter reads. Same date/time is applied to all of them.</p>
       </div>
 
       <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
@@ -4552,7 +4566,7 @@ function openAgingMassEditModal() {
   const list = Array.from(agingSelectedSoNumbers);
   if (!list.length) return showToast("Select at least one record first.", "error");
   document.getElementById('aging-mass-edit-count').innerText = list.length;
-  [['ame-status-enable', 'ame-status'], ['ame-truck-enable', 'ame-truck'], ['ame-customer-enable', 'ame-customer'], ['ame-route-enable', 'ame-route'], ['ame-record-date-enable', 'ame-record-date']]
+  [['ame-status-enable', 'ame-status'], ['ame-truck-enable', 'ame-truck'], ['ame-customer-enable', 'ame-customer'], ['ame-route-enable', 'ame-route'], ['ame-upload-date-enable', 'ame-upload-date'], ['ame-record-date-enable', 'ame-record-date']]
     .forEach(([cbId, fieldId]) => {
       document.getElementById(cbId).checked = false;
       const field = document.getElementById(fieldId);
@@ -4571,17 +4585,25 @@ async function applyAgingMassEdit() {
   if (!list.length) { closeAgingMassEditModal(); return; }
 
   const update = {};
+  let uploadDateChanged = false;
   if (document.getElementById('ame-status-enable').checked) update.status = document.getElementById('ame-status').value;
   if (document.getElementById('ame-truck-enable').checked) update.truck_type = document.getElementById('ame-truck').value;
   if (document.getElementById('ame-customer-enable').checked) update.sold_to_party_name = document.getElementById('ame-customer').value.trim();
   if (document.getElementById('ame-route-enable').checked) update.route_description = document.getElementById('ame-route').value.trim();
+  if (document.getElementById('ame-upload-date-enable').checked) {
+    const uploadDateVal = document.getElementById('ame-upload-date').value;
+    if (!uploadDateVal) return showToast("Pick an Upload Date, or untick that field.", "error");
+    // This is the true master-data upload timestamp — the Pipeline Summary's
+    // Upload Date filter reads it directly, so changing it here reassigns
+    // every selected record to a different upload batch.
+    update.uploaded_at = fromDatetimeLocalValue(uploadDateVal);
+    uploadDateChanged = true;
+  }
   if (document.getElementById('ame-record-date-enable').checked) {
     const recordDateVal = document.getElementById('ame-record-date').value;
     if (!recordDateVal) return showToast("Pick a Record Date, or untick that field.", "error");
-    // Writes to record_date (the "latest timestamped" field), never to
-    // uploaded_at — uploaded_at is the true master-data upload date and must
-    // stay fixed so the Pipeline Summary's Upload Date choices always match
-    // what was actually uploaded.
+    // Writes to record_date (the "latest timestamped" field), separate from
+    // uploaded_at above.
     update.record_date = fromDatetimeLocalValue(recordDateVal);
   }
 
@@ -4596,9 +4618,9 @@ async function applyAgingMassEdit() {
   closeAgingMassEditModal();
   showToast(`Updated ${list.length} record(s).`, "success");
   await loadAgingData();
-  // Record Date doesn't touch uploaded_at, so the Upload Date dropdown never
-  // needs to rebuild here — just refresh the pipeline counts in case status
-  // was also changed in this same mass edit.
+  // Only the Upload Date field actually changes what the Pipeline Summary
+  // dropdown offers, so only invalidate its cache when that field was used.
+  if (uploadDateChanged) pipelineDateOptionsCache = null;
   await refreshPipelineSummary();
 }
 
@@ -4667,6 +4689,7 @@ async function openAgingRecordModal(so_number) {
     document.getElementById('ar-status').value = row?.status || 'PENDING';
     document.getElementById('ar-quantity').value = row?.qty ?? 0;
     document.getElementById('ar-so-amount').value = row?.so_amount ?? 0;
+    document.getElementById('ar-upload-date').value = toDatetimeLocalValue(row?.upload_date);
     document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.record_date || row?.upload_date);
 
     lineDetails.classList.remove('hidden');
@@ -4708,6 +4731,7 @@ async function openAgingRecordModal(so_number) {
     document.getElementById('ar-status').value = 'PENDING';
     document.getElementById('ar-quantity').value = 0;
     document.getElementById('ar-so-amount').value = 0;
+    document.getElementById('ar-upload-date').value = '';
     document.getElementById('ar-record-date').value = '';
     lineDetails.classList.add('hidden'); // a brand-new record has no activity logs to edit yet
   }
@@ -4740,6 +4764,13 @@ async function saveAgingRecordModal() {
   // the bulk uploader, so this record agrees with the rest of the app.
   if (statusVal === 'PICKED') row.pgi_date = new Date().toISOString();
 
+  // Upload Date is the true master-data upload timestamp — the Pipeline
+  // Summary's Upload Date filter reads it directly. Only touch it if the
+  // admin actually set/changed the field, so leaving it blank keeps the
+  // record's real original upload batch intact.
+  const uploadDateVal = document.getElementById('ar-upload-date').value;
+  if (uploadDateVal) row.uploaded_at = fromDatetimeLocalValue(uploadDateVal);
+
   // Record Date drives Aging Days and is stored in its own record_date column
   // — kept completely separate from uploaded_at (the true master-data upload
   // timestamp) so editing it here never changes which Upload Date bucket a
@@ -4765,16 +4796,20 @@ async function saveAgingRecordModal() {
   if (error) return showToast("Could not save record: " + error.message, "error");
 
   // A Shipment No. is usually made up of several S.O. lines (separate rows
-  // in `shipments`). If the admin set/changed the Record Date here, apply it
-  // to every sibling line on that same Shipment No. too — otherwise only
-  // this one line moves and the rest of the shipment keeps showing the old
-  // date, which is why edits here can look like they "didn't take."
-  if (recordDateVal && row.shipment_no) {
+  // in `shipments`). If the admin set/changed the Upload Date and/or Record
+  // Date here, apply the same change to every sibling line on that same
+  // Shipment No. too — otherwise only this one line moves and the rest of
+  // the shipment keeps showing the old date, which is why edits here can
+  // look like they "didn't take."
+  if ((uploadDateVal || recordDateVal) && row.shipment_no) {
+    const siblingUpdate = {};
+    if (uploadDateVal) siblingUpdate.uploaded_at = row.uploaded_at;
+    if (recordDateVal) siblingUpdate.record_date = row.record_date;
     const { error: dateSyncErr } = await supabaseClient
       .from('shipments')
-      .update({ record_date: row.record_date })
+      .update(siblingUpdate)
       .eq('shipment_no', row.shipment_no);
-    if (dateSyncErr) console.error('Could not sync Record Date to sibling shipment lines:', dateSyncErr.message);
+    if (dateSyncErr) console.error('Could not sync date field(s) to sibling shipment lines:', dateSyncErr.message);
   }
 
   // Per-line activity log edits — only stages whose panel is visible (i.e. a
@@ -4814,10 +4849,10 @@ async function saveAgingRecordModal() {
   showToast(`Record "${soNumber}" saved.`, "success");
   closeAgingRecordModal();
   await loadAgingData();
-  // Record Date lives on shipments.record_date, completely separate from
-  // uploaded_at, so the Pipeline Summary's Upload Date dropdown never needs
-  // to rebuild here. Still refresh the pipeline counts in case status
-  // (or anything else pipeline-relevant) also changed in this same save.
+  // Only invalidate the Pipeline Summary's Upload Date dropdown cache when
+  // Upload Date itself was changed — Record Date and everything else here
+  // don't affect which upload batches it lists.
+  if (uploadDateVal) pipelineDateOptionsCache = null;
   await refreshPipelineSummary();
 }
 
