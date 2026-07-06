@@ -516,9 +516,19 @@
         </label>
         <input type="text" id="ame-route" disabled autocomplete="off" placeholder="e.g. 1102 --> MANILA" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
       </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
+        <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <input type="checkbox" id="ame-record-date-enable" onchange="document.getElementById('ame-record-date').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+          Record Date
+        </label>
+        <input type="datetime-local" id="ame-record-date" disabled class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+        <p class="text-[10px] text-slate-600">Drives Aging Days for every selected record. Same date/time is applied to all of them.</p>
+      </div>
     </div>
 
     <p class="text-[10px] text-rose-300 bg-rose-950/40 border border-rose-800/40 rounded-lg p-2">This overwrites the shipment-level field(s) above on every selected record and cannot be undone in bulk — double check your selection first.</p>
+
 
     <div class="flex gap-2 pt-2">
       <button onclick="closeAgingMassEditModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
@@ -1247,6 +1257,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">All Active Lines</h3>
     <button onclick="refreshSidePanel()" class="text-[10px] text-slate-500 hover:text-emerald-400">↻ refresh</button>
   </div>
+  <input type="text" id="side-panel-search" oninput="renderSidePanelList()" placeholder="Search dispatch or personnel name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-emerald-500">
   <div id="side-panel-list" class="grid grid-cols-2 gap-2">
     <p class="text-[11px] text-slate-600 italic">Loading...</p>
   </div>
@@ -2628,25 +2639,33 @@ async function commitJobTransaction() {
 }
 
 // --- STICKY SIDE PANEL ---
+let sidePanelRawData = [];
+let sidePanelShipMap = {};
+let sidePanelStagingAreaMap = {};
+
 async function refreshSidePanel() {
-  const container = document.getElementById('side-panel-list');
   const { data, error } = await supabaseClient.from('activity_logs').select('*')
     .in('status', ['Ongoing', 'Paused'])
     .order('start_time', { ascending: false });
   if (error) return console.error(error);
 
-  if (!data.length) {
-    container.innerHTML = `<p class="text-[11px] text-slate-600 italic">No active or paused lines system-wide.</p>`;
+  sidePanelRawData = data || [];
+
+  if (!sidePanelRawData.length) {
+    sidePanelShipMap = {};
+    sidePanelStagingAreaMap = {};
+    renderSidePanelList();
     return;
   }
 
   // Pull Customer + OBD Number from shipments since activity_logs only stores so_number
-  const soNumbers = [...new Set(data.map(l => l.so_number).filter(Boolean))];
+  const soNumbers = [...new Set(sidePanelRawData.map(l => l.so_number).filter(Boolean))];
   let shipMap = {};
   if (soNumbers.length) {
     const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number,sold_to_party_name').in('so_number', soNumbers);
     (shipRows || []).forEach(s => { shipMap[s.so_number] = s; });
   }
+  sidePanelShipMap = shipMap;
 
   // Staging Area(s) confirmed by the Staging Checker — surfaced as a major
   // reference on any Puller card so the Puller can see where to pull from.
@@ -2655,6 +2674,34 @@ async function refreshSidePanel() {
     const { data: sLogs } = await supabaseClient.from('activity_logs').select('so_number,staging_areas')
       .in('so_number', soNumbers).eq('role', 'Staging Checker').eq('status', 'Completed');
     (sLogs || []).forEach(l => { if (!stagingAreaMap[l.so_number] && l.staging_areas && l.staging_areas.length) stagingAreaMap[l.so_number] = l.staging_areas; });
+  }
+  sidePanelStagingAreaMap = stagingAreaMap;
+
+  renderSidePanelList();
+}
+
+// Renders the currently-cached Active Lines data, filtered by whatever's typed
+// into the side panel search box (matches either the Dispatch/Shipment No. or
+// the Personnel Name). Kept separate from refreshSidePanel() so typing in the
+// search box re-filters instantly without hitting the database again.
+function renderSidePanelList() {
+  const container = document.getElementById('side-panel-list');
+  const searchInput = document.getElementById('side-panel-search');
+  const searchText = (searchInput?.value || '').trim().toLowerCase();
+  const shipMap = sidePanelShipMap;
+  const stagingAreaMap = sidePanelStagingAreaMap;
+
+  let data = sidePanelRawData;
+  if (searchText) {
+    data = data.filter(l =>
+      (l.shipment_no || '').toLowerCase().includes(searchText) ||
+      (l.personnel_name || '').toLowerCase().includes(searchText)
+    );
+  }
+
+  if (!data.length) {
+    container.innerHTML = `<p class="text-[11px] text-slate-600 italic">${searchText ? 'No active lines match your search.' : 'No active or paused lines system-wide.'}</p>`;
+    return;
   }
 
   // Sub-group logs into the batches that were started together in one confirmation —
@@ -3725,7 +3772,7 @@ function openAgingMassEditModal() {
   const list = Array.from(agingSelectedSoNumbers);
   if (!list.length) return showToast("Select at least one record first.", "error");
   document.getElementById('aging-mass-edit-count').innerText = list.length;
-  [['ame-status-enable', 'ame-status'], ['ame-truck-enable', 'ame-truck'], ['ame-customer-enable', 'ame-customer'], ['ame-route-enable', 'ame-route']]
+  [['ame-status-enable', 'ame-status'], ['ame-truck-enable', 'ame-truck'], ['ame-customer-enable', 'ame-customer'], ['ame-route-enable', 'ame-route'], ['ame-record-date-enable', 'ame-record-date']]
     .forEach(([cbId, fieldId]) => {
       document.getElementById(cbId).checked = false;
       const field = document.getElementById(fieldId);
@@ -3748,6 +3795,11 @@ async function applyAgingMassEdit() {
   if (document.getElementById('ame-truck-enable').checked) update.truck_type = document.getElementById('ame-truck').value;
   if (document.getElementById('ame-customer-enable').checked) update.sold_to_party_name = document.getElementById('ame-customer').value.trim();
   if (document.getElementById('ame-route-enable').checked) update.route_description = document.getElementById('ame-route').value.trim();
+  if (document.getElementById('ame-record-date-enable').checked) {
+    const recordDateVal = document.getElementById('ame-record-date').value;
+    if (!recordDateVal) return showToast("Pick a Record Date, or untick that field.", "error");
+    update.uploaded_at = fromDatetimeLocalValue(recordDateVal);
+  }
 
   if (!Object.keys(update).length) return showToast("Tick at least one field to change.", "error");
 
