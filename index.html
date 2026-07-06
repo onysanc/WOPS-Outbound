@@ -1314,7 +1314,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <p class="text-[10px] text-slate-600 border-t border-slate-800/60 pt-3">This is the masterlist a Staging Checker picks from when confirming a check — at least one area is required per completion.</p>
     </div>
 
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+    <div id="break-scheduler-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
       <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">⏱️ Break Window Scheduler</h2>
       <form id="break-form" onsubmit="addBreakRule(event)" class="grid grid-cols-4 gap-2 items-end">
         <div class="col-span-4 sm:col-span-1">
@@ -1408,6 +1408,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <table id="pending-table" class="w-full text-xs whitespace-nowrap">
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
+            <th class="p-3 text-center">Upload Date</th>
             <th class="p-3 text-center">Actions</th>
             <th class="p-3 text-left">Truck Type</th>
             <th class="p-3 text-left">Shipment</th>
@@ -1422,7 +1423,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
           </tr>
         </thead>
         <tbody id="pending-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -1927,11 +1928,21 @@ function firstAllowedTab() {
   return found ? found.key : 'workbench';
 }
 
+// The "admin account" here means the literal username "admin" — a stricter
+// check than tab access (which any user could be granted). Used to gate
+// features meant for that one account specifically, like the Break Window
+// Scheduler, rather than anyone with Personnel & Breaks access.
+function isAdminAccount() {
+  return !!currentUser && (currentUser.username || '').trim().toLowerCase() === 'admin';
+}
+
 // Hides nav buttons for any tab the logged-in user isn't permitted to open.
 function applyUserPermissions() {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('hidden', !userCanAccess(b.dataset.view));
   });
+  const breakCard = document.getElementById('break-scheduler-card');
+  if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
 }
 
 // --- TAB NAVIGATION ---
@@ -4957,12 +4968,12 @@ let pendingRawRows = [];
 
 async function loadPendingQueue() {
   const tbody = document.getElementById('pending-rows');
-  tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -4980,7 +4991,8 @@ async function loadPendingQueue() {
         so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
         billing_number: row.billing_number, route_description: row.route_description,
         customer: row.sold_to_party_name, truck_type: row.truck_type,
-        quantity: row.quantity, so_amount: row.so_amount, status: effective
+        quantity: row.quantity, so_amount: row.so_amount, status: effective,
+        upload_date: row.uploaded_at
       };
     })
     .filter(r => r.status !== 'CHECKED');
@@ -5016,12 +5028,13 @@ function renderPendingTable() {
   document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = rows.map(r => `
     <tr>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.upload_date)}</td>
       <td class="p-3 text-center"><button onclick="openPendingEditModal('${(r.so_number || '').replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
       <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${r.truck_type || 'Unset'}</span></td>
       <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
