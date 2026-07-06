@@ -461,8 +461,75 @@
   </div>
 </div>
 
+<!-- ================= MASS EDIT MASTER RECORDS MODAL (Admin only) ================= -->
+<div id="aging-mass-edit-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4 max-h-[90vh] overflow-y-auto">
+    <div>
+      <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">✎ Mass Edit Records</h3>
+      <p class="text-xs text-slate-400 mt-1"><span id="aging-mass-edit-count" class="font-bold text-amber-400">0</span> record(s) will be updated. Tick a field to overwrite it on every selected record — untouched fields are left as-is.</p>
+    </div>
+
+    <div class="space-y-3">
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
+        <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <input type="checkbox" id="ame-status-enable" onchange="document.getElementById('ame-status').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+          Status
+        </label>
+        <select id="ame-status" disabled class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+          <option value="PENDING">Pending</option>
+          <option value="PICKED">Picked</option>
+          <option value="STAGED">Staged</option>
+          <option value="PULLED">Pulled</option>
+          <option value="CHECKED">Checked</option>
+        </select>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
+        <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <input type="checkbox" id="ame-truck-enable" onchange="document.getElementById('ame-truck').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+          Truck Type
+        </label>
+        <select id="ame-truck" disabled class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+          <option value="AUV">AUV</option>
+          <option value="4W">4W</option>
+          <option value="6W">6W</option>
+          <option value="10W">10W</option>
+          <option value="20F">20F</option>
+          <option value="40">40</option>
+          <option value="40F">40F</option>
+          <option value="STO">STO</option>
+        </select>
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
+        <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <input type="checkbox" id="ame-customer-enable" onchange="document.getElementById('ame-customer').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+          Customer
+        </label>
+        <input type="text" id="ame-customer" disabled autocomplete="off" placeholder="New customer name" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+      </div>
+
+      <div class="rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-1.5">
+        <label class="flex items-center gap-2 text-[11px] uppercase tracking-wider text-slate-400 font-semibold">
+          <input type="checkbox" id="ame-route-enable" onchange="document.getElementById('ame-route').disabled=!this.checked" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
+          Route Description
+        </label>
+        <input type="text" id="ame-route" disabled autocomplete="off" placeholder="e.g. 1102 --> MANILA" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 disabled:opacity-40">
+      </div>
+    </div>
+
+    <p class="text-[10px] text-rose-300 bg-rose-950/40 border border-rose-800/40 rounded-lg p-2">This overwrites the shipment-level field(s) above on every selected record and cannot be undone in bulk — double check your selection first.</p>
+
+    <div class="flex gap-2 pt-2">
+      <button onclick="closeAgingMassEditModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="applyAgingMassEdit()" class="flex-1 bg-amber-600 hover:bg-amber-500 text-xs font-bold py-2 rounded-lg">Apply to Selected</button>
+    </div>
+  </div>
+</div>
+
 
 <div id="app-shell" class="hidden">
+
 <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40">
   <div class="max-w-[1700px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-6 flex-1 min-w-0">
@@ -1101,6 +1168,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <p class="text-xs text-rose-200"><span id="aging-bulk-count" class="font-bold">0</span> record(s) selected</p>
       <div class="flex gap-2">
         <button onclick="clearAgingSelection()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Clear selection</button>
+        <button onclick="openAgingMassEditModal()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">✎ Mass Edit</button>
         <button onclick="deleteSelectedAgingRecords()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white">🗑 Delete Selected</button>
       </div>
     </div>
@@ -1109,21 +1177,31 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <table class="w-full text-xs whitespace-nowrap">
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
-            <th class="p-3 text-left aging-admin-col hidden"><input type="checkbox" id="aging-select-all" onchange="toggleAgingSelectAll(this)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></th>
-            <th class="p-3 text-left">Sales Order</th>
-            <th class="p-3 text-left">Shipment</th>
-            <th class="p-3 text-left">OBD</th>
-            <th class="p-3 text-left">Customer</th>
-            <th class="p-3 text-left">Truck Type</th>
-            <th class="p-3 text-right">Qty</th>
-            <th class="p-3 text-center">Status</th>
-            <th class="p-3 text-center">Record Date</th>
-            <th class="p-3 text-center">Aging (Days)</th>
-            <th class="p-3 text-center aging-admin-col hidden">Actions</th>
+            <th rowspan="2" class="p-3 text-left aging-admin-col hidden align-middle"><input type="checkbox" id="aging-select-all" onchange="toggleAgingSelectAll(this)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></th>
+            <th rowspan="2" class="p-3 text-left align-middle">Sales Order</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Shipment</th>
+            <th rowspan="2" class="p-3 text-left align-middle">OBD</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Customer</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Truck Type</th>
+            <th rowspan="2" class="p-3 text-right align-middle">Qty</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Status</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Aging (Days)</th>
+            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="6">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="6">Staging Checker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="6">Puller</th>
+            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="6">Outbound Checker</th>
+            <th rowspan="2" class="p-3 text-center aging-admin-col hidden align-middle">Actions</th>
+          </tr>
+          <tr class="text-[10px]">
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
           </tr>
         </thead>
         <tbody id="aging-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="35" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -3426,15 +3504,38 @@ function exportDataToExcel() {
 // everywhere else in the app too.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
-  tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="35" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="35" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
+
+  // Pull the same per-stage Picker/Staging/Puller/Outbound Checker milestone
+  // data used on the Data Export tab (name, start, end, remarks, rendered
+  // minutes, productivity), so Master Records shows the full timeline for
+  // every record without needing to open the Data Export tab separately.
+  const soNumbers = (data || []).map(r => r.so_number).filter(Boolean);
+  let logs = [];
+  if (soNumbers.length) {
+    const chunkSize = 300;
+    for (let i = 0; i < soNumbers.length; i += chunkSize) {
+      const chunk = soNumbers.slice(i, i + chunkSize);
+      const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
+        .select('so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes')
+        .in('so_number', chunk).eq('status', 'Completed');
+      if (!logErr) logs.push(...(logChunk || []));
+      else console.error(logErr);
+    }
+  }
+  const logMap = {}; // `${so_number}||${role}` -> most recently completed log
+  logs.forEach(l => {
+    const key = `${l.so_number}||${l.role}`;
+    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
+  });
 
   // Keep EVERY record, not just pending ones — the Status filter dropdown
   // lets the user narrow down to Pending (or any other stage) on demand.
@@ -3446,13 +3547,25 @@ async function loadAgingData() {
     if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
       effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
     }
+    const pick = logMap[`${row.so_number}||Picker`];
+    const stage = logMap[`${row.so_number}||Staging Checker`];
+    const pull = logMap[`${row.so_number}||Puller`];
+    const check = logMap[`${row.so_number}||Outbound Checker`];
     return {
       so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
       billing_number: row.billing_number, route_description: row.route_description,
       customer: row.sold_to_party_name, truck_type: row.truck_type,
       quantity: row.quantity, so_amount: row.so_amount,
       qty: rowQtySum(row), status: effective,
-      record_date: row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at)
+      record_date: row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at),
+      pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+      pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
+      stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+      stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
+      pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+      pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
+      check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
+      check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check)
     };
   });
 
@@ -3462,6 +3575,11 @@ async function loadAgingData() {
 
   populateAgingFilterOptions();
   renderAgingTable();
+}
+
+function fmtRenderedMinutes(mins) {
+  if (mins === null || mins === undefined || isNaN(mins)) return '—';
+  return `${Math.round(mins)}m`;
 }
 
 // --- MASTER RECORDS: ADMIN-ONLY ROW CONTROLS ---
@@ -3595,6 +3713,52 @@ async function deleteAgingRecord(so_number) {
   if (error) return showToast("Could not delete record: " + error.message, "error");
   agingSelectedSoNumbers.delete(so_number);
   showToast(`Record "${so_number}" deleted.`, "success");
+  await loadAgingData();
+}
+
+// --- MASTER RECORDS: MASS EDIT (ADMIN ONLY) ---
+// Bulk-overwrite one or more shipment-level fields across every currently
+// selected record in a single confirmed action. Only the fields the admin
+// explicitly ticks are touched — unticked fields are left completely alone.
+function openAgingMassEditModal() {
+  if (!isAgingAdmin()) return;
+  const list = Array.from(agingSelectedSoNumbers);
+  if (!list.length) return showToast("Select at least one record first.", "error");
+  document.getElementById('aging-mass-edit-count').innerText = list.length;
+  [['ame-status-enable', 'ame-status'], ['ame-truck-enable', 'ame-truck'], ['ame-customer-enable', 'ame-customer'], ['ame-route-enable', 'ame-route']]
+    .forEach(([cbId, fieldId]) => {
+      document.getElementById(cbId).checked = false;
+      const field = document.getElementById(fieldId);
+      field.disabled = true;
+      if (field.tagName === 'INPUT') field.value = '';
+    });
+  document.getElementById('aging-mass-edit-modal').classList.remove('hidden');
+}
+
+function closeAgingMassEditModal() {
+  document.getElementById('aging-mass-edit-modal').classList.add('hidden');
+}
+
+async function applyAgingMassEdit() {
+  const list = Array.from(agingSelectedSoNumbers);
+  if (!list.length) { closeAgingMassEditModal(); return; }
+
+  const update = {};
+  if (document.getElementById('ame-status-enable').checked) update.status = document.getElementById('ame-status').value;
+  if (document.getElementById('ame-truck-enable').checked) update.truck_type = document.getElementById('ame-truck').value;
+  if (document.getElementById('ame-customer-enable').checked) update.sold_to_party_name = document.getElementById('ame-customer').value.trim();
+  if (document.getElementById('ame-route-enable').checked) update.route_description = document.getElementById('ame-route').value.trim();
+
+  if (!Object.keys(update).length) return showToast("Tick at least one field to change.", "error");
+
+  const ok = await showConfirm(`Apply ${Object.keys(update).length} field change(s) to ${list.length} selected record(s)? This cannot be undone.`);
+  if (!ok) return;
+
+  const { error } = await supabaseClient.from('shipments').update(update).in('so_number', list);
+  if (error) return showToast("Mass edit failed: " + error.message, "error");
+
+  closeAgingMassEditModal();
+  showToast(`Updated ${list.length} record(s).`, "success");
   await loadAgingData();
 }
 
@@ -3811,7 +3975,15 @@ function filteredAgingRows() {
       const hit = (r.so_number || '').toLowerCase().includes(searchText) ||
         (r.shipment_no || '').toLowerCase().includes(searchText) ||
         (r.obd_number || '').toLowerCase().includes(searchText) ||
-        (r.customer || '').toLowerCase().includes(searchText);
+        (r.customer || '').toLowerCase().includes(searchText) ||
+        (r.pick_name || '').toLowerCase().includes(searchText) ||
+        (r.stage_name || '').toLowerCase().includes(searchText) ||
+        (r.pull_name || '').toLowerCase().includes(searchText) ||
+        (r.check_name || '').toLowerCase().includes(searchText) ||
+        (r.pick_remarks || '').toLowerCase().includes(searchText) ||
+        (r.stage_remarks || '').toLowerCase().includes(searchText) ||
+        (r.pull_remarks || '').toLowerCase().includes(searchText) ||
+        (r.check_remarks || '').toLowerCase().includes(searchText);
       if (!hit) return false;
     }
     if (statusVal && statusVal !== 'ALL' && r.status !== statusVal) return false;
@@ -3852,7 +4024,7 @@ function renderAgingTable() {
   const adminColClass = admin ? '' : 'hidden';
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="35" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
     updateAgingBulkBar();
     return;
   }
@@ -3869,6 +4041,30 @@ function renderAgingTable() {
       <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${agingStatusBadgeClass(r.status)}">${r.status}</span></td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
       <td class="p-3 text-center font-mono text-[11px] ${agingColorClass(r.aging_days)}">${r.aging_days === null ? '—' : r.aging_days + 'd'}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pick_remarks || ''}">${r.pick_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtRenderedMinutes(r.pick_rendered)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pick_productivity)}">${fmtProductivity(r.pick_productivity)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.stage_remarks || ''}">${r.stage_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtRenderedMinutes(r.stage_rendered)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.stage_productivity)}">${fmtProductivity(r.stage_productivity)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pull_remarks || ''}">${r.pull_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtRenderedMinutes(r.pull_rendered)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pull_productivity)}">${fmtProductivity(r.pull_productivity)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
+      <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.check_remarks || ''}">${r.check_remarks || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtRenderedMinutes(r.check_rendered)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.check_productivity)}">${fmtProductivity(r.check_productivity)}</td>
       <td class="p-3 text-center aging-admin-col ${adminColClass}">
         <div class="flex items-center justify-center gap-2">
           <button onclick="openAgingRecordModal('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Edit</button>
@@ -3888,11 +4084,23 @@ function exportAgingToExcel() {
     'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '', 'OBD': r.obd_number || '',
     'Customer': r.customer || '', 'Truck Type': r.truck_type || '', 'Qty': r.qty,
     'Status': r.status, 'Record Date': fmtAgingDate(r.record_date),
-    'Aging (Days)': r.aging_days === null ? '' : r.aging_days
+    'Aging (Days)': r.aging_days === null ? '' : r.aging_days,
+    'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
+    'Picker Remarks': r.pick_remarks || '', 'Picker Rendered Min': r.pick_rendered ?? '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
+    'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
+    'Staging Remarks': r.stage_remarks || '', 'Staging Rendered Min': r.stage_rendered ?? '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
+    'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
+    'Pulled Remarks': r.pull_remarks || '', 'Pulled Rendered Min': r.pull_rendered ?? '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
+    'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
+    'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered ?? '', 'Check Productivity': fmtProductivity(r.check_productivity)
   }));
 
   const ws = XLSX.utils.json_to_sheet(excelRows);
-  ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 12 }];
+  ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   const statusVal = document.getElementById('aging-status-filter').value;
   const sheetLabel = (statusVal && statusVal !== 'ALL') ? statusVal.charAt(0) + statusVal.slice(1).toLowerCase() : 'All';
