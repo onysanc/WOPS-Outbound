@@ -593,6 +593,76 @@
 </div>
 
 
+<!-- ================= PENDING QUEUE — EDIT RECORD MODAL ================= -->
+<div id="pending-edit-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
+    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Edit Pending Record</h3>
+    <input type="hidden" id="pe-original-so">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Truck Type</label>
+        <select id="pe-truck-type" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <option value="AUV">AUV</option>
+          <option value="4W">4W</option>
+          <option value="6W">6W</option>
+          <option value="10W">10W</option>
+          <option value="20F">20F</option>
+          <option value="40">40</option>
+          <option value="40F">40F</option>
+          <option value="STO">STO</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment No.</label>
+        <input type="text" id="pe-shipment-no" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">S.O. Number</label>
+        <input type="text" id="pe-so-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">OBD Number</label>
+        <input type="text" id="pe-obd-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Billing Number</label>
+        <input type="text" id="pe-billing-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">SO Amount</label>
+        <input type="number" step="0.01" min="0" id="pe-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div class="col-span-2">
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Route Description</label>
+        <input type="text" id="pe-route" placeholder="e.g. 1102 --> MANILA" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div class="col-span-2">
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Ship To Party Name</label>
+        <input type="text" id="pe-customer" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Quantity</label>
+        <input type="number" step="1" min="0" id="pe-quantity" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Status</label>
+        <select id="pe-status" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <option value="PENDING">Pending</option>
+          <option value="PICKED">Picked</option>
+          <option value="STAGED">Staged</option>
+          <option value="PULLED">Pulled</option>
+          <option value="CHECKED">Checked</option>
+        </select>
+      </div>
+    </div>
+    <p class="text-[10px] text-slate-600">Changing Status to Picked, Staged, Pulled, or Checked logs that move under personnel name <span class="text-slate-300 font-semibold">ADVANCE</span> with Start/End time left blank, purely for documentation.</p>
+    <div class="flex gap-2 pt-2">
+      <button onclick="closePendingEditModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="savePendingEditModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Save Record</button>
+    </div>
+  </div>
+</div>
+
 <div id="app-shell" class="hidden">
 
 <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40">
@@ -612,6 +682,7 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="pending" onclick="setView('pending')">Pending Queue</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
@@ -654,7 +725,6 @@
             <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
             <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
           </div>
-          <select id="pipeline-date-filter" onchange="refreshPipelineSummary()" class="bg-slate-900 border border-slate-800 rounded px-1.5 py-1 text-[10px] text-slate-300 focus:outline-none focus:border-emerald-500 max-w-[130px]"></select>
           <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold whitespace-nowrap">⟳ Refresh</button>
         </div>
       </div>
@@ -1313,6 +1383,53 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
   </section>
 
   <!-- ================= MASTER RECORDS ================= -->
+  <!-- ================= PENDING QUEUE ================= -->
+  <section id="view-pending" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">⏳ Pending Queue</h2>
+        <p class="text-xs text-slate-400">Every Sales Order that hasn't reached <span class="text-slate-300 font-semibold">Checked</span> yet — regardless of which upload batch it came in on. Use Edit to correct a record's details or push its stage forward.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="text" id="pending-search" oninput="renderPendingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+        <select id="pending-stage-filter" onchange="renderPendingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[140px]">
+          <option value="ALL">All Pending Stages</option>
+          <option value="PENDING">Pending</option>
+          <option value="PICKED">Picked</option>
+          <option value="STAGED">Staged</option>
+          <option value="PULLED">Pulled</option>
+        </select>
+        <button onclick="loadPendingQueue()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
+        <button onclick="exportTableToCSVGeneric('pending-table', 'pending-queue.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table id="pending-table" class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th class="p-3 text-center">Actions</th>
+            <th class="p-3 text-left">Truck Type</th>
+            <th class="p-3 text-left">Shipment</th>
+            <th class="p-3 text-left">S.O. Number</th>
+            <th class="p-3 text-left">OBD Number</th>
+            <th class="p-3 text-left">Billing Number</th>
+            <th class="p-3 text-left">Route Description</th>
+            <th class="p-3 text-left">Ship To Party Name</th>
+            <th class="p-3 text-right">SO Amount</th>
+            <th class="p-3 text-right">Quantity</th>
+            <th class="p-3 text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="pending-rows" class="divide-y divide-slate-800/50">
+          <tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="pending-count" class="text-[10px] text-slate-600"></p>
+    <p class="text-[10px] text-slate-600">Editing Status here (Picked / Staged / Pulled / Checked) advances the record directly — it's logged under personnel name <span class="text-slate-300 font-semibold">ADVANCE</span> for documentation, with Start/End time left blank since no one actually clocked the work.</p>
+  </section>
+
   <section id="view-aging" class="view space-y-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
       <div>
@@ -1704,6 +1821,7 @@ const ALL_TABS = [
   { key: 'ingestion', label: 'Data Ingestion' },
   { key: 'admin', label: 'Personnel & Breaks' },
   { key: 'export', label: 'Data Export' },
+  { key: 'pending', label: 'Pending Queue' },
   { key: 'aging', label: 'Master Records' },
   { key: 'usermgmt', label: 'User Management' }
 ];
@@ -1841,6 +1959,7 @@ function activateView(name) {
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'export') loadExportData();
+  if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
   if (name === 'usermgmt') loadUsers();
 }
@@ -2059,25 +2178,13 @@ function clearShipmentInput() {
 const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHECKED: 4 };
 let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // line-level — feeds Backlog Forecast, which measures throughput per completed line
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
-let pipelineDateOptionsCache = null; // avoids rebuilding the <select> (and losing the user's pick) on every refresh
 async function refreshPipelineSummary() {
   const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at');
   if (error) return console.error(error);
   const rows = data || [];
 
-  // Build the date dropdown once per distinct set of upload dates seen
-  // (across ALL lines, so the filter still reflects every upload on file).
-  const uploadDates = [...new Set(rows.map(r => localDateStr(r.uploaded_at)).filter(Boolean))].sort().reverse();
-  const sel = document.getElementById('pipeline-date-filter');
-  const cacheKey = uploadDates.join(',');
-  if (sel && pipelineDateOptionsCache !== cacheKey) {
-    pipelineDateOptionsCache = cacheKey;
-    sel.innerHTML = `<option value="ALL">All Uploads</option>` +
-      uploadDates.map(d => `<option value="${d}">${fmtLocalDateStr(d)}</option>`).join('');
-    sel.value = uploadDates.length ? uploadDates[0] : 'ALL'; // default: latest upload date
-  }
-  const filterDate = sel ? sel.value : 'ALL';
-
+  // No date filter here anymore — every pending shipment on file counts,
+  // regardless of which upload batch it came in on.
   const effectiveStatusOf = row => {
     let effective = row.status;
     if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
@@ -2099,30 +2206,23 @@ async function refreshPipelineSummary() {
     const shipmentNo = (row.shipment_no || '').trim();
     if (!shipmentNo) return; // no shipment assigned yet — not a shipment to count here
     const effective = effectiveStatusOf(row);
-    const uploadDs = localDateStr(row.uploaded_at);
     const existing = byShipment.get(shipmentNo);
     if (!existing) {
-      byShipment.set(shipmentNo, { effective, uploadDs });
+      byShipment.set(shipmentNo, { effective });
     } else {
       if (PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing.effective]) existing.effective = effective;
-      if (uploadDs && (!existing.uploadDs || uploadDs < existing.uploadDs)) existing.uploadDs = uploadDs;
     }
   });
 
+  // Every pending shipment on file, across every upload batch — no date filter.
   const shipmentAllCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  const displayCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  byShipment.forEach(({ effective, uploadDs }) => {
-    shipmentAllCounts[effective]++;
-    if (filterDate === 'ALL' || uploadDs === filterDate) {
-      displayCounts[effective]++;
-    }
-  });
+  byShipment.forEach(({ effective }) => { shipmentAllCounts[effective]++; });
   lastPipelineShipmentCounts = shipmentAllCounts;
 
-  document.getElementById('pending-pick-count').innerText = displayCounts.PENDING;
-  document.getElementById('pending-staged-count').innerText = displayCounts.PICKED;
-  document.getElementById('pending-pull-count').innerText = displayCounts.STAGED;
-  document.getElementById('pending-check-count').innerText = displayCounts.PULLED;
+  document.getElementById('pending-pick-count').innerText = shipmentAllCounts.PENDING;
+  document.getElementById('pending-staged-count').innerText = shipmentAllCounts.PICKED;
+  document.getElementById('pending-pull-count').innerText = shipmentAllCounts.STAGED;
+  document.getElementById('pending-check-count').innerText = shipmentAllCounts.PULLED;
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
@@ -4618,9 +4718,6 @@ async function applyAgingMassEdit() {
   closeAgingMassEditModal();
   showToast(`Updated ${list.length} record(s).`, "success");
   await loadAgingData();
-  // Only the Upload Date field actually changes what the Pipeline Summary
-  // dropdown offers, so only invalidate its cache when that field was used.
-  if (uploadDateChanged) pipelineDateOptionsCache = null;
   await refreshPipelineSummary();
 }
 
@@ -4849,10 +4946,167 @@ async function saveAgingRecordModal() {
   showToast(`Record "${soNumber}" saved.`, "success");
   closeAgingRecordModal();
   await loadAgingData();
-  // Only invalidate the Pipeline Summary's Upload Date dropdown cache when
-  // Upload Date itself was changed — Record Date and everything else here
-  // don't affect which upload batches it lists.
-  if (uploadDateVal) pipelineDateOptionsCache = null;
+  await refreshPipelineSummary();
+}
+
+// --- PENDING QUEUE: quick-edit list of every SO not yet fully Checked ---
+// Maps a status the user picks in this tab to the role whose stage that
+// status represents — same convention as ROLE_COMPLETE_LABEL, just inverted.
+const STATUS_TO_ROLE = { PICKED: 'Picker', STAGED: 'Staging Checker', PULLED: 'Puller', CHECKED: 'Outbound Checker' };
+let pendingRawRows = [];
+
+async function loadPendingQueue() {
+  const tbody = document.getElementById('pending-rows');
+  tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+
+  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    return;
+  }
+
+  // Same effective-status logic as refreshPipelineSummary()/loadAgingData(),
+  // then keep only records that haven't reached CHECKED yet — no upload-date
+  // filtering at all, so every pending record on file is always listed here.
+  pendingRawRows = (data || [])
+    .map(row => {
+      let effective = row.status;
+      if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
+        effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
+      }
+      if (!PIPELINE_STAGE_ORDER.hasOwnProperty(effective)) effective = 'PENDING';
+      return {
+        so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
+        billing_number: row.billing_number, route_description: row.route_description,
+        customer: row.sold_to_party_name, truck_type: row.truck_type,
+        quantity: row.quantity, so_amount: row.so_amount, status: effective
+      };
+    })
+    .filter(r => r.status !== 'CHECKED');
+
+  renderPendingTable();
+}
+
+function filteredPendingRows() {
+  const searchText = (document.getElementById('pending-search').value || '').trim().toLowerCase();
+  const stageVal = document.getElementById('pending-stage-filter').value;
+  return pendingRawRows.filter(r => {
+    if (stageVal !== 'ALL' && r.status !== stageVal) return false;
+    if (!searchText) return true;
+    return (
+      (r.so_number || '').toLowerCase().includes(searchText) ||
+      (r.shipment_no || '').toLowerCase().includes(searchText) ||
+      (r.obd_number || '').toLowerCase().includes(searchText) ||
+      (r.customer || '').toLowerCase().includes(searchText)
+    );
+  });
+}
+
+const PENDING_STATUS_BADGE = {
+  PENDING: 'bg-green-500/10 text-green-400 border-green-500/30',
+  PICKED: 'bg-sky-400/10 text-sky-300 border-sky-400/30',
+  STAGED: 'bg-pink-500/10 text-pink-400 border-pink-500/30',
+  PULLED: 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+};
+
+function renderPendingTable() {
+  const rows = filteredPendingRows();
+  const tbody = document.getElementById('pending-rows');
+  document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="p-3 text-center"><button onclick="openPendingEditModal('${(r.so_number || '').replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
+      <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${r.truck_type || 'Unset'}</span></td>
+      <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
+      <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.billing_number || '—'}</td>
+      <td class="p-3 text-slate-300">${r.route_description || 'N/A'}</td>
+      <td class="p-3 text-slate-300">${r.customer || 'N/A'}</td>
+      <td class="p-3 text-right font-mono text-slate-300">${Number(r.so_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      <td class="p-3 text-right font-mono text-slate-300">${Number(r.quantity || 0).toLocaleString()}</td>
+      <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] border font-mono ${PENDING_STATUS_BADGE[r.status] || 'bg-slate-800 text-slate-300 border-slate-700'}">${r.status}</span></td>
+    </tr>`).join('');
+}
+
+function openPendingEditModal(so_number) {
+  const row = pendingRawRows.find(r => r.so_number === so_number);
+  if (!row) return showToast("Record not found — try refreshing the Pending Queue.", "error");
+  document.getElementById('pe-original-so').value = row.so_number || '';
+  document.getElementById('pe-truck-type').value = row.truck_type || 'AUV';
+  document.getElementById('pe-shipment-no').value = row.shipment_no || '';
+  document.getElementById('pe-so-number').value = row.so_number || '';
+  document.getElementById('pe-obd-number').value = row.obd_number || '';
+  document.getElementById('pe-billing-number').value = row.billing_number || '';
+  document.getElementById('pe-route').value = row.route_description || '';
+  document.getElementById('pe-customer').value = row.customer || '';
+  document.getElementById('pe-so-amount').value = row.so_amount ?? 0;
+  document.getElementById('pe-quantity').value = row.quantity ?? 0;
+  document.getElementById('pe-status').value = row.status || 'PENDING';
+  document.getElementById('pending-edit-modal').classList.remove('hidden');
+}
+
+function closePendingEditModal() {
+  document.getElementById('pending-edit-modal').classList.add('hidden');
+}
+
+async function savePendingEditModal() {
+  const originalSo = document.getElementById('pe-original-so').value.trim();
+  const soNumber = document.getElementById('pe-so-number').value.trim();
+  if (!soNumber) return showToast("S.O. Number is required.", "error");
+
+  const priorRow = pendingRawRows.find(r => r.so_number === originalSo);
+  const priorStatus = priorRow ? priorRow.status : 'PENDING';
+  const newStatus = document.getElementById('pe-status').value;
+
+  const row = {
+    so_number: soNumber,
+    shipment_no: document.getElementById('pe-shipment-no').value.trim(),
+    obd_number: document.getElementById('pe-obd-number').value.trim(),
+    billing_number: document.getElementById('pe-billing-number').value.trim(),
+    route_description: document.getElementById('pe-route').value.trim(),
+    sold_to_party_name: document.getElementById('pe-customer').value.trim(),
+    truck_type: document.getElementById('pe-truck-type').value,
+    status: newStatus,
+    quantity: parseFloat(document.getElementById('pe-quantity').value) || 0,
+    so_amount: parseFloat(document.getElementById('pe-so-amount').value) || 0
+  };
+  // Same PICKED/pgi_date convention used by manual dispatch and Master
+  // Records, so this stays consistent with the rest of the app's state machine.
+  if (newStatus === 'PICKED') row.pgi_date = new Date().toISOString();
+
+  // Renaming the SO Number is the upsert conflict key — same handling as Master Records.
+  if (originalSo && originalSo !== soNumber) {
+    const { error: delError } = await supabaseClient.from('shipments').delete().eq('so_number', originalSo);
+    if (delError) return showToast("Could not update record: " + delError.message, "error");
+    const { error: renameErr } = await supabaseClient.from('activity_logs').update({ so_number: soNumber }).eq('so_number', originalSo);
+    if (renameErr) console.error('Could not repoint activity logs to renamed SO:', renameErr.message);
+  }
+
+  const { error } = await supabaseClient.from('shipments').upsert([row], { onConflict: 'so_number' });
+  if (error) return showToast("Could not save record: " + error.message, "error");
+
+  // A stage advanced through this tab is always attributed to personnel
+  // "ADVANCE" — a documentation-only log entry, with no Start/End time since
+  // no one actually clocked the work. Only fires when Status actually changed.
+  if (newStatus !== priorStatus && STATUS_TO_ROLE[newStatus]) {
+    const { error: logErr } = await supabaseClient.from('activity_logs').insert([{
+      shipment_no: row.shipment_no, so_number: soNumber, role: STATUS_TO_ROLE[newStatus],
+      personnel_name: 'ADVANCE', status: 'Completed', start_time: null, end_time: null
+    }]);
+    if (logErr) console.error('Could not log ADVANCE status change:', logErr.message);
+  }
+
+  showToast(`Record "${soNumber}" saved.`, "success");
+  closePendingEditModal();
+  await loadPendingQueue();
   await refreshPipelineSummary();
 }
 
