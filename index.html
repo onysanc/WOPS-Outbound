@@ -261,72 +261,206 @@
 
 <!-- ================= ADD / EDIT MASTER RECORD MODAL (Admin only) ================= -->
 <div id="aging-record-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-2xl w-full space-y-4 max-h-[90vh] overflow-y-auto">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-3xl w-full space-y-4 max-h-[90vh] overflow-y-auto">
     <h3 id="aging-record-modal-title" class="text-sm font-bold text-slate-100 uppercase tracking-wider">Add Record</h3>
     <input type="hidden" id="aging-record-original-so">
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Sales Order</label>
-        <input type="text" id="ar-so-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment No.</label>
-        <input type="text" id="ar-shipment-no" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">OBD Number</label>
-        <input type="text" id="ar-obd-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Billing Number</label>
-        <input type="text" id="ar-billing-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div class="sm:col-span-2">
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Customer</label>
-        <input type="text" id="ar-customer" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div class="sm:col-span-2">
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Route Description</label>
-        <input type="text" id="ar-route" placeholder="e.g. 1102 --> MANILA" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Truck Type</label>
-        <select id="ar-truck-type" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-          <option value="AUV">AUV</option>
-          <option value="4W">4W</option>
-          <option value="6W">6W</option>
-          <option value="10W">10W</option>
-          <option value="20F">20F</option>
-          <option value="40">40</option>
-          <option value="40F">40F</option>
-          <option value="STO">STO</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Status</label>
-        <select id="ar-status" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-          <option value="PENDING">Pending</option>
-          <option value="PICKED">Picked</option>
-          <option value="STAGED">Staged</option>
-          <option value="PULLED">Pulled</option>
-          <option value="CHECKED">Checked</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Quantity</label>
-        <input type="number" step="1" min="0" id="ar-quantity" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">SO Amount</label>
-        <input type="number" step="0.01" min="0" id="ar-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+    <div>
+      <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Shipment Details</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Sales Order</label>
+          <input type="text" id="ar-so-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment No.</label>
+          <input type="text" id="ar-shipment-no" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">OBD Number</label>
+          <input type="text" id="ar-obd-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Billing Number</label>
+          <input type="text" id="ar-billing-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Customer</label>
+          <input type="text" id="ar-customer" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Route Description</label>
+          <input type="text" id="ar-route" placeholder="e.g. 1102 --> MANILA" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Truck Type</label>
+          <select id="ar-truck-type" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+            <option value="AUV">AUV</option>
+            <option value="4W">4W</option>
+            <option value="6W">6W</option>
+            <option value="10W">10W</option>
+            <option value="20F">20F</option>
+            <option value="40">40</option>
+            <option value="40F">40F</option>
+            <option value="STO">STO</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Status</label>
+          <select id="ar-status" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+            <option value="PENDING">Pending</option>
+            <option value="PICKED">Picked</option>
+            <option value="STAGED">Staged</option>
+            <option value="PULLED">Pulled</option>
+            <option value="CHECKED">Checked</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Quantity</label>
+          <input type="number" step="1" min="0" id="ar-quantity" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">SO Amount</label>
+          <input type="number" step="0.01" min="0" id="ar-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Record Date</label>
+          <input type="datetime-local" id="ar-record-date" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <p class="text-[10px] text-slate-600 mt-1">Drives Aging Days. Leave as-is to keep the current value.</p>
+        </div>
       </div>
     </div>
+
+    <div id="ar-line-details" class="hidden border-t border-slate-800 pt-4 space-y-4">
+      <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Per-Line Activity Details</div>
+      <p class="text-[10px] text-slate-600 -mt-2">Editing an existing log for this SO. A stage with no log yet is skipped — use the Workbench to dispatch it first.</p>
+
+      <!-- Picker -->
+      <div id="ar-pick-panel" class="hidden rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-2">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Picker</div>
+        <input type="hidden" id="ar-pick-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
+            <input type="text" id="ar-pick-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div></div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
+            <input type="datetime-local" id="ar-pick-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">End Time</label>
+            <input type="datetime-local" id="ar-pick-end" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Remarks</label>
+            <input type="text" id="ar-pick-remarks" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <!-- Staging Checker -->
+      <div id="ar-stage-panel" class="hidden rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-2">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-sky-400">Staging Checker</div>
+        <input type="hidden" id="ar-stage-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
+            <input type="text" id="ar-stage-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Staging Area(s)</label>
+            <input type="text" id="ar-stage-area" placeholder="comma-separated" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
+            <input type="datetime-local" id="ar-stage-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">End Time</label>
+            <input type="datetime-local" id="ar-stage-end" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Discrepancy Type(s)</label>
+            <input type="text" id="ar-stage-disc-type" placeholder="comma-separated, blank = none" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Discrepancy Qty</label>
+            <input type="number" step="0.01" id="ar-stage-disc-qty" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Remarks</label>
+            <input type="text" id="ar-stage-remarks" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <!-- Puller -->
+      <div id="ar-pull-panel" class="hidden rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-2">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-pink-400">Puller</div>
+        <input type="hidden" id="ar-pull-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
+            <input type="text" id="ar-pull-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div></div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
+            <input type="datetime-local" id="ar-pull-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">End Time</label>
+            <input type="datetime-local" id="ar-pull-end" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Remarks</label>
+            <input type="text" id="ar-pull-remarks" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+
+      <!-- Outbound Checker -->
+      <div id="ar-check-panel" class="hidden rounded-lg border border-slate-800 bg-slate-900/60 p-3 space-y-2">
+        <div class="text-[10px] font-bold uppercase tracking-wider text-blue-400">Outbound Checker</div>
+        <input type="hidden" id="ar-check-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
+            <input type="text" id="ar-check-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div></div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
+            <input type="datetime-local" id="ar-check-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">End Time</label>
+            <input type="datetime-local" id="ar-check-end" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Discrepancy Type(s)</label>
+            <input type="text" id="ar-check-disc-type" placeholder="comma-separated, blank = none" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Discrepancy Qty</label>
+            <input type="number" step="0.01" id="ar-check-disc-qty" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Remarks</label>
+            <input type="text" id="ar-check-remarks" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="flex gap-2 pt-2">
       <button onclick="closeAgingRecordModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
       <button onclick="saveAgingRecordModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Save Record</button>
     </div>
   </div>
 </div>
+
 
 <div id="app-shell" class="hidden">
 <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40">
@@ -3464,11 +3598,58 @@ async function deleteAgingRecord(so_number) {
   await loadAgingData();
 }
 
+// Maps each pipeline role to the field-id prefix used in the master record modal
+// (ar-pick-*, ar-stage-*, ar-pull-*, ar-check-*), and to the panel that shows/hides it.
+const AGING_LINE_ROLE_PREFIX = { 'Picker': 'pick', 'Staging Checker': 'stage', 'Puller': 'pull', 'Outbound Checker': 'check' };
+
+// datetime-local inputs need "YYYY-MM-DDTHH:mm" in LOCAL time (not UTC), and give
+// back the same format, which the browser's Date parser treats as local time too —
+// these two helpers convert cleanly between that and the ISO strings Supabase stores.
+function toDatetimeLocalValue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromDatetimeLocalValue(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return isNaN(d) ? null : d.toISOString();
+}
+// Comma-separated text <-> Postgres text[] helpers, used for staging_areas / discrepancy_type.
+function csvToArray(val) {
+  const parts = (val || '').split(',').map(s => s.trim()).filter(Boolean);
+  return parts.length ? parts : null;
+}
+function arrayToCsv(arr) {
+  return (arr || []).join(', ');
+}
+
 // Opens the Add/Edit Master Record modal. Pass null to add a fresh record,
-// or an existing SO Number to prefill the form for editing.
-function openAgingRecordModal(so_number) {
+// or an existing SO Number to prefill the form for editing — including, for
+// an existing record, every per-line activity log (Picker/Staging/Puller/
+// Outbound Checker) tied to that SO, so admins can correct any field on any
+// stage from one place, the same fields shown in the Data Export table.
+async function openAgingRecordModal(so_number) {
   document.getElementById('aging-record-original-so').value = so_number || '';
   const title = document.getElementById('aging-record-modal-title');
+  const lineDetails = document.getElementById('ar-line-details');
+
+  // Always start clean — hide all per-line panels and clear their fields —
+  // then reveal/fill only the ones that actually have a log for this SO.
+  Object.values(AGING_LINE_ROLE_PREFIX).forEach(prefix => {
+    document.getElementById(`ar-${prefix}-panel`).classList.add('hidden');
+    ['id', 'name', 'start', 'end', 'remarks'].forEach(f => {
+      const el = document.getElementById(`ar-${prefix}-${f}`);
+      if (el) el.value = '';
+    });
+  });
+  ['ar-stage-area', 'ar-stage-disc-type', 'ar-stage-disc-qty', 'ar-check-disc-type', 'ar-check-disc-qty'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
   if (so_number) {
     const row = agingRawRows.find(r => r.so_number === so_number);
     title.innerText = 'Edit Record';
@@ -3482,6 +3663,40 @@ function openAgingRecordModal(so_number) {
     document.getElementById('ar-status').value = row?.status || 'PENDING';
     document.getElementById('ar-quantity').value = row?.qty ?? 0;
     document.getElementById('ar-so-amount').value = row?.so_amount ?? 0;
+    document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.record_date);
+
+    lineDetails.classList.remove('hidden');
+    const { data: lineLogs, error } = await supabaseClient.from('activity_logs').select('*').eq('so_number', so_number);
+    if (error) {
+      console.error(error);
+    } else {
+      // If a role somehow has more than one log for this SO (e.g. a redo), edit
+      // the most recently completed/updated one — same convention as the export.
+      const latestByRole = {};
+      (lineLogs || []).forEach(l => {
+        const existing = latestByRole[l.role];
+        if (!existing || new Date(l.end_time || l.start_time) > new Date(existing.end_time || existing.start_time)) latestByRole[l.role] = l;
+      });
+      Object.entries(AGING_LINE_ROLE_PREFIX).forEach(([role, prefix]) => {
+        const log = latestByRole[role];
+        if (!log) return; // no log yet for this stage — leave its panel hidden
+        document.getElementById(`ar-${prefix}-panel`).classList.remove('hidden');
+        document.getElementById(`ar-${prefix}-id`).value = log.id;
+        document.getElementById(`ar-${prefix}-name`).value = log.personnel_name || '';
+        document.getElementById(`ar-${prefix}-start`).value = toDatetimeLocalValue(log.start_time);
+        document.getElementById(`ar-${prefix}-end`).value = toDatetimeLocalValue(log.end_time);
+        document.getElementById(`ar-${prefix}-remarks`).value = log.remarks || '';
+        if (role === 'Staging Checker') {
+          document.getElementById('ar-stage-area').value = arrayToCsv(log.staging_areas);
+          document.getElementById('ar-stage-disc-type').value = arrayToCsv(log.discrepancy_type);
+          document.getElementById('ar-stage-disc-qty').value = log.discrepancy_qty ?? '';
+        }
+        if (role === 'Outbound Checker') {
+          document.getElementById('ar-check-disc-type').value = arrayToCsv(log.discrepancy_type);
+          document.getElementById('ar-check-disc-qty').value = log.discrepancy_qty ?? '';
+        }
+      });
+    }
   } else {
     title.innerText = 'Add Record';
     ['ar-so-number', 'ar-shipment-no', 'ar-obd-number', 'ar-billing-number', 'ar-customer', 'ar-route'].forEach(id => document.getElementById(id).value = '');
@@ -3489,6 +3704,8 @@ function openAgingRecordModal(so_number) {
     document.getElementById('ar-status').value = 'PENDING';
     document.getElementById('ar-quantity').value = 0;
     document.getElementById('ar-so-amount').value = 0;
+    document.getElementById('ar-record-date').value = '';
+    lineDetails.classList.add('hidden'); // a brand-new record has no activity logs to edit yet
   }
   document.getElementById('aging-record-modal').classList.remove('hidden');
 }
@@ -3519,16 +3736,60 @@ async function saveAgingRecordModal() {
   // the bulk uploader, so this record agrees with the rest of the app.
   if (statusVal === 'PICKED') row.pgi_date = new Date().toISOString();
 
+  // Record Date drives Aging Days (it's stored as uploaded_at) — only touch it
+  // if the admin actually set/changed the field, so leaving it blank on an
+  // existing record doesn't wipe out its real upload timestamp.
+  const recordDateVal = document.getElementById('ar-record-date').value;
+  if (recordDateVal) row.uploaded_at = fromDatetimeLocalValue(recordDateVal);
+
   // Editing and changing the SO Number is effectively a rename — since
   // so_number is the upsert/conflict key, remove the old row first so it
-  // doesn't linger as a duplicate alongside the renamed one.
+  // doesn't linger as a duplicate alongside the renamed one. Also repoint
+  // every activity_logs row still referencing the old SO Number, so the
+  // per-line edits below (and everything else keyed off so_number) still match.
   if (originalSo && originalSo !== soNumber) {
     const { error: delError } = await supabaseClient.from('shipments').delete().eq('so_number', originalSo);
     if (delError) return showToast("Could not update record: " + delError.message, "error");
+    const { error: renameErr } = await supabaseClient.from('activity_logs').update({ so_number: soNumber }).eq('so_number', originalSo);
+    if (renameErr) console.error('Could not repoint activity logs to renamed SO:', renameErr.message);
   }
 
   const { error } = await supabaseClient.from('shipments').upsert([row], { onConflict: 'so_number' });
   if (error) return showToast("Could not save record: " + error.message, "error");
+
+  // Per-line activity log edits — only stages whose panel is visible (i.e. a
+  // log actually exists for this SO) carry an id, so this only ever updates
+  // logs that already exist; it never creates new ones.
+  for (const [role, prefix] of Object.entries(AGING_LINE_ROLE_PREFIX)) {
+    const logId = document.getElementById(`ar-${prefix}-id`).value;
+    if (!logId) continue;
+    const startIso = fromDatetimeLocalValue(document.getElementById(`ar-${prefix}-start`).value);
+    const endIso = fromDatetimeLocalValue(document.getElementById(`ar-${prefix}-end`).value);
+    const update = {
+      personnel_name: document.getElementById(`ar-${prefix}-name`).value.trim() || null,
+      start_time: startIso,
+      end_time: endIso,
+      remarks: document.getElementById(`ar-${prefix}-remarks`).value.trim() || null
+    };
+    // Admin is directly correcting the record here, so rendered_minutes is
+    // recomputed straight from the edited start/end (no pause/break math —
+    // there's no reliable way to reconstruct historical pauses/breaks for a
+    // manual edit like this).
+    if (startIso && endIso) update.rendered_minutes = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+    if (role === 'Staging Checker') {
+      update.staging_areas = csvToArray(document.getElementById('ar-stage-area').value);
+      update.discrepancy_type = csvToArray(document.getElementById('ar-stage-disc-type').value);
+      const q = document.getElementById('ar-stage-disc-qty').value;
+      update.discrepancy_qty = q === '' ? null : parseFloat(q) || 0;
+    }
+    if (role === 'Outbound Checker') {
+      update.discrepancy_type = csvToArray(document.getElementById('ar-check-disc-type').value);
+      const q = document.getElementById('ar-check-disc-qty').value;
+      update.discrepancy_qty = q === '' ? null : parseFloat(q) || 0;
+    }
+    const { error: logErr } = await supabaseClient.from('activity_logs').update(update).eq('id', logId);
+    if (logErr) showToast(`Saved shipment, but couldn't update ${role} log: ${logErr.message}`, "error");
+  }
 
   showToast(`Record "${soNumber}" saved.`, "success");
   closeAgingRecordModal();
