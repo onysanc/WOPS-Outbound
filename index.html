@@ -3490,7 +3490,7 @@ function computeRoleLeaderboardRows(dayLogs, role) {
       accuracyPct = totalQty > 0 ? Math.max(0, Math.min(100, ((totalQty - totalDiscQty) / totalQty) * 100)) : 100;
     }
 
-    return { name, shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedMin, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct };
+    return { name: p.name, shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedMin, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct };
   });
 }
 
