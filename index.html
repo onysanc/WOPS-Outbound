@@ -2053,13 +2053,13 @@ async function refreshPipelineSummary() {
 
   // Build the date dropdown once per distinct set of upload dates seen
   // (across ALL lines, so the filter still reflects every upload on file).
-  const uploadDates = [...new Set(rows.map(r => (r.uploaded_at || '').slice(0, 10)).filter(Boolean))].sort().reverse();
+  const uploadDates = [...new Set(rows.map(r => localDateStr(r.uploaded_at)).filter(Boolean))].sort().reverse();
   const sel = document.getElementById('pipeline-date-filter');
   const cacheKey = uploadDates.join(',');
   if (sel && pipelineDateOptionsCache !== cacheKey) {
     pipelineDateOptionsCache = cacheKey;
     sel.innerHTML = `<option value="ALL">All Uploads</option>` +
-      uploadDates.map(d => `<option value="${d}">${fmtAgingDate(d)}</option>`).join('');
+      uploadDates.map(d => `<option value="${d}">${fmtLocalDateStr(d)}</option>`).join('');
     sel.value = uploadDates.length ? uploadDates[0] : 'ALL'; // default: latest upload date
   }
   const filterDate = sel ? sel.value : 'ALL';
@@ -2085,7 +2085,7 @@ async function refreshPipelineSummary() {
     const shipmentNo = (row.shipment_no || '').trim();
     if (!shipmentNo) return; // no shipment assigned yet — not a shipment to count here
     const effective = effectiveStatusOf(row);
-    const uploadDs = (row.uploaded_at || '').slice(0, 10);
+    const uploadDs = localDateStr(row.uploaded_at);
     const existing = byShipment.get(shipmentNo);
     if (!existing) {
       byShipment.set(shipmentNo, { effective, uploadDs });
@@ -4445,6 +4445,32 @@ function computeAgingDays(iso) {
 function fmtAgingDate(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString([], { year: 'numeric', month: 'short', day: '2-digit' });
+}
+
+// Local-calendar-day string (YYYY-MM-DD) for a given ISO timestamp, in the
+// browser's own timezone — NOT a raw UTC slice. uploaded_at is stored in
+// UTC, so a straight `.slice(0, 10)` can land on the wrong calendar day for
+// anyone west of UTC+0 at the boundary (e.g. 2026-07-05 22:00 UTC is already
+// 2026-07-06 locally in Manila/UTC+8). This must match what fmtAgingDate()
+// shows in Master Records, or the two screens disagree on "today's" date.
+function localDateStr(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Formats an already-local "YYYY-MM-DD" bucket key (e.g. from localDateStr)
+// for display. Deliberately does NOT go through `new Date(str)` — a plain
+// date-only string is parsed as UTC midnight, and re-converting that back to
+// local time can shift the day again (backward for timezones west of UTC),
+// undoing the correction localDateStr just made. Building the label straight
+// from the y/m/d parts keeps it exactly the calendar day it says it is.
+const _shortMonthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtLocalDateStr(ymd) {
+  if (!ymd) return '—';
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return '—';
+  return `${_shortMonthNames[m - 1]} ${String(d).padStart(2, '0')}, ${y}`;
 }
 
 function agingColorClass(days) {
