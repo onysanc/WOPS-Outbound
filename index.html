@@ -139,6 +139,17 @@
 
   /* --- Scan mode: bigger, thumb-friendly controls for floor/handheld use --- */
   body.scan-mode #view-workbench input, body.scan-mode #view-workbench select{font-size:1.05rem !important;padding:.9rem !important}
+
+  /* --- PDF Export: isolate the flagged section, suppress all other chrome --- */
+  @media print{
+    body *{visibility:hidden !important}
+    .print-target, .print-target *{visibility:visible !important}
+    .print-target{position:absolute !important;left:0;top:0;width:100% !important;background:#fff !important;filter:none !important}
+    .print-target table{width:100% !important;border-collapse:collapse !important}
+    .print-target th, .print-target td{color:#000 !important;background:#fff !important;border:1px solid #999 !important}
+    .print-target button, .print-target input, .print-target select, .print-target textarea{display:none !important}
+    #sidebar, #app-header, .hdr-icon-btn, nav{display:none !important}
+  }
   body.scan-mode #view-workbench .role-btn{padding:1rem 1.1rem !important;font-size:.95rem !important}
   body.scan-mode #view-workbench button{min-height:44px}
   body.scan-mode table{font-size:.85rem}
@@ -719,8 +730,14 @@
         <input type="text" id="bulletin-search" oninput="renderBulletinBoard()" placeholder="Search personnel or role..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
       </div>
     </div>
+    <div class="flex flex-wrap items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-2.5">
+      <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold px-1">Export</span>
+      <button onclick="exportTableToCSVGeneric('bulletin-table', 'performance-summary.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+      <button onclick="exportTableToXLSXGeneric('bulletin-table', 'performance-summary.xlsx', 'Performance Summary')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+      <button onclick="exportSectionToPDF('view-bulletin')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
+    </div>
     <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-      <table class="w-full text-left text-xs border-collapse">
+      <table id="bulletin-table" class="w-full text-left text-xs border-collapse">
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
             <th class="p-3">Personnel</th>
@@ -848,6 +865,119 @@
           <canvas id="leaderboard-chart"></canvas>
         </div>
       </div>
+    </div>
+
+    <!-- Role Leaderboards: Picking / Staging Checking / Pulling / Outbound Checking -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-sm font-semibold text-slate-200">🏆 Role Leaderboards <span class="text-slate-500 font-normal">(per-stage rankings, selected Activity Day)</span></h3>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="exportTableToCSVGeneric('lb-picker-table', 'picking-leaderboard.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+          <button onclick="exportTableToXLSXGeneric('lb-picker-table', 'role-leaderboards.xlsx', 'Picking')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+          <button onclick="exportSectionToPDF('view-analytics')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
+        </div>
+      </div>
+
+      <!-- Picking Rankings -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-xs font-bold text-green-400 uppercase tracking-wider">🧺 Picking Rankings</h4>
+          <div class="flex items-center gap-1.5">
+            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
+            <select onchange="setRoleLeaderboardSort('Picker', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table id="lb-picker-table" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="lb-picker-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Staging Checking Rankings -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-xs font-bold text-sky-300 uppercase tracking-wider">🧾 Staging Checking Rankings</h4>
+          <div class="flex items-center gap-1.5">
+            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
+            <select onchange="setRoleLeaderboardSort('Staging Checker', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table id="lb-staging-table" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="lb-staging-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pulling Rankings -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-xs font-bold text-pink-400 uppercase tracking-wider">🚚 Pulling Rankings</h4>
+          <div class="flex items-center gap-1.5">
+            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
+            <select onchange="setRoleLeaderboardSort('Puller', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table id="lb-puller-table" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="lb-puller-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Outbound Checking Rankings -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider">✅ Outbound Checking Rankings</h4>
+          <div class="flex items-center gap-1.5">
+            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
+            <select onchange="setRoleLeaderboardSort('Outbound Checker', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table id="lb-outbound-table" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="lb-outbound-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed columns show shipment-group completion duration (lower is faster). Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—).</p>
     </div>
 
     <!-- Zero-Discrepancy Streaks -->
@@ -1127,7 +1257,9 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="flex flex-wrap items-center gap-2">
         <input type="text" id="aging-search" oninput="renderAgingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
         <button onclick="loadAgingData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
-        <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel</button>
+        <button onclick="exportTableToCSVGeneric('aging-table', 'master-records.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+        <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+        <button onclick="exportSectionToPDF('view-aging')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
         <button id="aging-add-btn" onclick="openAgingRecordModal(null)" class="hidden text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">+ Add Record</button>
       </div>
     </div>
@@ -1191,7 +1323,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     </div>
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
-      <table class="w-full text-xs whitespace-nowrap">
+      <table id="aging-table" class="w-full text-xs whitespace-nowrap">
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
             <th rowspan="2" class="p-3 text-left aging-admin-col hidden align-middle"><input type="checkbox" id="aging-select-all" onchange="toggleAgingSelectAll(this)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></th>
@@ -1205,20 +1337,21 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <th rowspan="2" class="p-3 text-center align-middle">Status</th>
             <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
             <th rowspan="2" class="p-3 text-center align-middle">Aging (Days)</th>
-            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="6">Picker</th>
+            <th rowspan="2" class="p-3 text-center align-middle text-cyan-300">Staging Area</th>
+            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="7">Picker</th>
             <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="7">Staging Checker</th>
             <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="6">Puller</th>
             <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="7">Outbound Checker</th>
           </tr>
           <tr class="text-[10px]">
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th>
             <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
             <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
             <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
           </tr>
         </thead>
         <tbody id="aging-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="37" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="39" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -2104,15 +2237,15 @@ function totalConfiguredBreakHours() {
 
 // Flat duration bracket keyed off truck type only — used by Staging Checker,
 // Puller, and Outbound Checker. Per operations spec:
-//   AUV / 4W        = 20 minutes
-//   6W              = 1 hour
-//   10W / 20F / 40F = 3 hours
+//   AUV / 4W               = 20 minutes
+//   6W                     = 1 hour
+//   STO / 10W / 20F / 40F  = 4 hours
 function bracketHoursForTruckType(truckType) {
   const t = (truckType || '').toUpperCase();
   if (t === 'AUV' || t === '4W') return 20 / 60;
   if (t === '6W') return 1;
-  if (t === '10W' || t === '20F' || t === '40F' || t === '40') return 3;
-  return 3; // unmapped/larger truck types default to the longest bracket
+  if (t === 'STO' || t === '10W' || t === '20F' || t === '40F' || t === '40') return 4;
+  return 4; // unmapped/larger truck types default to the longest bracket
 }
 
 // Minimum baseline target for a Picker action — even a tiny quantity should
@@ -3146,6 +3279,7 @@ async function refreshAnalyticsView() {
   renderCycleTime(dayLogs || []);
   renderDiscrepancyReport(dayLogs || []);
   renderLeaderboard(dayLogs || []);
+  renderAllRoleLeaderboards(dayLogs || []);
   renderBacklogForecast(dayLogs || []);
 
   await refreshAtRiskBoard();
@@ -3272,6 +3406,140 @@ function renderLeaderboard(logs) {
       <td class="p-2 text-right font-mono font-semibold ${color}">${r.productivityPct.toFixed(1)}%</td>
     </tr>`;
   }).join('');
+}
+
+// --- ROLE LEADERBOARDS: Picking / Staging Checking / Pulling / Outbound Checking ---
+// Each is scored at the SHIPMENT-GROUP level (one dispatched batch = personnel_name
+// + role + start_time), not per line, matching the Hit/Miss and Speed KPI spec.
+const ROLE_LEADERBOARD_SORT_STATE = { Picker: 'speed', 'Staging Checker': 'speed', Puller: 'speed', 'Outbound Checker': 'speed' };
+const ROLE_LEADERBOARD_TBODY_IDS = { Picker: 'lb-picker-rows', 'Staging Checker': 'lb-staging-rows', Puller: 'lb-puller-rows', 'Outbound Checker': 'lb-outbound-rows' };
+
+function computeRoleLeaderboardRows(dayLogs, role) {
+  const roleLogs = dayLogs.filter(l => l.role === role);
+
+  // Group into dispatched batches (one "shipment group" task): personnel + start_time.
+  const batches = {};
+  roleLogs.forEach(l => {
+    const key = `${l.personnel_name}||${l.start_time}`;
+    (batches[key] = batches[key] || []).push(l);
+  });
+
+  const byPersonnel = {};
+  Object.values(batches).forEach(members => {
+    const rep = members[0];
+    const name = rep.personnel_name || '—';
+    const uniqueBySO = new Map(); // one entry per unique shipment/SO line in this batch
+    members.forEach(m => { if (!uniqueBySO.has(m.so_number)) uniqueBySO.set(m.so_number, m); });
+    const lineRows = [...uniqueBySO.values()];
+    const qty = lineRows.reduce((s, m) => s + (parseFloat(m.total_qty) || 0), 0);
+    const renderedMin = rep.rendered_minutes || 0;
+    const targetMin = (rep.target_hours || 0) * 60;
+    const isHit = renderedMin <= targetMin;
+    const discrepQty = lineRows.reduce((s, m) => s + (m.discrepancy_qty ? (parseFloat(m.discrepancy_qty) || 0) : 0), 0);
+
+    if (!byPersonnel[name]) byPersonnel[name] = { name, batches: [], shipments: new Set() };
+    byPersonnel[name].batches.push({ qty, renderedMin, targetMin, isHit, discrepQty, lineRows });
+    lineRows.forEach(m => { if (m.shipment_no) byPersonnel[name].shipments.add(m.shipment_no); });
+  });
+
+  // Staging Checker logs for the day — used to grade downstream Picker Accuracy.
+  const stagingLogsForDay = dayLogs.filter(l => l.role === 'Staging Checker');
+
+  return Object.values(byPersonnel).map(p => {
+    const totalQty = p.batches.reduce((s, b) => s + b.qty, 0);
+    const totalMin = p.batches.reduce((s, b) => s + b.renderedMin, 0);
+    const hits = p.batches.filter(b => b.isHit).length;
+    const misses = p.batches.length - hits;
+    const avgSpeedMin = p.batches.length ? totalMin / p.batches.length : 0;
+    const fastestMin = p.batches.length ? Math.min(...p.batches.map(b => b.renderedMin)) : 0;
+    const slowestMin = p.batches.length ? Math.max(...p.batches.map(b => b.renderedMin)) : 0;
+    const incidentMissPct = p.batches.length ? (misses / p.batches.length) * 100 : 0;
+    const productivityPct = totalMin > 0 ? (totalMin / 60 / STANDARD_DAILY_HOURS) * 100 : 0;
+
+    // Idle time: gaps between this ROLE's own back-to-back batches for this person,
+    // same methodology as the Performance Summary's idle calc but role-scoped.
+    const seenStarts = new Set();
+    const personRoleLogsSorted = roleLogs.filter(l => l.personnel_name === p.name && !seenStarts.has(l.start_time) && seenStarts.add(l.start_time))
+      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    let idleMin = 0;
+    for (let i = 0; i < personRoleLogsSorted.length - 1; i++) {
+      const prev = personRoleLogsSorted[i], next = personRoleLogsSorted[i + 1];
+      if (!prev.end_time) continue;
+      const gap = (new Date(next.start_time) - new Date(prev.end_time)) / 60000;
+      if (gap > 0.5) idleMin += gap;
+    }
+
+    // Accuracy: Picker is graded downstream (Staging Checker's discrepancy on the
+    // same shipment line); Staging/Outbound Checker are graded on their own logged
+    // discrepancy vs. volume handled; Puller has no discrepancy field — untracked.
+    let accuracyPct = null;
+    if (role === 'Picker') {
+      let handledVol = 0, discVol = 0;
+      const seenSO = new Set();
+      p.batches.forEach(b => b.lineRows.forEach(m => {
+        if (seenSO.has(m.so_number)) return;
+        seenSO.add(m.so_number);
+        const vol = parseFloat(m.total_qty) || 0;
+        handledVol += vol;
+        const stageLog = stagingLogsForDay.find(l => l.so_number === m.so_number);
+        if (stageLog && stageLog.discrepancy_qty) discVol += parseFloat(stageLog.discrepancy_qty) || 0;
+      }));
+      accuracyPct = handledVol > 0 ? Math.max(0, Math.min(100, ((handledVol - discVol) / handledVol) * 100)) : 100;
+    } else if (role === 'Staging Checker' || role === 'Outbound Checker') {
+      const totalDiscQty = p.batches.reduce((s, b) => s + b.discrepQty, 0);
+      accuracyPct = totalQty > 0 ? Math.max(0, Math.min(100, ((totalQty - totalDiscQty) / totalQty) * 100)) : 100;
+    }
+
+    return { name, shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedMin, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct };
+  });
+}
+
+function sortRoleLeaderboardRows(rows, sortKey) {
+  const arr = [...rows];
+  if (sortKey === 'qty') return arr.sort((a, b) => b.qty - a.qty);
+  if (sortKey === 'productivity') return arr.sort((a, b) => b.productivityPct - a.productivityPct);
+  if (sortKey === 'idle') return arr.sort((a, b) => b.idleMin - a.idleMin);
+  if (sortKey === 'accuracy') return arr.sort((a, b) => (b.accuracyPct ?? -1) - (a.accuracyPct ?? -1));
+  return arr.sort((a, b) => a.avgSpeedMin - b.avgSpeedMin); // 'speed' — fewer minutes = faster = ranked first
+}
+
+function renderRoleLeaderboard(role, dayLogs) {
+  const tbody = document.getElementById(ROLE_LEADERBOARD_TBODY_IDS[role]);
+  if (!tbody) return;
+  const sortKey = ROLE_LEADERBOARD_SORT_STATE[role] || 'speed';
+  const rows = sortRoleLeaderboardRows(computeRoleLeaderboardRows(dayLogs, role), sortKey);
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500 italic">No completed activity for this Activity Day.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    return `<tr class="hover:bg-slate-900/40">
+      <td class="p-2 text-center font-bold">${medal}</td>
+      <td class="p-2 font-semibold text-slate-200">${r.name}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${r.shipments}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${r.qty.toFixed(0)}</td>
+      <td class="p-2 text-center font-mono text-[10px] ${r.misses > 0 ? 'text-rose-400' : 'text-emerald-400'}">${r.hits} Hit, ${r.misses} Miss</td>
+      <td class="p-2 text-right font-mono text-slate-300">${r.avgSpeedMin.toFixed(1)}m</td>
+      <td class="p-2 text-right font-mono text-emerald-400">${r.fastestMin.toFixed(1)}m</td>
+      <td class="p-2 text-right font-mono text-rose-400">${r.slowestMin.toFixed(1)}m</td>
+      <td class="p-2 text-right font-mono ${r.incidentMissPct > 30 ? 'text-rose-400' : 'text-slate-300'}">${r.incidentMissPct.toFixed(0)}%</td>
+      <td class="p-2 text-right font-mono text-slate-300">${fmtMin(r.idleMin)}</td>
+      <td class="p-2 text-right font-mono ${accuracyColorClass(r.accuracyPct)}">${fmtAccuracy(r.accuracyPct)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Keep the day's Completed logs cached so switching a sort dropdown doesn't
+// require a fresh Supabase round-trip.
+let _roleLeaderboardDayLogsCache = [];
+function renderAllRoleLeaderboards(dayLogs) {
+  if (dayLogs) _roleLeaderboardDayLogsCache = dayLogs;
+  ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'].forEach(role => renderRoleLeaderboard(role, _roleLeaderboardDayLogsCache));
+}
+function setRoleLeaderboardSort(role, key) {
+  ROLE_LEADERBOARD_SORT_STATE[role] = key;
+  renderRoleLeaderboard(role, _roleLeaderboardDayLogsCache);
 }
 
 // --- Throughput Trend: lines completed per stage, per Activity Day, for the
@@ -3490,6 +3758,74 @@ function productivityColorClass(pct) {
   return pct >= 100 ? 'text-emerald-400 font-semibold' : pct >= 70 ? 'text-amber-400 font-semibold' : 'text-rose-400 font-semibold';
 }
 
+// --- DOWNSTREAM PICKER ACCURACY ---
+// A Picker's Accuracy is NOT self-reported — it is evaluated from the
+// discrepancy the Staging Checker recorded for the SAME shipment/SO line
+// (cross-stage link via so_number). Formula:
+//   Accuracy% = (Total Volume Handled - Discrepancy Qty) / Total Volume Handled × 100
+// Returns null when there isn't a completed Picker log for this line yet
+// (nothing to grade), and defaults to 100% when Staging hasn't logged a
+// discrepancy (or hasn't checked the line yet) — no discrepancy means no
+// evidence of a picking error against this line.
+function calcDownstreamPickerAccuracy(pickLog, stageLog) {
+  if (!pickLog) return null;
+  const volume = parseFloat(pickLog.total_qty) || 0;
+  if (volume <= 0) return null;
+  const discrepancyQty = (stageLog && stageLog.discrepancy_qty) ? (parseFloat(stageLog.discrepancy_qty) || 0) : 0;
+  const accuracy = ((volume - discrepancyQty) / volume) * 100;
+  return Math.max(0, Math.min(100, accuracy));
+}
+function fmtAccuracy(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return '—';
+  return `${pct.toFixed(0)}%`;
+}
+function accuracyColorClass(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return 'text-slate-500';
+  return pct >= 98 ? 'text-emerald-400 font-semibold' : pct >= 90 ? 'text-amber-400 font-semibold' : 'text-rose-400 font-semibold';
+}
+
+// --- EXPORT HELPERS: CSV / XLSX / PDF ---
+// CSV: build a comma-separated string directly from the rendered <table>'s
+// current (already-filtered) rows and trigger a download via a data-URI blob.
+function exportTableToCSVGeneric(tableId, filename) {
+  const table = document.getElementById(tableId);
+  if (!table) return showToast('Nothing to export.', 'error');
+  const rows = [...table.querySelectorAll('tr')];
+  if (!rows.length) return showToast('Nothing to export.', 'error');
+  const csvLines = rows.map(tr => [...tr.querySelectorAll('th,td')]
+    .map(cell => `"${(cell.innerText || '').replace(/"/g, '""').trim()}"`).join(','));
+  const csv = csvLines.join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported to ${filename}`, 'success');
+}
+
+// XLSX: leverage XLSX.utils.table_to_book to snapshot the CURRENT filtered
+// on-screen table (including any sort/search state) straight into a workbook.
+function exportTableToXLSXGeneric(tableId, filename, sheetName) {
+  const table = document.getElementById(tableId);
+  if (!table) return showToast('Nothing to export.', 'error');
+  const wb = XLSX.utils.table_to_book(table, { sheet: (sheetName || 'Sheet1').toString().slice(0, 31) });
+  XLSX.writeFile(wb, filename);
+  showToast(`Exported to ${filename}`, 'success');
+}
+
+// PDF: flag the target section as the sole visible content, then hand off to
+// the browser's native print pipeline — a print-only stylesheet (see <style>)
+// hides the sidebar/nav/chrome and isolates just the flagged section/table(s)
+// in a clean, high-contrast layout suitable for "Save as PDF".
+function exportSectionToPDF(sectionId) {
+  document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-target'));
+  const el = document.getElementById(sectionId);
+  if (!el) return showToast('Nothing to export.', 'error');
+  el.classList.add('print-target');
+  window.print();
+}
+
 function fmtExportDT(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -3606,13 +3942,13 @@ function exportDataToExcel() {
 // everywhere else in the app too.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
-  tbody.innerHTML = `<tr><td colspan="37" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="39" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="37" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="39" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -3627,7 +3963,7 @@ async function loadAgingData() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty')
+        .select('so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!logErr) logs.push(...(logChunk || []));
       else console.error(logErr);
@@ -3662,9 +3998,14 @@ async function loadAgingData() {
       record_date: row.uploaded_at, aging_days: computeAgingDays(row.uploaded_at),
       pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
       pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
+      // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
+      // recorded for this SAME shipment line, not anything the Picker self-reports.
+      // Accuracy% = (Volume Handled - Discrepancy Qty) / Volume Handled × 100.
+      pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
       stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
       stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
       stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
+      staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
       pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
       pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
       check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
@@ -4172,7 +4513,7 @@ function renderAgingTable() {
   const adminColClass = admin ? '' : 'hidden';
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="37" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="39" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
     updateAgingBulkBar();
     return;
   }
@@ -4195,12 +4536,14 @@ function renderAgingTable() {
       <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${agingStatusBadgeClass(r.status)}">${r.status}</span></td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.record_date)}</td>
       <td class="p-3 text-center font-mono text-[11px] ${agingColorClass(r.aging_days)}">${r.aging_days === null ? '—' : r.aging_days + 'd'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-300">${r.staging_area || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pick_remarks || ''}">${r.pick_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtRenderedMinutes(r.pick_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.pick_productivity)}">${fmtProductivity(r.pick_productivity)}</td>
+      <td class="p-3 text-center font-mono text-[10px] ${accuracyColorClass(r.pick_accuracy)}">${fmtAccuracy(r.pick_accuracy)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
@@ -4235,8 +4578,10 @@ function exportAgingToExcel() {
     'Customer': r.customer || '', 'Truck Type': r.truck_type || '', 'Qty': r.qty,
     'Status': r.status, 'Record Date': fmtAgingDate(r.record_date),
     'Aging (Days)': r.aging_days === null ? '' : r.aging_days,
+    'Staging Area': r.staging_area || '',
     'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
     'Picker Remarks': r.pick_remarks || '', 'Picker Rendered Min': r.pick_rendered ?? '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
+    'Picker Accuracy': fmtAccuracy(r.pick_accuracy),
     'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
     'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
     'Staging Remarks': r.stage_remarks || '', 'Staging Rendered Min': r.stage_rendered ?? '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
