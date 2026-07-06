@@ -1164,6 +1164,13 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date To</label>
         <input type="date" id="aging-date-to" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
       </div>
+      <div class="flex-1 min-w-[220px]">
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Paste References (SO / Shipment / OBD — one per line or comma-separated)</label>
+        <div class="flex items-start gap-2">
+          <textarea id="aging-multiref-filter" oninput="renderAgingTable()" rows="1" placeholder="Paste multiple reference numbers here…" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-full min-w-[240px] focus:outline-none focus:border-emerald-500 resize-y"></textarea>
+          <button onclick="document.getElementById('aging-multiref-filter').value=''; renderAgingTable();" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear refs</button>
+        </div>
+      </div>
       <button onclick="clearAgingFilters()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Clear filters</button>
       <div class="flex-1"></div>
       <div class="flex gap-4 text-[11px]">
@@ -1188,6 +1195,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
             <th rowspan="2" class="p-3 text-left aging-admin-col hidden align-middle"><input type="checkbox" id="aging-select-all" onchange="toggleAgingSelectAll(this)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></th>
+            <th rowspan="2" class="p-3 text-center aging-admin-col hidden align-middle">Actions</th>
             <th rowspan="2" class="p-3 text-left align-middle">Sales Order</th>
             <th rowspan="2" class="p-3 text-left align-middle">Shipment</th>
             <th rowspan="2" class="p-3 text-left align-middle">OBD</th>
@@ -1198,20 +1206,19 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
             <th rowspan="2" class="p-3 text-center align-middle">Aging (Days)</th>
             <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="6">Picker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="6">Staging Checker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="7">Staging Checker</th>
             <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="6">Puller</th>
-            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="6">Outbound Checker</th>
-            <th rowspan="2" class="p-3 text-center aging-admin-col hidden align-middle">Actions</th>
+            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="7">Outbound Checker</th>
           </tr>
           <tr class="text-[10px]">
             <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
             <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th>
           </tr>
         </thead>
         <tbody id="aging-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="35" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="37" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -3564,13 +3571,13 @@ function exportDataToExcel() {
 // everywhere else in the app too.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
-  tbody.innerHTML = `<tr><td colspan="35" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="37" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="35" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="37" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -3585,7 +3592,7 @@ async function loadAgingData() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes')
+        .select('so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!logErr) logs.push(...(logChunk || []));
       else console.error(logErr);
@@ -3622,10 +3629,12 @@ async function loadAgingData() {
       pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
       stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
       stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
+      stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
       pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
       pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
       check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
-      check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check)
+      check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
+      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null
     };
   });
 
@@ -3721,6 +3730,7 @@ function clearAgingFilters() {
   document.getElementById('aging-customer-filter').value = '';
   document.getElementById('aging-truck-filter').value = '';
   document.getElementById('aging-search').value = '';
+  document.getElementById('aging-multiref-filter').value = '';
   renderAgingTable();
 }
 
@@ -3825,6 +3835,11 @@ async function applyAgingMassEdit() {
   closeAgingMassEditModal();
   showToast(`Updated ${list.length} record(s).`, "success");
   await loadAgingData();
+  // Same reasoning as saveAgingRecordModal — mass edit can also change
+  // Record Date (uploaded_at) across many rows at once, so force the
+  // pipeline widget + its date dropdown to refresh immediately.
+  pipelineDateOptionsCache = null;
+  await refreshPipelineSummary();
 }
 
 // Maps each pipeline role to the field-id prefix used in the master record modal
@@ -4023,6 +4038,14 @@ async function saveAgingRecordModal() {
   showToast(`Record "${soNumber}" saved.`, "success");
   closeAgingRecordModal();
   await loadAgingData();
+  // Record Date lives on shipments.uploaded_at, which also drives the
+  // Workbench Pipeline Summary widget (and, through it, the Analytics
+  // Backlog Forecast). The realtime shipments subscription will catch this
+  // too, but force it here so the change is reflected instantly even before
+  // that event round-trips, and reset the date-dropdown cache so a
+  // brand-new/changed date shows up in the "Record Date" picker right away.
+  pipelineDateOptionsCache = null;
+  await refreshPipelineSummary();
 }
 
 function filteredAgingRows() {
@@ -4035,7 +4058,19 @@ function filteredAgingRows() {
   const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
   const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
 
+  // Multi-reference paste filter: split on newlines/commas/tabs/whitespace so
+  // a column pasted straight out of Excel works, then match against SO,
+  // Shipment, and OBD (case-insensitive, exact-token match). Empty box = no filter.
+  const refRaw = (document.getElementById('aging-multiref-filter').value || '').trim();
+  const refSet = refRaw ? new Set(refRaw.split(/[\n,\t]+/).map(s => s.trim().toUpperCase()).filter(Boolean)) : null;
+
   return agingRawRows.filter(r => {
+    if (refSet) {
+      const hit = refSet.has(String(r.so_number || '').toUpperCase()) ||
+        refSet.has(String(r.shipment_no || '').toUpperCase()) ||
+        refSet.has(String(r.obd_number || '').toUpperCase());
+      if (!hit) return false;
+    }
     if (searchText) {
       const hit = (r.so_number || '').toLowerCase().includes(searchText) ||
         (r.shipment_no || '').toLowerCase().includes(searchText) ||
@@ -4089,7 +4124,7 @@ function renderAgingTable() {
   const adminColClass = admin ? '' : 'hidden';
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="35" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="37" class="p-8 text-center text-slate-500 italic">No records match the current filters.</td></tr>`;
     updateAgingBulkBar();
     return;
   }
@@ -4097,6 +4132,12 @@ function renderAgingTable() {
   tbody.innerHTML = rows.map(r => `
     <tr class="hover:bg-slate-900/60 transition">
       <td class="p-3 text-left aging-admin-col ${adminColClass}"><input type="checkbox" ${agingSelectedSoNumbers.has(r.so_number) ? 'checked' : ''} onchange="toggleAgingRowSelect('${String(r.so_number).replace(/'/g, "\\'")}', this.checked)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></td>
+      <td class="p-3 text-center aging-admin-col ${adminColClass}">
+        <div class="flex items-center justify-center gap-2">
+          <button onclick="openAgingRecordModal('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Edit</button>
+          <button onclick="deleteAgingRecord('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white">Delete</button>
+        </div>
+      </td>
       <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.shipment_no || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
@@ -4115,6 +4156,7 @@ function renderAgingTable() {
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
+      <td class="p-3 text-center text-[10px] ${r.stage_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.stage_remarks || ''}">${r.stage_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtRenderedMinutes(r.stage_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.stage_productivity)}">${fmtProductivity(r.stage_productivity)}</td>
@@ -4127,15 +4169,10 @@ function renderAgingTable() {
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
+      <td class="p-3 text-center text-[10px] ${r.check_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.check_remarks || ''}">${r.check_remarks || '—'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtRenderedMinutes(r.check_rendered)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${productivityColorClass(r.check_productivity)}">${fmtProductivity(r.check_productivity)}</td>
-      <td class="p-3 text-center aging-admin-col ${adminColClass}">
-        <div class="flex items-center justify-center gap-2">
-          <button onclick="openAgingRecordModal('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Edit</button>
-          <button onclick="deleteAgingRecord('${String(r.so_number).replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-rose-700 hover:bg-rose-600 text-white">Delete</button>
-        </div>
-      </td>
     </tr>`).join('');
 
   updateAgingBulkBar();
@@ -4153,19 +4190,21 @@ function exportAgingToExcel() {
     'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
     'Picker Remarks': r.pick_remarks || '', 'Picker Rendered Min': r.pick_rendered ?? '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
     'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
+    'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
     'Staging Remarks': r.stage_remarks || '', 'Staging Rendered Min': r.stage_rendered ?? '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
     'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
     'Pulled Remarks': r.pull_remarks || '', 'Pulled Rendered Min': r.pull_rendered ?? '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
     'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
+    'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty),
     'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered ?? '', 'Check Productivity': fmtProductivity(r.check_productivity)
   }));
 
   const ws = XLSX.utils.json_to_sheet(excelRows);
   ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 14 }, { wch: 12 },
     { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
     { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 },
-    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 12 }, { wch: 12 }];
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   const statusVal = document.getElementById('aging-status-filter').value;
   const sheetLabel = (statusVal && statusVal !== 'ALL') ? statusVal.charAt(0) + statusVal.slice(1).toLowerCase() : 'All';
