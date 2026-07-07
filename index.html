@@ -3110,11 +3110,11 @@ async function refreshSidePanel() {
     return;
   }
 
-  // Pull Customer + OBD Number from shipments since activity_logs only stores so_number
+  // Pull Customer + OBD Number + Truck Type from shipments since activity_logs only stores so_number
   const soNumbers = [...new Set(sidePanelRawData.map(l => l.so_number).filter(Boolean))];
   let shipMap = {};
   if (soNumbers.length) {
-    const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number,sold_to_party_name').in('so_number', soNumbers);
+    const { data: shipRows } = await supabaseClient.from('shipments').select('so_number,obd_number,sold_to_party_name,truck_type').in('so_number', soNumbers);
     (shipRows || []).forEach(s => { shipMap[s.so_number] = s; });
   }
   sidePanelShipMap = shipMap;
