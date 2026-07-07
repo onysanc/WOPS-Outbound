@@ -123,6 +123,9 @@
   .alert-chip.overdue{background:rgba(244,63,94,.14);color:#fb7185;border:1px solid rgba(244,63,94,.4)}
   .alert-chip.at-risk{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
   .alert-chip.idle{background:rgba(219,39,119,.14);color:#f472b6;border:1px solid rgba(219,39,119,.4)}
+  .alert-chip.idle.clickable{cursor:pointer;transition:background .15s ease,transform .1s ease}
+  .alert-chip.idle.clickable:hover{background:rgba(219,39,119,.28);transform:translateY(-1px)}
+  .alert-chip.idle.clickable:active{transform:translateY(0)}
 
   /* --- Kanban board --- */
   .kanban-col{background:#0c1220;border:1px solid #1a2436;border-radius:.6rem;min-height:120px;display:flex;flex-direction:column}
@@ -290,6 +293,10 @@
     <div>
       <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Tab Access <span class="text-slate-600 normal-case font-normal">(select which tabs this user can open)</span></label>
       <div id="user-modal-tabs" class="grid grid-cols-2 gap-2 text-xs"></div>
+    </div>
+    <div>
+      <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Special Permissions <span class="text-slate-600 normal-case font-normal">(extra actions beyond tab access)</span></label>
+      <div id="user-modal-perms" class="grid grid-cols-1 gap-2 text-xs"></div>
     </div>
     <div class="flex gap-2 pt-2">
       <button onclick="closeUserModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
@@ -1888,6 +1895,14 @@ const ALL_TABS = [
   { key: 'aging', label: 'Master Records' },
   { key: 'usermgmt', label: 'User Management' }
 ];
+// Special permissions: grant a specific capability without opening up a whole
+// tab. Stored in the same `allowed_tabs` array as the tab keys above (it's
+// just a plain text[] column) so no schema/RPC change was needed — these
+// keys just don't correspond to any ALL_TABS entry, so they never render a
+// nav button, and userCanAccess()/the tab-rendering loop ignore them.
+const EXTRA_PERMISSIONS = [
+  { key: 'idle_dismiss', label: 'Dismiss Idle Alerts (Workbench)', hint: 'Lets this user click an idle-personnel chip and mark them out / already finished for the day.' }
+];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
 // "Remember me" — stored in localStorage with no expiry, so a device stays
@@ -1985,6 +2000,16 @@ function userCanAccess(tabKey) {
   return !!currentUser && (currentUser.allowed_tabs || []).includes(tabKey);
 }
 
+// The literal "admin" account always has every special permission implicitly
+// (matches isAdminAccount's existing "one account is always fully trusted"
+// convention below); everyone else needs the idle_dismiss permission
+// explicitly granted from User Management.
+function userCanDismissIdle() {
+  if (!currentUser) return false;
+  if (isAdminAccount()) return true;
+  return (currentUser.allowed_tabs || []).includes('idle_dismiss');
+}
+
 function firstAllowedTab() {
   const found = ALL_TABS.find(t => userCanAccess(t.key));
   return found ? found.key : 'workbench';
@@ -2065,7 +2090,12 @@ function renderUsersTable() {
       <td class="p-3">
         <div class="flex flex-wrap gap-1">
           ${(u.allowed_tabs && u.allowed_tabs.length)
-            ? u.allowed_tabs.map(t => `<span class="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">${(ALL_TABS.find(a => a.key === t) || {}).label || t}</span>`).join('')
+            ? u.allowed_tabs.map(t => {
+                const tab = ALL_TABS.find(a => a.key === t);
+                if (tab) return `<span class="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">${tab.label}</span>`;
+                const perm = EXTRA_PERMISSIONS.find(p => p.key === t);
+                return `<span class="px-1.5 py-0.5 rounded text-[9px] bg-pink-500/15 text-pink-300 border border-pink-500/30" title="Special permission">⚡ ${perm ? perm.label : t}</span>`;
+              }).join('')
             : '<span class="text-[10px] text-slate-600 italic">No tabs assigned</span>'}
         </div>
       </td>
@@ -2091,6 +2121,11 @@ function openUserModal(userId) {
     <label class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 cursor-pointer hover:border-slate-700">
       <input type="checkbox" value="${t.key}" ${activeTabs.includes(t.key) ? 'checked' : ''} class="user-modal-tab-checkbox w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded">
       <span class="text-[11px] text-slate-300">${t.label}</span>
+    </label>`).join('');
+  document.getElementById('user-modal-perms').innerHTML = EXTRA_PERMISSIONS.map(p => `
+    <label class="flex items-start gap-2 bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 cursor-pointer hover:border-slate-700">
+      <input type="checkbox" value="${p.key}" ${activeTabs.includes(p.key) ? 'checked' : ''} class="user-modal-tab-checkbox w-3.5 h-3.5 text-pink-500 bg-slate-900 border-slate-700 rounded mt-0.5">
+      <span class="flex flex-col"><span class="text-[11px] text-slate-300">${p.label}</span><span class="text-[10px] text-slate-600">${p.hint || ''}</span></span>
     </label>`).join('');
 
   document.getElementById('user-modal').classList.remove('hidden');
@@ -6242,6 +6277,23 @@ async function refreshOpsAlertBar() {
   const { startOfOpDay } = operationalDayWindowForDate(defaultOperationalDateStr());
   const { data: todayLogs, error: todayErr } = await supabaseClient.from('activity_logs')
     .select('personnel_name,role,status,start_time,end_time').gte('start_time', startOfOpDay.toISOString());
+
+  // Idle chips can be dismissed by Outbound/Admin ("mark as out / already
+  // finished for the day") straight from the alert bar — see dismissIdlePersonnel().
+  // A dismissal is tied to the exact last-completed-task end_time it was raised
+  // for, so it only silences THAT gap: if the person is later dispatched and
+  // completes a new task, their "last completed" end_time changes, the old
+  // dismissal no longer matches, and they go back to being flagged idle as
+  // usual if nothing new is started within IDLE_ALERT_MINUTES.
+  const dismissedKeys = new Set();
+  try {
+    const { data: dismissals, error: dismissErr } = await supabaseClient.from('idle_dismissals')
+      .select('personnel_name,last_end_at').gte('dismissed_at', startOfOpDay.toISOString());
+    if (!dismissErr && dismissals) {
+      dismissals.forEach(d => dismissedKeys.add(`${d.personnel_name}||${new Date(d.last_end_at).toISOString()}`));
+    }
+  } catch (e) { /* idle_dismissals table not set up yet — treat as no dismissals */ }
+
   const idleChips = [];
   if (!todayErr && todayLogs) {
     const byPersonnel = {};
@@ -6254,20 +6306,49 @@ async function refreshOpsAlertBar() {
       const completed = logs.filter(l => l.status === 'Completed' && l.end_time).sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
       if (!completed.length) return; // nothing completed yet today — no idle gap to measure
       const lastEnd = new Date(completed[0].end_time);
+      if (dismissedKeys.has(`${name}||${lastEnd.toISOString()}`)) return; // marked out/finished for this gap — stay quiet until a new task completes
       const breakOverlap = computeBreakOverlapMinutes(lastEnd, now);
       const idleMin = Math.max(0, (now - lastEnd) / 60000 - breakOverlap);
-      if (idleMin >= IDLE_ALERT_MINUTES && idleMin < IDLE_ALERT_MAX_MINUTES) idleChips.push({ name, role: completed[0].role, label: `idle ${fmtMin(idleMin)}`, sortVal: idleMin });
+      if (idleMin >= IDLE_ALERT_MINUTES && idleMin < IDLE_ALERT_MAX_MINUTES) idleChips.push({ name, role: completed[0].role, label: `idle ${fmtMin(idleMin)}`, sortVal: idleMin, lastEndISO: lastEnd.toISOString() });
     });
   }
   idleChips.sort((a, b) => b.sortVal - a.sortVal);
 
   const chip = (c, cls) => `<span class="alert-chip ${cls} flash"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label}</span>`;
+  const canDismiss = userCanDismissIdle();
+  const idleChip = c => canDismiss
+    ? `<span class="alert-chip idle clickable flash" title="Click to mark ${c.name} as out / already finished for the day — stops the idle alert unless they start a new task" onclick="dismissIdlePersonnel('${c.name.replace(/'/g, "\\'")}','${c.role.replace(/'/g, "\\'")}','${c.lastEndISO}', this)"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label} <span class="opacity-60">✕</span></span>`
+    : chip(c, 'idle');
   const parts = [
     ...overdueChips.map(c => chip(c, 'overdue')),
     ...atRiskChips.map(c => chip(c, 'at-risk')),
-    ...idleChips.map(c => chip(c, 'idle')),
+    ...idleChips.map(idleChip),
   ];
   row.innerHTML = parts.length ? parts.join('') : '<span class="text-[11px] text-emerald-400/80 italic">✓ All clear — no overdue/at-risk tasks or idle personnel.</span>';
+}
+
+// Marks an idle-alert personnel as "out" / already finished for the day —
+// stops them re-popping as idle for THIS gap (their current last-completed
+// task) without needing a new task logged against their name. Scoped to the
+// exact last_end_at so a later dispatch+completion naturally re-arms idle
+// tracking (see refreshOpsAlertBar for the matching lookup). Gated behind the
+// idle_dismiss special permission (or the admin account) — see
+// userCanDismissIdle() and User Management → Special Permissions.
+async function dismissIdlePersonnel(name, role, lastEndISO, chipEl) {
+  if (!userCanDismissIdle()) return showToast("You don't have permission to dismiss idle alerts. Ask an admin to grant it in User Management.", "error");
+  const ok = await showConfirm(`Mark ${name} (${role}) as out / already finished for the day? They won't be flagged idle again unless they start a new task.`);
+  if (!ok) return;
+  if (chipEl) chipEl.style.opacity = '0.5';
+  const { error } = await supabaseClient.from('idle_dismissals').insert([{
+    personnel_name: name, role, last_end_at: lastEndISO, dismissed_by: (currentUser && currentUser.username) || null
+  }]);
+  if (error) {
+    showToast("Could not dismiss idle alert: " + error.message, "error");
+    if (chipEl) chipEl.style.opacity = '1';
+    return;
+  }
+  showToast(`${name} marked as out — idle alert cleared.`, "success");
+  refreshOpsAlertBar();
 }
 let _opsAlertInterval = null;
 function subscribeOpsAlertRealtime() {
