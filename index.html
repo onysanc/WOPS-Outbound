@@ -4760,16 +4760,21 @@ function applyAgingAdminUI() {
   }
 }
 
-// Defaults the Record Date filter to today→today the first time the tab is
-// opened in this session, per the "current day to last day" (i.e. today's
-// records) starting view. Only applied once so it never clobbers a filter
-// range the user has since chosen themselves.
+// Defaults the Record Date filter to the 1st day of the current month
+// through the last day of the current month, the first time the tab is
+// opened in this session. Only applied once so it never clobbers a filter
+// range the user has since chosen themselves. Built from local Y/M/D parts
+// (not toISOString) so it matches the browser's own calendar month, same
+// reasoning as localDateStr() above.
 function ensureAgingDefaultDateRange() {
   if (agingDatesInitialized) return;
   agingDatesInitialized = true;
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('aging-date-from').value = today;
-  document.getElementById('aging-date-to').value = today;
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const toYmd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  document.getElementById('aging-date-from').value = toYmd(firstOfMonth);
+  document.getElementById('aging-date-to').value = toYmd(lastOfMonth);
 }
 
 // Populate the Customer / Truck Type dropdowns from whatever values actually
