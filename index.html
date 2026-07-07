@@ -853,6 +853,9 @@
     <!-- MVP badges: one per ranking criterion, company-wide, always shown together -->
     <div id="mvp-badge-row" class="flex flex-wrap gap-2"></div>
 
+    <!-- Side by side on desktop (lg+), stacked on smaller screens -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+
     <!-- ============ PICKING OPERATIONS BOARD (Picker + Puller) ============ -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
@@ -945,6 +948,8 @@
           <tbody id="bulletin-container-CHECK"></tbody>
         </table>
       </div>
+    </div>
+
     </div>
 
     <p class="text-[10px] text-slate-600">Productivity = Active Minutes ÷ 390 (standard daily working minutes) × 100%. Speed % = Target Minutes ÷ Rendered Minutes × 100, capped at 150%. Accuracy is volume-weighted across a person's graded roles for the day (Picker graded downstream by Staging Checker discrepancies; Staging/Outbound Checker graded on their own logged discrepancies; Puller is untracked — shown as "—"). Every personnel on file always holds a rank on whichever board matches their role(s), even with zero logged activity for the selected Activity Day — ranking within a board is by a single selected metric only, with zero-activity personnel always placed last. A person holding roles in both pools (uncommon) appears on both boards, scored only on that board's roles.</p>
