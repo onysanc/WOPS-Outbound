@@ -712,11 +712,11 @@
          active, 15+ min since their last completion) — replaces the old
          recent-activity ticker so the floor sees what needs attention, not just
          what already happened. -->
-    <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-2.5">
-      <span class="text-[10px] uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1 flex-shrink-0">
+    <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 flex flex-wrap items-start gap-2.5">
+      <span class="text-[10px] uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1 flex-shrink-0 pt-0.5">
         <span class="w-1.5 h-1.5 rounded-full bg-rose-400 overdue-ring"></span>ALERTS
       </span>
-      <div id="ops-alert-row" class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+      <div id="ops-alert-row" class="flex flex-wrap items-start content-start gap-2 flex-1 min-w-0 max-h-[92px] overflow-y-auto pr-1">
         <span class="text-[11px] text-slate-600 italic">Loading alerts...</span>
       </div>
     </div>
@@ -6202,6 +6202,7 @@ function closeScannerModal() {
 // metrics.
 const AT_RISK_MINUTES_BEFORE_TARGET = 15;
 const IDLE_ALERT_MINUTES = 15;
+const IDLE_ALERT_MAX_MINUTES = 180; // beyond this, they're most likely already out/off the clock, not actually idle — stop flagging them
 
 async function refreshOpsAlertBar() {
   const row = document.getElementById('ops-alert-row');
@@ -6231,7 +6232,9 @@ async function refreshOpsAlertBar() {
   atRiskChips.sort((a, b) => a.sortVal - b.sortVal);
 
   // --- Idle Personnel: logged activity already today (i.e. "previously in"),
-  // nothing currently Ongoing/Paused, and 15+ min since their last completion ---
+  // nothing currently Ongoing/Paused, and 15+ min since their last completion —
+  // any configured break window (e.g. lunch) overlapping that gap is subtracted
+  // first, so someone on a scheduled break isn't flagged as idle ---
   const { startOfOpDay } = operationalDayWindowForDate(defaultOperationalDateStr());
   const { data: todayLogs, error: todayErr } = await supabaseClient.from('activity_logs')
     .select('personnel_name,role,status,start_time,end_time').gte('start_time', startOfOpDay.toISOString());
@@ -6246,8 +6249,10 @@ async function refreshOpsAlertBar() {
       if (logs.some(l => l.status === 'Ongoing' || l.status === 'Paused')) return; // currently working — not idle
       const completed = logs.filter(l => l.status === 'Completed' && l.end_time).sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
       if (!completed.length) return; // nothing completed yet today — no idle gap to measure
-      const idleMin = (now - new Date(completed[0].end_time)) / 60000;
-      if (idleMin >= IDLE_ALERT_MINUTES) idleChips.push({ name, role: completed[0].role, label: `idle ${fmtMin(idleMin)}`, sortVal: idleMin });
+      const lastEnd = new Date(completed[0].end_time);
+      const breakOverlap = computeBreakOverlapMinutes(lastEnd, now);
+      const idleMin = Math.max(0, (now - lastEnd) / 60000 - breakOverlap);
+      if (idleMin >= IDLE_ALERT_MINUTES && idleMin < IDLE_ALERT_MAX_MINUTES) idleChips.push({ name, role: completed[0].role, label: `idle ${fmtMin(idleMin)}`, sortVal: idleMin });
     });
   }
   idleChips.sort((a, b) => b.sortVal - a.sortVal);
