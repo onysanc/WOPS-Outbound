@@ -1123,7 +1123,7 @@
           </table>
         </div>
       </div>
-      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—).</p>
+      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person and capped at 150% (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—). Every personnel on file who holds a role in a board's pool always appears on that board, even with zero logged activity for the selected Activity Day — zero-activity personnel show dashes and always sink to the bottom regardless of sort.</p>
     </div>
 
     <!-- Zero-Discrepancy Streaks -->
@@ -3347,6 +3347,23 @@ function sumGroupMinutes(logs) {
   return dedupeGroupMinutes(logs).reduce((s, m) => s + m, 0);
 }
 
+// Full personnel roster (deduped by name, with every role they hold), regardless
+// of whether they logged anything on this particular Activity Day — shared by
+// the Performance Summary AND the Analytics Role Leaderboards so both always
+// list every name on file, not just people with logged activity that day.
+async function refreshPersonnelRosterNames() {
+  const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role, excluded');
+  if (rosterErr) { console.error(rosterErr); return; }
+  const byName = {};
+  (roster || []).forEach(p => {
+    const key = (p.name || '').trim();
+    if (!key || p.excluded) return; // excluded personnel never appear on any leaderboard
+    if (!byName[key]) byName[key] = new Set();
+    byName[key].add(p.role);
+  });
+  bulletinRosterNames = Object.entries(byName).map(([name, roles]) => ({ name, roles: [...roles] }));
+}
+
 async function refreshBulletinBoard() {
   const dateInput = document.getElementById('bulletin-date');
   if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
@@ -3359,22 +3376,7 @@ async function refreshBulletinBoard() {
   if (error) return console.error(error);
   bulletinRawData = (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
-  // Full personnel roster, regardless of role or whether they logged anything on
-  // this particular Activity Day — the Performance Summary should always list
-  // every name on file so absentees/zero-activity personnel are visible too.
-  const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role, excluded');
-  if (rosterErr) {
-    console.error(rosterErr);
-  } else {
-    const byName = {};
-    (roster || []).forEach(p => {
-      const key = (p.name || '').trim();
-      if (!key || p.excluded) return; // excluded personnel never appear on the leaderboard at all
-      if (!byName[key]) byName[key] = new Set();
-      byName[key].add(p.role);
-    });
-    bulletinRosterNames = Object.entries(byName).map(([name, roles]) => ({ name, roles: [...roles] }));
-  }
+  await refreshPersonnelRosterNames();
 
   renderBulletinBoard();
 }
@@ -3759,6 +3761,11 @@ async function refreshAnalyticsView() {
   if (dayErr) { console.error(dayErr); return; }
   const filteredDayLogs = (dayLogs || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
+  // Role Leaderboards need the full personnel roster (so zero-activity people
+  // still show up) — usually already loaded by refreshBulletinBoard at app
+  // boot, but guard here too in case Analytics is the very first tab opened.
+  if (!bulletinRosterNames.length) await refreshPersonnelRosterNames();
+
   renderCycleTime(filteredDayLogs);
   renderDiscrepancyReport(filteredDayLogs);
   renderLeaderboard(filteredDayLogs);
@@ -3935,10 +3942,23 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
     lineRows.forEach(m => { if (m.shipment_no) byPersonnel[name].shipments.add(m.shipment_no); });
   });
 
+  // Every personnel on file who holds a role in this pool must appear on the
+  // board even with zero completed activity that day — reuses the same
+  // roster (bulletinRosterNames) the Performance Summary keeps refreshed, so
+  // both views always agree on who's on file. A roster name already present
+  // via batches above is left alone; only names with no activity get a blank
+  // placeholder entry (hasActivity:false, filled in below).
+  bulletinRosterNames.forEach(p => {
+    if (byPersonnel[p.name]) return; // already has activity
+    if (!p.roles.some(r => groupRoles.includes(r))) return; // no role in this pool
+    byPersonnel[p.name] = { name: p.name, batches: [], shipments: new Set(), _rosterRoles: p.roles.filter(r => groupRoles.includes(r)) };
+  });
+
   // Staging Checker logs for the day — used to grade downstream Picker Accuracy.
   const stagingLogsForDay = dayLogs.filter(l => l.role === 'Staging Checker');
 
   return Object.values(byPersonnel).map(p => {
+    const hasActivity = p.batches.length > 0;
     const totalQty = p.batches.reduce((s, b) => s + b.qty, 0);
     const totalMin = p.batches.reduce((s, b) => s + b.renderedMin, 0);
     const hits = p.batches.filter(b => b.isHit).length;
@@ -3992,17 +4012,22 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
     });
     const accuracyPct = anyGradeable ? (handledVol > 0 ? Math.max(0, Math.min(100, ((handledVol - discVol) / handledVol) * 100)) : 100) : null;
 
-    return { name: p.name, shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedPct, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct };
+    return { name: p.name, roles: p._rosterRoles || [...new Set(p.batches.map(b => b.role))], shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedPct, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct, hasActivity };
   });
 }
 
 function sortRoleLeaderboardRows(rows, sortKey) {
   const arr = [...rows];
-  if (sortKey === 'qty') return arr.sort((a, b) => b.qty - a.qty);
-  if (sortKey === 'productivity') return arr.sort((a, b) => b.productivityPct - a.productivityPct);
-  if (sortKey === 'idle') return arr.sort((a, b) => b.idleMin - a.idleMin);
-  if (sortKey === 'accuracy') return arr.sort((a, b) => (b.accuracyPct ?? -1) - (a.accuracyPct ?? -1));
-  return arr.sort((a, b) => (b.avgSpeedPct ?? -1) - (a.avgSpeedPct ?? -1)); // 'speed' — higher % vs target = faster = ranked first
+  arr.sort((a, b) => {
+    if (a.hasActivity !== b.hasActivity) return a.hasActivity ? -1 : 1;
+    if (!a.hasActivity) return a.name.localeCompare(b.name); // zero-activity personnel: alphabetical among themselves
+    if (sortKey === 'qty') return b.qty - a.qty;
+    if (sortKey === 'productivity') return b.productivityPct - a.productivityPct;
+    if (sortKey === 'idle') return b.idleMin - a.idleMin;
+    if (sortKey === 'accuracy') return (b.accuracyPct ?? -1) - (a.accuracyPct ?? -1);
+    return (b.avgSpeedPct ?? -1) - (a.avgSpeedPct ?? -1); // 'speed' — higher % vs target = faster = ranked first
+  });
+  return arr;
 }
 
 function renderRoleLeaderboard(groupKey, dayLogs) {
@@ -4011,14 +4036,31 @@ function renderRoleLeaderboard(groupKey, dayLogs) {
   const sortKey = ROLE_LEADERBOARD_SORT_STATE[groupKey] || 'speed';
   const rows = sortRoleLeaderboardRows(computeRoleLeaderboardRows(dayLogs, groupKey), sortKey);
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500 italic">No completed activity for this Activity Day.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500 italic">No personnel on file for this pool yet.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
-    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
-    return `<tr class="hover:bg-slate-900/40">
+    const medal = !r.hasActivity ? '—' : i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const rowClass = r.hasActivity ? 'hover:bg-slate-900/40' : 'hover:bg-slate-900/40 opacity-50';
+    const nameClass = r.hasActivity ? 'text-slate-200' : 'text-slate-500';
+    if (!r.hasActivity) {
+      return `<tr class="${rowClass}">
+        <td class="p-2 text-center font-bold text-slate-600">${medal}</td>
+        <td class="p-2 font-semibold ${nameClass}">${r.name}</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-center font-mono text-[10px] text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+      </tr>`;
+    }
+    return `<tr class="${rowClass}">
       <td class="p-2 text-center font-bold">${medal}</td>
-      <td class="p-2 font-semibold text-slate-200">${r.name}</td>
+      <td class="p-2 font-semibold ${nameClass}">${r.name}</td>
       <td class="p-2 text-right font-mono text-slate-300">${r.shipments}</td>
       <td class="p-2 text-right font-mono text-amber-400">${r.qty.toFixed(0)}</td>
       <td class="p-2 text-center font-mono text-[10px] ${r.misses > 0 ? 'text-rose-400' : 'text-emerald-400'}">${r.hits} Hit, ${r.misses} Miss</td>
