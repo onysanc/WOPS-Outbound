@@ -630,10 +630,6 @@
         <input type="text" id="pe-obd-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
       </div>
       <div>
-        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Billing Number</label>
-        <input type="text" id="pe-billing-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
         <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">SO Amount</label>
         <input type="number" step="0.01" min="0" id="pe-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
       </div>
@@ -1484,24 +1480,15 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <th class="p-3 text-left">Shipment</th>
             <th class="p-3 text-left">S.O. Number</th>
             <th class="p-3 text-left">OBD Number</th>
-            <th class="p-3 text-left">Billing Number</th>
             <th class="p-3 text-left">Ship To Party Name</th>
             <th class="p-3 text-center border-l border-slate-800/60 text-slate-300">Picker Name</th>
-            <th class="p-3 text-center">Picker Start</th>
-            <th class="p-3 text-center">Picker End</th>
             <th class="p-3 text-center border-l border-slate-800/60 text-cyan-300">Staging Name</th>
-            <th class="p-3 text-center">Staging Start</th>
-            <th class="p-3 text-center">Staging End</th>
             <th class="p-3 text-center border-l border-slate-800/60 text-purple-300">Pulled Name</th>
-            <th class="p-3 text-center">Pulled Start</th>
-            <th class="p-3 text-center">Pulled End</th>
             <th class="p-3 text-center border-l border-slate-800/60 text-emerald-300">Check Name</th>
-            <th class="p-3 text-center">Check Start</th>
-            <th class="p-3 text-center">Check End</th>
           </tr>
         </thead>
         <tbody id="pending-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="21" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -5216,12 +5203,12 @@ let pendingRawRows = [];
 
 async function loadPendingQueue() {
   const tbody = document.getElementById('pending-rows');
-  tbody.innerHTML = `<tr><td colspan="21" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="21" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -5306,7 +5293,7 @@ function renderPendingTable() {
   document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="21" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
     return;
   }
 
@@ -5319,20 +5306,11 @@ function renderPendingTable() {
       <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
       <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
-      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.billing_number || '—'}</td>
       <td class="p-3 text-slate-300">${r.customer || 'N/A'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
-      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
     </tr>`).join('');
 }
 
@@ -5344,7 +5322,6 @@ function openPendingEditModal(so_number) {
   document.getElementById('pe-shipment-no').value = row.shipment_no || '';
   document.getElementById('pe-so-number').value = row.so_number || '';
   document.getElementById('pe-obd-number').value = row.obd_number || '';
-  document.getElementById('pe-billing-number').value = row.billing_number || '';
   document.getElementById('pe-route').value = row.route_description || '';
   document.getElementById('pe-customer').value = row.customer || '';
   document.getElementById('pe-so-amount').value = row.so_amount ?? 0;
@@ -5370,7 +5347,6 @@ async function savePendingEditModal() {
     so_number: soNumber,
     shipment_no: document.getElementById('pe-shipment-no').value.trim(),
     obd_number: document.getElementById('pe-obd-number').value.trim(),
-    billing_number: document.getElementById('pe-billing-number').value.trim(),
     route_description: document.getElementById('pe-route').value.trim(),
     sold_to_party_name: document.getElementById('pe-customer').value.trim(),
     truck_type: document.getElementById('pe-truck-type').value,
@@ -6466,11 +6442,25 @@ async function refreshKanbanBoard() {
     return `<div class="kanban-col">
       <div class="kanban-col-head ${c.color}"><span>${c.label}</span><span>${list.length}</span></div>
       <div class="kanban-body">
-        ${shown.length ? shown.map(sn => `<div class="kanban-chip">${sn}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
+        ${shown.length ? shown.map(sn => `<div class="kanban-chip cursor-pointer hover:border-emerald-500 hover:text-emerald-300 transition" title="Open in Pending Queue" onclick="goToPendingQueueForShipment('${sn.replace(/'/g, "\\'")}')">${sn}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
         ${list.length > shown.length ? `<p class="text-[10px] text-slate-500 px-1">+${list.length - shown.length} more</p>` : ''}
       </div>
     </div>`;
   }).join('');
+}
+
+// Clicking a shipment chip in the Pipeline Summary board jumps straight to
+// the Pending Queue, pre-filtered down to that one shipment. Routed through
+// setView() (not activateView()) so the existing per-user tab permission
+// system still applies: a user who hasn't been granted the "Pending Queue"
+// tab by an admin in User Management gets the normal access-denied toast
+// instead of the queue, exactly as if they'd clicked the nav tab directly.
+function goToPendingQueueForShipment(shipmentNo) {
+  const searchBox = document.getElementById('pending-search');
+  const stageFilter = document.getElementById('pending-stage-filter');
+  if (searchBox) searchBox.value = shipmentNo;
+  if (stageFilter) stageFilter.value = 'ALL';
+  setView('pending'); // loadPendingQueue() (triggered by activateView) re-renders using the filter values above
 }
 
 // --- COUNT-UP ANIMATION for Pipeline Summary KPI numbers ---
