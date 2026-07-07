@@ -1000,117 +1000,67 @@
       </div>
     </div>
 
-    <!-- Role Leaderboards: Picking / Staging Checking / Pulling / Outbound Checking -->
+    <!-- Role Leaderboards: grouped into Picking Operations (Picker + Puller) and Checking Operations (Staging Checker + Outbound Checker) -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-5">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-semibold text-slate-200">🏆 Role Leaderboards <span class="text-slate-500 font-normal">(per-stage rankings, selected Activity Day)</span></h3>
+        <h3 class="text-sm font-semibold text-slate-200">🏆 Role Leaderboards <span class="text-slate-500 font-normal">(grouped rankings, selected Activity Day)</span></h3>
         <div class="flex flex-wrap gap-2">
-          <button onclick="exportTableToCSVGeneric('lb-picker-table', 'picking-leaderboard.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
-          <button onclick="exportTableToXLSXGeneric('lb-picker-table', 'role-leaderboards.xlsx', 'Picking')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+          <button onclick="exportTableToCSVGeneric('lb-pickgroup-table', 'picking-operations-leaderboard.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+          <button onclick="exportTableToXLSXGeneric('lb-pickgroup-table', 'role-leaderboards.xlsx', 'Picking Operations')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
           <button onclick="exportSectionToPDF('view-analytics')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
         </div>
       </div>
 
-      <!-- Picking Rankings -->
+      <!-- Picking Operations Rankings (Picker + Puller combined) -->
       <div class="space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h4 class="text-xs font-bold text-green-400 uppercase tracking-wider">🧺 Picking Rankings</h4>
+          <h4 class="text-xs font-bold text-green-400 uppercase tracking-wider">🧺 Picking Operations Rankings <span class="text-slate-500 font-normal normal-case">(Picker + Puller)</span></h4>
           <div class="flex items-center gap-1.5">
             <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
-            <select onchange="setRoleLeaderboardSort('Picker', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
-              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            <select onchange="setRoleLeaderboardSort('PICK_GROUP', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed %</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
             </select>
           </div>
         </div>
         <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-          <table id="lb-picker-table" class="w-full text-left text-xs border-collapse">
+          <table id="lb-pickgroup-table" class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
               <tr>
                 <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
-                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Speed %</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
                 <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
               </tr>
             </thead>
-            <tbody id="lb-picker-rows" class="divide-y divide-slate-800/50"></tbody>
+            <tbody id="lb-pickgroup-rows" class="divide-y divide-slate-800/50"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Staging Checking Rankings -->
+      <!-- Checking Operations Rankings (Staging Checker + Outbound Checker combined) -->
       <div class="space-y-2">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h4 class="text-xs font-bold text-sky-300 uppercase tracking-wider">🧾 Staging Checking Rankings</h4>
+          <h4 class="text-xs font-bold text-sky-300 uppercase tracking-wider">🧾 Checking Operations Rankings <span class="text-slate-500 font-normal normal-case">(Staging Checker + Outbound Checker)</span></h4>
           <div class="flex items-center gap-1.5">
             <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
-            <select onchange="setRoleLeaderboardSort('Staging Checker', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
-              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            <select onchange="setRoleLeaderboardSort('CHECK_GROUP', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed %</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
             </select>
           </div>
         </div>
         <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-          <table id="lb-staging-table" class="w-full text-left text-xs border-collapse">
+          <table id="lb-checkgroup-table" class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
               <tr>
                 <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
-                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Speed %</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
                 <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
               </tr>
             </thead>
-            <tbody id="lb-staging-rows" class="divide-y divide-slate-800/50"></tbody>
+            <tbody id="lb-checkgroup-rows" class="divide-y divide-slate-800/50"></tbody>
           </table>
         </div>
       </div>
-
-      <!-- Pulling Rankings -->
-      <div class="space-y-2">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h4 class="text-xs font-bold text-pink-400 uppercase tracking-wider">🚚 Pulling Rankings</h4>
-          <div class="flex items-center gap-1.5">
-            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
-            <select onchange="setRoleLeaderboardSort('Puller', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
-              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
-            </select>
-          </div>
-        </div>
-        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-          <table id="lb-puller-table" class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-              <tr>
-                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
-                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
-                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
-              </tr>
-            </thead>
-            <tbody id="lb-puller-rows" class="divide-y divide-slate-800/50"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Outbound Checking Rankings -->
-      <div class="space-y-2">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h4 class="text-xs font-bold text-blue-400 uppercase tracking-wider">✅ Outbound Checking Rankings</h4>
-          <div class="flex items-center gap-1.5">
-            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
-            <select onchange="setRoleLeaderboardSort('Outbound Checker', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
-              <option value="speed">Speed</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
-            </select>
-          </div>
-        </div>
-        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-          <table id="lb-outbound-table" class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-              <tr>
-                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
-                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Avg Speed</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
-                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
-              </tr>
-            </thead>
-            <tbody id="lb-outbound-rows" class="divide-y divide-slate-800/50"></tbody>
-          </table>
-        </div>
-      </div>
-      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed columns show shipment-group completion duration (lower is faster). Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—).</p>
+      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—).</p>
     </div>
 
     <!-- Zero-Discrepancy Streaks -->
@@ -1268,28 +1218,64 @@
    <div class="grid grid-cols-3 gap-6">
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
       <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">👤 Personnel Roster</h2>
-      <form id="personnel-form" onsubmit="addPersonnel(event)" class="flex gap-2">
+      <form id="personnel-form" onsubmit="addPersonnel(event)" class="space-y-2">
         <input type="text" id="personnel-name-input" placeholder="Full name" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
-        <select id="personnel-role-input" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2">
-          <option value="Picker">Picker</option>
-          <option value="Staging Checker">Staging Checker</option>
-          <option value="Puller">Puller</option>
-          <option value="Outbound Checker">Outbound Checker</option>
-        </select>
-        <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 text-xs font-bold rounded-lg">+</button>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div>
+            <label class="block text-[9px] text-slate-500 mb-1 uppercase tracking-wide">Main Role</label>
+            <select id="personnel-role-input" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full">
+              <option value="Picker">Picker</option>
+              <option value="Staging Checker">Staging Checker</option>
+              <option value="Puller">Puller</option>
+              <option value="Outbound Checker">Outbound Checker</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[9px] text-slate-500 mb-1 uppercase tracking-wide">Secondary Role</label>
+            <select id="personnel-role2-input" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full">
+              <option value="">— None —</option>
+              <option value="Picker">Picker</option>
+              <option value="Staging Checker">Staging Checker</option>
+              <option value="Puller">Puller</option>
+              <option value="Outbound Checker">Outbound Checker</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[9px] text-slate-500 mb-1 uppercase tracking-wide">Third Role</label>
+            <select id="personnel-role3-input" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full">
+              <option value="">— None —</option>
+              <option value="Picker">Picker</option>
+              <option value="Staging Checker">Staging Checker</option>
+              <option value="Puller">Puller</option>
+              <option value="Outbound Checker">Outbound Checker</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[9px] text-slate-500 mb-1 uppercase tracking-wide">Fourth Role</label>
+            <select id="personnel-role4-input" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full">
+              <option value="">— None —</option>
+              <option value="Picker">Picker</option>
+              <option value="Staging Checker">Staging Checker</option>
+              <option value="Puller">Puller</option>
+              <option value="Outbound Checker">Outbound Checker</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 text-xs font-bold rounded-lg">+ Add Personnel</button>
       </form>
       <div class="pt-1">
         <button type="button" onclick="document.getElementById('personnel-paste-wrap').classList.toggle('hidden')" class="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300">⇄ Or paste rows copied from Excel instead</button>
         <div id="personnel-paste-wrap" class="hidden mt-2 space-y-2">
-          <textarea id="personnel-paste" rows="4" placeholder="Personnel	Designation
-J. BARRICA	Picker
-J. SO	Staging Checker" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
-          <p class="text-[10px] text-slate-600">Header row required: <span class="text-slate-500">Personnel, Designation</span>. Designation must exactly match: <span class="text-slate-500">Picker, Staging Checker, Puller, Outbound Checker</span>.</p>
+          <textarea id="personnel-paste" rows="4" placeholder="Personnel	Main Role	Secondary Role	Third Role	Fourth Role
+J. BARRICA	Picker	Puller		
+J. SO	Staging Checker			" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"></textarea>
+          <p class="text-[10px] text-slate-600">Header row required: <span class="text-slate-500">Personnel, Main Role</span> (Secondary Role / Third Role / Fourth Role columns are optional). Each role value must exactly match: <span class="text-slate-500">Picker, Staging Checker, Puller, Outbound Checker</span>. Legacy "Designation" header is still accepted as Main Role.</p>
           <button type="button" onclick="importPersonnelPaste()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">Import Pasted Personnel</button>
           <p id="personnel-paste-status" class="text-[11px] text-slate-500"></p>
         </div>
       </div>
       <div id="personnel-list-container" class="space-y-3 max-h-[420px] overflow-y-auto"></div>
+      <p class="text-[10px] text-slate-600 border-t border-slate-800/60 pt-3">Main / Secondary / Third / Fourth Role define every role a person may be assigned to (there are only 4 possible roles, so this covers every combination). Each role still gets its own activity logs and target — the Role Leaderboards group <span class="text-slate-400 font-semibold">Picker + Puller</span> into one "Picking Operations" board and <span class="text-slate-400 font-semibold">Staging Checker + Outbound Checker</span> into one "Checking Operations" board, so a person's work under any of their roles counts on the right board.</p>
     </div>
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -3331,7 +3317,7 @@ async function refreshBulletinBoard() {
 let bulletinRankMetric = 'productivity';
 const BULLETIN_METRIC_LABELS = {
   productivity: 'Productivity %',
-  speed: 'Speed (Selling Units/Min)',
+  speed: 'Speed % (vs. Target)',
   accuracy: 'Accuracy %',
   idle: 'Idle Time (least first)'
 };
@@ -3410,7 +3396,13 @@ function computeBulletinEntries() {
     const volume = completed.reduce((s, l) => s + (parseFloat(l.total_qty) || 0), 0);
     const activeMinutes = sumGroupMinutes(completed);
     const activeHours = activeMinutes / 60;
-    const speed = activeMinutes > 0 ? volume / activeMinutes : 0;
+    // Speed is now a TARGET-BASED PERCENTAGE, not raw units/min: each distinct
+    // task batch (same role + start_time) is scored at (Target Minutes ÷
+    // Rendered Minutes × 100) — 100% = exactly hit the per-role target rate
+    // (e.g. 180/hr for a Picker on AUV/4W) — and a person's overall Speed % is
+    // the plain average of that score across every task batch they completed,
+    // e.g. one task at 100% and a second at 80% averages to 90%.
+    const speedPct = averageSpeedPctForLogs(completed);
     const productivityPct = (activeHours / STANDARD_DAILY_HOURS) * 100;
     const hasActivity = logs.length > 0;
 
@@ -3452,8 +3444,31 @@ function computeBulletinEntries() {
     }
     const idleMinutes = gaps.reduce((s, g) => s + g.minutes, 0);
 
-    return { name, roles, shipments, qtyLines, volume, activeMinutes, speed, productivityPct, accuracyPct, idleMinutes, gaps, hasActivity };
+    return { name, roles, shipments, qtyLines, volume, activeMinutes, speedPct, productivityPct, accuracyPct, idleMinutes, gaps, hasActivity };
   });
+}
+
+// Shared batching + averaging helper: groups a set of Completed logs into task
+// batches (same role + start_time = one dispatched task, so a multi-line SO
+// batch isn't double counted), scores each batch's Speed % against ITS OWN
+// role's target (Target Minutes ÷ Rendered Minutes × 100), then returns the
+// plain average across batches. A person with no gradeable batch (no target
+// set, or zero completed work) returns null so callers show "—" instead of 0%.
+function averageSpeedPctForLogs(logs) {
+  const batches = {};
+  logs.forEach(l => {
+    const key = `${l.role}||${l.start_time}`;
+    (batches[key] = batches[key] || []).push(l);
+  });
+  const pcts = [];
+  Object.values(batches).forEach(members => {
+    const rep = members[0];
+    const targetMin = (rep.target_hours || 0) * 60;
+    const renderedMin = rep.rendered_minutes || 0;
+    if (targetMin > 0 && renderedMin > 0) pcts.push((targetMin / renderedMin) * 100);
+  });
+  if (!pcts.length) return null;
+  return pcts.reduce((s, p) => s + p, 0) / pcts.length;
 }
 
 function renderBulletinBoard() {
@@ -3480,7 +3495,13 @@ function renderBulletinBoard() {
     if (a.hasActivity !== b.hasActivity) return a.hasActivity ? -1 : 1;
     if (!a.hasActivity) return a.name.localeCompare(b.name);
     switch (bulletinRankMetric) {
-      case 'speed': return b.speed - a.speed;
+      case 'speed': {
+        const av = a.speedPct, bv = b.speedPct;
+        if (av == null && bv == null) return 0;
+        if (av == null) return 1;
+        if (bv == null) return -1;
+        return bv - av;
+      }
       case 'idle': return a.idleMinutes - b.idleMinutes; // less idle = better rank
       case 'accuracy': {
         const av = a.accuracyPct, bv = b.accuracyPct;
@@ -3522,7 +3543,9 @@ function renderBulletinBoard() {
       podium.innerHTML = top3.map((e, i) => {
         let headline, headlineColor, subline;
         if (bulletinRankMetric === 'speed') {
-          headline = `${e.speed.toFixed(2)}/min`; headlineColor = 'text-emerald-400'; subline = `${e.volume.toFixed(0)} units`;
+          headline = e.speedPct == null ? '—' : `${e.speedPct.toFixed(0)}%`;
+          headlineColor = e.speedPct == null ? 'text-slate-500' : e.speedPct >= 100 ? 'text-emerald-400' : e.speedPct >= 80 ? 'text-amber-400' : 'text-rose-400';
+          subline = `${e.volume.toFixed(0)} units`;
         } else if (bulletinRankMetric === 'idle') {
           headline = fmtMinutes(e.idleMinutes); headlineColor = e.idleMinutes > 60 ? 'text-rose-400' : 'text-emerald-400'; subline = `${e.activeMinutes.toFixed(0)} active min`;
         } else if (bulletinRankMetric === 'accuracy') {
@@ -3768,19 +3791,28 @@ function renderLeaderboard(logs) {
   }).join('');
 }
 
-// --- ROLE LEADERBOARDS: Picking / Staging Checking / Pulling / Outbound Checking ---
-// Each is scored at the SHIPMENT-GROUP level (one dispatched batch = personnel_name
-// + role + start_time), not per line, matching the Hit/Miss and Speed KPI spec.
-const ROLE_LEADERBOARD_SORT_STATE = { Picker: 'speed', 'Staging Checker': 'speed', Puller: 'speed', 'Outbound Checker': 'speed' };
-const ROLE_LEADERBOARD_TBODY_IDS = { Picker: 'lb-picker-rows', 'Staging Checker': 'lb-staging-rows', Puller: 'lb-puller-rows', 'Outbound Checker': 'lb-outbound-rows' };
+// --- ROLE LEADERBOARDS: grouped into two combined boards so a person's work
+// under EITHER role in the group counts toward the same ranking —
+// "Picking Operations" (Picker + Puller) and "Checking Operations" (Staging
+// Checker + Outbound Checker). Each is still scored at the SHIPMENT-GROUP
+// level (one dispatched batch = personnel_name + role + start_time), matching
+// the Hit/Miss and Speed % spec; a person holding both roles in a group has
+// their batches from both merged into one row.
+const ROLE_GROUPS = {
+  PICK_GROUP: { label: 'Picking Operations', roles: ['Picker', 'Puller'] },
+  CHECK_GROUP: { label: 'Checking Operations', roles: ['Staging Checker', 'Outbound Checker'] }
+};
+const ROLE_LEADERBOARD_SORT_STATE = { PICK_GROUP: 'speed', CHECK_GROUP: 'speed' };
+const ROLE_LEADERBOARD_TBODY_IDS = { PICK_GROUP: 'lb-pickgroup-rows', CHECK_GROUP: 'lb-checkgroup-rows' };
 
-function computeRoleLeaderboardRows(dayLogs, role) {
-  const roleLogs = dayLogs.filter(l => l.role === role);
+function computeRoleLeaderboardRows(dayLogs, groupKey) {
+  const groupRoles = ROLE_GROUPS[groupKey].roles;
+  const roleLogs = dayLogs.filter(l => groupRoles.includes(l.role));
 
-  // Group into dispatched batches (one "shipment group" task): personnel + start_time.
+  // Group into dispatched batches (one "shipment group" task): personnel + role + start_time.
   const batches = {};
   roleLogs.forEach(l => {
-    const key = `${l.personnel_name}||${l.start_time}`;
+    const key = `${l.personnel_name}||${l.role}||${l.start_time}`;
     (batches[key] = batches[key] || []).push(l);
   });
 
@@ -3795,10 +3827,11 @@ function computeRoleLeaderboardRows(dayLogs, role) {
     const renderedMin = rep.rendered_minutes || 0;
     const targetMin = (rep.target_hours || 0) * 60;
     const isHit = renderedMin <= targetMin;
+    const speedPct = (targetMin > 0 && renderedMin > 0) ? (targetMin / renderedMin) * 100 : null;
     const discrepQty = lineRows.reduce((s, m) => s + (m.discrepancy_qty ? (parseFloat(m.discrepancy_qty) || 0) : 0), 0);
 
     if (!byPersonnel[name]) byPersonnel[name] = { name, batches: [], shipments: new Set() };
-    byPersonnel[name].batches.push({ qty, renderedMin, targetMin, isHit, discrepQty, lineRows });
+    byPersonnel[name].batches.push({ role: rep.role, qty, renderedMin, targetMin, isHit, speedPct, discrepQty, lineRows });
     lineRows.forEach(m => { if (m.shipment_no) byPersonnel[name].shipments.add(m.shipment_no); });
   });
 
@@ -3810,16 +3843,21 @@ function computeRoleLeaderboardRows(dayLogs, role) {
     const totalMin = p.batches.reduce((s, b) => s + b.renderedMin, 0);
     const hits = p.batches.filter(b => b.isHit).length;
     const misses = p.batches.length - hits;
-    const avgSpeedMin = p.batches.length ? totalMin / p.batches.length : 0;
     const fastestMin = p.batches.length ? Math.min(...p.batches.map(b => b.renderedMin)) : 0;
     const slowestMin = p.batches.length ? Math.max(...p.batches.map(b => b.renderedMin)) : 0;
     const incidentMissPct = p.batches.length ? (misses / p.batches.length) * 100 : 0;
     const productivityPct = totalMin > 0 ? (totalMin / 60 / STANDARD_DAILY_HOURS) * 100 : 0;
+    // Speed % is the plain average of each batch's own Target ÷ Rendered × 100 —
+    // one task at 100% and a second at 80% averages to 90%, per-role target
+    // (e.g. Picker/Puller each keep their own target rate; a Picker+Puller
+    // dual-role person's batches from both roles are averaged together here).
+    const gradeableSpeedBatches = p.batches.filter(b => b.speedPct != null);
+    const avgSpeedPct = gradeableSpeedBatches.length ? gradeableSpeedBatches.reduce((s, b) => s + b.speedPct, 0) / gradeableSpeedBatches.length : null;
 
-    // Idle time: gaps between this ROLE's own back-to-back batches for this person,
-    // same methodology as the Performance Summary's idle calc but role-scoped.
+    // Idle time: gaps between this GROUP's own back-to-back batches for this person,
+    // same methodology as the Performance Summary's idle calc but group-scoped.
     const seenStarts = new Set();
-    const personRoleLogsSorted = roleLogs.filter(l => l.personnel_name === p.name && !seenStarts.has(l.start_time) && seenStarts.add(l.start_time))
+    const personRoleLogsSorted = roleLogs.filter(l => l.personnel_name === p.name && !seenStarts.has(`${l.role}||${l.start_time}`) && seenStarts.add(`${l.role}||${l.start_time}`))
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
     let idleMin = 0;
     for (let i = 0; i < personRoleLogsSorted.length - 1; i++) {
@@ -3832,25 +3870,29 @@ function computeRoleLeaderboardRows(dayLogs, role) {
     // Accuracy: Picker is graded downstream (Staging Checker's discrepancy on the
     // same shipment line); Staging/Outbound Checker are graded on their own logged
     // discrepancy vs. volume handled; Puller has no discrepancy field — untracked.
-    let accuracyPct = null;
-    if (role === 'Picker') {
-      let handledVol = 0, discVol = 0;
-      const seenSO = new Set();
-      p.batches.forEach(b => b.lineRows.forEach(m => {
-        if (seenSO.has(m.so_number)) return;
-        seenSO.add(m.so_number);
-        const vol = parseFloat(m.total_qty) || 0;
-        handledVol += vol;
-        const stageLog = stagingLogsForDay.find(l => l.so_number === m.so_number);
-        if (stageLog && stageLog.discrepancy_qty) discVol += parseFloat(stageLog.discrepancy_qty) || 0;
-      }));
-      accuracyPct = handledVol > 0 ? Math.max(0, Math.min(100, ((handledVol - discVol) / handledVol) * 100)) : 100;
-    } else if (role === 'Staging Checker' || role === 'Outbound Checker') {
-      const totalDiscQty = p.batches.reduce((s, b) => s + b.discrepQty, 0);
-      accuracyPct = totalQty > 0 ? Math.max(0, Math.min(100, ((totalQty - totalDiscQty) / totalQty) * 100)) : 100;
-    }
+    // A dual-role person's accuracy blends both roles' gradeable volume together.
+    let handledVol = 0, discVol = 0, anyGradeable = false;
+    const seenSO = new Set();
+    p.batches.forEach(b => {
+      if (b.role === 'Picker') {
+        anyGradeable = true;
+        b.lineRows.forEach(m => {
+          if (seenSO.has(m.so_number)) return;
+          seenSO.add(m.so_number);
+          const vol = parseFloat(m.total_qty) || 0;
+          handledVol += vol;
+          const stageLog = stagingLogsForDay.find(l => l.so_number === m.so_number);
+          if (stageLog && stageLog.discrepancy_qty) discVol += parseFloat(stageLog.discrepancy_qty) || 0;
+        });
+      } else if (b.role === 'Staging Checker' || b.role === 'Outbound Checker') {
+        anyGradeable = true;
+        handledVol += b.qty;
+        discVol += b.discrepQty;
+      }
+    });
+    const accuracyPct = anyGradeable ? (handledVol > 0 ? Math.max(0, Math.min(100, ((handledVol - discVol) / handledVol) * 100)) : 100) : null;
 
-    return { name: p.name, shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedMin, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct };
+    return { name: p.name, shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedPct, fastestMin, slowestMin, incidentMissPct, productivityPct, idleMin, accuracyPct };
   });
 }
 
@@ -3860,16 +3902,16 @@ function sortRoleLeaderboardRows(rows, sortKey) {
   if (sortKey === 'productivity') return arr.sort((a, b) => b.productivityPct - a.productivityPct);
   if (sortKey === 'idle') return arr.sort((a, b) => b.idleMin - a.idleMin);
   if (sortKey === 'accuracy') return arr.sort((a, b) => (b.accuracyPct ?? -1) - (a.accuracyPct ?? -1));
-  return arr.sort((a, b) => a.avgSpeedMin - b.avgSpeedMin); // 'speed' — fewer minutes = faster = ranked first
+  return arr.sort((a, b) => (b.avgSpeedPct ?? -1) - (a.avgSpeedPct ?? -1)); // 'speed' — higher % vs target = faster = ranked first
 }
 
-function renderRoleLeaderboard(role, dayLogs) {
-  const tbody = document.getElementById(ROLE_LEADERBOARD_TBODY_IDS[role]);
+function renderRoleLeaderboard(groupKey, dayLogs) {
+  const tbody = document.getElementById(ROLE_LEADERBOARD_TBODY_IDS[groupKey]);
   if (!tbody) return;
-  const sortKey = ROLE_LEADERBOARD_SORT_STATE[role] || 'speed';
-  const rows = sortRoleLeaderboardRows(computeRoleLeaderboardRows(dayLogs, role), sortKey);
+  const sortKey = ROLE_LEADERBOARD_SORT_STATE[groupKey] || 'speed';
+  const rows = sortRoleLeaderboardRows(computeRoleLeaderboardRows(dayLogs, groupKey), sortKey);
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500 italic">No completed activity for this Activity Day.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500 italic">No completed activity for this Activity Day.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -3880,7 +3922,7 @@ function renderRoleLeaderboard(role, dayLogs) {
       <td class="p-2 text-right font-mono text-slate-300">${r.shipments}</td>
       <td class="p-2 text-right font-mono text-amber-400">${r.qty.toFixed(0)}</td>
       <td class="p-2 text-center font-mono text-[10px] ${r.misses > 0 ? 'text-rose-400' : 'text-emerald-400'}">${r.hits} Hit, ${r.misses} Miss</td>
-      <td class="p-2 text-right font-mono text-slate-300">${r.avgSpeedMin.toFixed(1)}m</td>
+      <td class="p-2 text-right font-mono ${speedColorClass(r.avgSpeedPct)}">${fmtSpeedPct(r.avgSpeedPct)}</td>
       <td class="p-2 text-right font-mono text-emerald-400">${r.fastestMin.toFixed(1)}m</td>
       <td class="p-2 text-right font-mono text-rose-400">${r.slowestMin.toFixed(1)}m</td>
       <td class="p-2 text-right font-mono ${r.incidentMissPct > 30 ? 'text-rose-400' : 'text-slate-300'}">${r.incidentMissPct.toFixed(0)}%</td>
@@ -3895,11 +3937,11 @@ function renderRoleLeaderboard(role, dayLogs) {
 let _roleLeaderboardDayLogsCache = [];
 function renderAllRoleLeaderboards(dayLogs) {
   if (dayLogs) _roleLeaderboardDayLogsCache = dayLogs;
-  ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'].forEach(role => renderRoleLeaderboard(role, _roleLeaderboardDayLogsCache));
+  Object.keys(ROLE_GROUPS).forEach(groupKey => renderRoleLeaderboard(groupKey, _roleLeaderboardDayLogsCache));
 }
-function setRoleLeaderboardSort(role, key) {
-  ROLE_LEADERBOARD_SORT_STATE[role] = key;
-  renderRoleLeaderboard(role, _roleLeaderboardDayLogsCache);
+function setRoleLeaderboardSort(groupKey, key) {
+  ROLE_LEADERBOARD_SORT_STATE[groupKey] = key;
+  renderRoleLeaderboard(groupKey, _roleLeaderboardDayLogsCache);
 }
 
 // --- Throughput Trend: lines completed per stage, per Activity Day, for the
@@ -5637,13 +5679,32 @@ async function importStagingAreaPaste() {
 }
 
 // --- ADMIN: PERSONNEL ---
+// A person's Main/Secondary/Third/Fourth role are stored as separate rows in the
+// same `personnel` table (one row per role, same name) — role_rank (1-4) records
+// which slot that row fills so the roster UI can show them clearly labeled.
+// Roles must be distinct for one person (no picking Picker as both Main and Secondary).
 async function addPersonnel(e) {
   e.preventDefault();
   const name = document.getElementById('personnel-name-input').value.trim();
   const role = document.getElementById('personnel-role-input').value;
-  const { error } = await supabaseClient.from('personnel').insert([{ name, role }]);
-  if (!error) { document.getElementById('personnel-form').reset(); await refreshPersonnelAdminList(); if (role === currentRole) await populatePersonnelDatalist(currentRole); }
-  else showToast(error.message, "error");
+  const role2 = document.getElementById('personnel-role2-input').value;
+  const role3 = document.getElementById('personnel-role3-input').value;
+  const role4 = document.getElementById('personnel-role4-input').value;
+  const chosen = [role, role2, role3, role4].filter(Boolean);
+  if (new Set(chosen).size !== chosen.length) {
+    return showToast("Main / Secondary / Third / Fourth Role must all be different.", "error");
+  }
+  const toInsert = [];
+  if (role) toInsert.push({ name, role, role_rank: 1 });
+  if (role2) toInsert.push({ name, role: role2, role_rank: 2 });
+  if (role3) toInsert.push({ name, role: role3, role_rank: 3 });
+  if (role4) toInsert.push({ name, role: role4, role_rank: 4 });
+  const { error } = await supabaseClient.from('personnel').insert(toInsert);
+  if (!error) {
+    document.getElementById('personnel-form').reset();
+    await refreshPersonnelAdminList();
+    if (chosen.includes(currentRole)) await populatePersonnelDatalist(currentRole);
+  } else showToast(error.message, "error");
 }
 
 // Bulk-import personnel pasted straight from Excel — expects "Personnel" and
@@ -5658,13 +5719,17 @@ async function importPersonnelPaste() {
 
   const rows = parsePastedTable(raw);
   if (!rows.length) {
-    statusEl.innerHTML = `<span class="text-rose-400">Could not read any rows — make sure the header row (Personnel, Designation) is included.</span>`;
+    statusEl.innerHTML = `<span class="text-rose-400">Could not read any rows — make sure the header row (Personnel, Main Role) is included.</span>`;
     return;
   }
   const nameKey = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'personnel');
-  const roleKey = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'designation');
+  // "Main Role" is the current header; "Designation" is accepted for backward compatibility.
+  const roleKey = Object.keys(rows[0]).find(k => ['main role', 'designation'].includes(k.trim().toLowerCase()));
+  const role2Key = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'secondary role');
+  const role3Key = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'third role');
+  const role4Key = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'fourth role');
   if (!nameKey || !roleKey) {
-    statusEl.innerHTML = `<span class="text-rose-400">Could not find "Personnel" and "Designation" headers in the pasted text.</span>`;
+    statusEl.innerHTML = `<span class="text-rose-400">Could not find "Personnel" and "Main Role" (or "Designation") headers in the pasted text.</span>`;
     return;
   }
 
@@ -5672,28 +5737,40 @@ async function importPersonnelPaste() {
   const skipped = [];
   rows.forEach(r => {
     const name = String(r[nameKey] || '').trim();
-    const rawRole = String(r[roleKey] || '').trim();
-    const matchedRole = KNOWN_ROLES.find(k => k.toLowerCase() === rawRole.toLowerCase());
     if (!name) return;
-    if (!matchedRole) { skipped.push(`${name} (${rawRole || 'blank'})`); return; }
-    toInsert.push({ name, role: matchedRole });
+    const wanted = [
+      { raw: String(r[roleKey] || '').trim(), rank: 1 },
+      { raw: role2Key ? String(r[role2Key] || '').trim() : '', rank: 2 },
+      { raw: role3Key ? String(r[role3Key] || '').trim() : '', rank: 3 },
+      { raw: role4Key ? String(r[role4Key] || '').trim() : '', rank: 4 },
+    ];
+    const resolved = [];
+    wanted.forEach(w => {
+      if (!w.raw) return;
+      const matchedRole = KNOWN_ROLES.find(k => k.toLowerCase() === w.raw.toLowerCase());
+      if (!matchedRole) { skipped.push(`${name} (${w.raw})`); return; }
+      resolved.push({ name, role: matchedRole, role_rank: w.rank });
+    });
+    if (!resolved.length) { if (wanted[0].raw === '') skipped.push(`${name} (blank)`); return; }
+    toInsert.push(...resolved);
   });
 
   if (!toInsert.length) {
-    statusEl.innerHTML = `<span class="text-rose-400">No valid rows to import. Designation must exactly match: ${KNOWN_ROLES.join(', ')}.</span>`;
+    statusEl.innerHTML = `<span class="text-rose-400">No valid rows to import. Role values must exactly match: ${KNOWN_ROLES.join(', ')}.</span>`;
     return;
   }
 
-  statusEl.innerText = `Importing ${toInsert.length} personnel...`;
+  statusEl.innerText = `Importing ${toInsert.length} role assignment(s)...`;
   const { error } = await supabaseClient.from('personnel').insert(toInsert);
   if (error) {
     statusEl.innerHTML = `<span class="text-rose-400">Failed: ${error.message}</span>`;
     return showToast("Could not import personnel: " + error.message, "error");
   }
 
-  statusEl.innerHTML = `<span class="text-emerald-400">Imported ${toInsert.length} personnel.</span>` +
-    (skipped.length ? `<br><span class="text-amber-400">Skipped ${skipped.length}: ${skipped.join(', ')} — designation must exactly match ${KNOWN_ROLES.join(', ')}.</span>` : '');
-  showToast(`${toInsert.length} personnel added${skipped.length ? `, ${skipped.length} skipped` : ''}.`, skipped.length ? "warning" : "success");
+  const peopleCount = new Set(toInsert.map(r => r.name)).size;
+  statusEl.innerHTML = `<span class="text-emerald-400">Imported ${peopleCount} personnel (${toInsert.length} role assignment(s)).</span>` +
+    (skipped.length ? `<br><span class="text-amber-400">Skipped ${skipped.length}: ${skipped.join(', ')} — role must exactly match ${KNOWN_ROLES.join(', ')}.</span>` : '');
+  showToast(`${peopleCount} personnel added${skipped.length ? `, ${skipped.length} role(s) skipped` : ''}.`, skipped.length ? "warning" : "success");
   document.getElementById('personnel-paste').value = '';
   await refreshPersonnelAdminList();
   await populatePersonnelDatalist(currentRole);
@@ -5720,30 +5797,57 @@ async function togglePersonnelExcluded(id, excluded) {
   if (document.getElementById('analytics-date')) refreshAnalyticsView();
   showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
 }
+// Renders one card per PERSON (not per role-row) — each card labels every role
+// they hold as Main / Secondary / Third (by role_rank, defaulting untagged rows
+// to Main so older data without role_rank still displays sensibly).
 async function refreshPersonnelAdminList() {
-  const { data, error } = await supabaseClient.from('personnel').select('*').order('role');
+  const { data, error } = await supabaseClient.from('personnel').select('*').order('name');
   if (error) return console.error(error);
   const container = document.getElementById('personnel-list-container');
-  const roles = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
-  container.innerHTML = roles.map(role => {
-    const members = data.filter(p => p.role === role);
-    return `<div>
-      <h4 class="text-[10px] uppercase tracking-wider font-bold mb-1 ${roleTextClass(role)}">${role}</h4>
-      <div class="space-y-1">
-        ${members.length ? members.map(p => `
-          <div class="flex justify-between items-center gap-2 bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60 ${p.excluded ? 'opacity-60' : ''}">
-            <span class="text-slate-300 font-medium ${p.excluded ? 'line-through' : ''}">${p.name}</span>
-            <div class="flex items-center gap-2">
-              <label class="flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer select-none" title="Exclude this person from every performance computation (Performance Summary + Analytics & Reports)">
-                <input type="checkbox" ${p.excluded ? 'checked' : ''} onchange="togglePersonnelExcluded(${p.id}, this.checked)" class="w-3.5 h-3.5 text-rose-600 bg-slate-900 border-slate-700 rounded focus:ring-rose-500">
-                Exclude
-              </label>
-              <button onclick="deletePersonnel(${p.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
-            </div>
-          </div>`).join('') : '<p class="text-[11px] text-slate-600 italic">None yet.</p>'}
+
+  const byName = {};
+  (data || []).forEach(p => {
+    const key = (p.name || '').trim();
+    if (!key) return;
+    if (!byName[key]) byName[key] = { name: key, rows: [] };
+    byName[key].rows.push(p);
+  });
+  const rankLabel = { 1: 'Main', 2: 'Secondary', 3: 'Third', 4: 'Fourth' };
+  const people = Object.values(byName).sort((a, b) => a.name.localeCompare(b.name));
+
+  container.innerHTML = people.length ? people.map(person => {
+    const rows = [...person.rows].sort((a, b) => (a.role_rank || 1) - (b.role_rank || 1));
+    const anyExcluded = rows.some(r => r.excluded);
+    const roleChips = rows.map(r => {
+      const label = rankLabel[r.role_rank || 1] || 'Role';
+      return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border ${roleTextClass(r.role)} border-current/30 bg-slate-900">
+        <span class="opacity-60">${label}:</span> ${r.role}
+        <button onclick="deletePersonnel(${r.id})" title="Remove this role" class="text-rose-400 hover:text-rose-500 font-bold ml-1">×</button>
+      </span>`;
+    }).join('');
+    return `<div class="bg-slate-900 px-3 py-2 rounded border border-slate-800/60 ${anyExcluded ? 'opacity-60' : ''}">
+      <div class="flex justify-between items-center gap-2 mb-1.5">
+        <span class="text-slate-200 font-semibold text-xs ${anyExcluded ? 'line-through' : ''}">${person.name}</span>
+        <label class="flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer select-none" title="Exclude this person from every performance computation (Performance Summary + Analytics & Reports)">
+          <input type="checkbox" ${anyExcluded ? 'checked' : ''} onchange="togglePersonnelExcludedAll('${person.name.replace(/'/g, "\\'")}', this.checked)" class="w-3.5 h-3.5 text-rose-600 bg-slate-900 border-slate-700 rounded focus:ring-rose-500">
+          Exclude
+        </label>
       </div>
+      <div class="flex flex-wrap gap-1.5">${roleChips}</div>
     </div>`;
-  }).join('');
+  }).join('') : '<p class="text-[11px] text-slate-600 italic">No personnel on file yet.</p>';
+}
+
+// Applies the Exclude toggle to every role-row this person holds at once, since
+// exclusion is a per-PERSON concept even though roles are stored per-row.
+async function togglePersonnelExcludedAll(name, excluded) {
+  const { error } = await supabaseClient.from('personnel').update({ excluded }).eq('name', name);
+  if (error) return showToast(error.message, "error");
+  await refreshExcludedPersonnel();
+  await refreshPersonnelAdminList();
+  if (document.getElementById('bulletin-date')) refreshBulletinBoard();
+  if (document.getElementById('analytics-date')) refreshAnalyticsView();
+  showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
 }
 
 // --- ADMIN: BREAKS ---
@@ -6233,7 +6337,7 @@ function computeAllMvps() {
   if (!active.length) return { productivity: null, speed: null, accuracy: null, idle: null };
 
   const productivity = [...active].filter(e => e.productivityPct > 0).sort((a, b) => b.productivityPct - a.productivityPct)[0] || null;
-  const speed = [...active].filter(e => e.speed > 0).sort((a, b) => b.speed - a.speed)[0] || null;
+  const speed = [...active].filter(e => e.speedPct != null).sort((a, b) => b.speedPct - a.speedPct)[0] || null;
   const accuracyPool = active.filter(e => e.accuracyPct != null);
   const accuracy = accuracyPool.length ? [...accuracyPool].sort((a, b) => b.accuracyPct - a.accuracyPct)[0] : null;
   const idle = [...active].sort((a, b) => a.idleMinutes - b.idleMinutes)[0] || null;
@@ -6281,7 +6385,7 @@ function updateMvpBadge() {
   const mvps = computeAllMvps();
   const badges = [];
   if (mvps.productivity) badges.push(`<span class="mvp-badge">🏆 Productivity MVP: ${mvps.productivity.name} (${mvps.productivity.productivityPct.toFixed(0)}%)</span>`);
-  if (mvps.speed) badges.push(`<span class="mvp-badge mvp-speed">🏃 Speed MVP: ${mvps.speed.name} (${mvps.speed.speed.toFixed(2)}/min)</span>`);
+  if (mvps.speed) badges.push(`<span class="mvp-badge mvp-speed">🏃 Speed MVP: ${mvps.speed.name} (${mvps.speed.speedPct.toFixed(0)}%)</span>`);
   if (mvps.accuracy) badges.push(`<span class="mvp-badge mvp-accuracy">🎯 Accuracy MVP: ${mvps.accuracy.name} (${mvps.accuracy.accuracyPct.toFixed(1)}%)</span>`);
   if (mvps.idle) badges.push(`<span class="mvp-badge mvp-idle">⏱ Least Idle MVP: ${mvps.idle.name} (${fmtMinutesShort(mvps.idle.idleMinutes)})</span>`);
   row.innerHTML = badges.join('');
