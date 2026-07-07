@@ -1479,20 +1479,29 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
           <tr>
             <th class="p-3 text-center">Upload Date</th>
             <th class="p-3 text-center">Actions</th>
+            <th class="p-3 text-center">Status</th>
             <th class="p-3 text-left">Truck Type</th>
             <th class="p-3 text-left">Shipment</th>
             <th class="p-3 text-left">S.O. Number</th>
             <th class="p-3 text-left">OBD Number</th>
             <th class="p-3 text-left">Billing Number</th>
-            <th class="p-3 text-left">Route Description</th>
             <th class="p-3 text-left">Ship To Party Name</th>
-            <th class="p-3 text-right">SO Amount</th>
-            <th class="p-3 text-right">Quantity</th>
-            <th class="p-3 text-center">Status</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-slate-300">Picker Name</th>
+            <th class="p-3 text-center">Picker Start</th>
+            <th class="p-3 text-center">Picker End</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-cyan-300">Staging Name</th>
+            <th class="p-3 text-center">Staging Start</th>
+            <th class="p-3 text-center">Staging End</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-purple-300">Pulled Name</th>
+            <th class="p-3 text-center">Pulled Start</th>
+            <th class="p-3 text-center">Pulled End</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-emerald-300">Check Name</th>
+            <th class="p-3 text-center">Check Start</th>
+            <th class="p-3 text-center">Check End</th>
           </tr>
         </thead>
         <tbody id="pending-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="21" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -5207,14 +5216,36 @@ let pendingRawRows = [];
 
 async function loadPendingQueue() {
   const tbody = document.getElementById('pending-rows');
-  tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="21" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="21" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
+
+  // Pull the most recently completed log per SO+role so each stage's
+  // Name/Start/End can be shown alongside the record, same pattern as
+  // loadExportData()'s logMap.
+  const soNumbers = (data || []).map(r => r.so_number).filter(Boolean);
+  let logs = [];
+  if (soNumbers.length) {
+    const chunkSize = 300;
+    for (let i = 0; i < soNumbers.length; i += chunkSize) {
+      const chunk = soNumbers.slice(i, i + chunkSize);
+      const { data: logData, error: logErr } = await supabaseClient.from('activity_logs')
+        .select('so_number,role,personnel_name,start_time,end_time,status')
+        .in('so_number', chunk).eq('status', 'Completed');
+      if (!logErr) logs.push(...(logData || []));
+      else console.error(logErr);
+    }
+  }
+  const logMap = {}; // `${so_number}||${role}` -> most recent completed log
+  logs.forEach(l => {
+    const key = `${l.so_number}||${l.role}`;
+    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
+  });
 
   // Same effective-status logic as refreshPipelineSummary()/loadAgingData(),
   // then keep only records that haven't reached CHECKED yet — no upload-date
@@ -5226,12 +5257,20 @@ async function loadPendingQueue() {
         effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
       }
       if (!PIPELINE_STAGE_ORDER.hasOwnProperty(effective)) effective = 'PENDING';
+      const pick = logMap[`${row.so_number}||Picker`];
+      const stage = logMap[`${row.so_number}||Staging Checker`];
+      const pull = logMap[`${row.so_number}||Puller`];
+      const check = logMap[`${row.so_number}||Outbound Checker`];
       return {
         so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
         billing_number: row.billing_number, route_description: row.route_description,
         customer: row.sold_to_party_name, truck_type: row.truck_type,
         quantity: row.quantity, so_amount: row.so_amount, status: effective,
-        upload_date: row.uploaded_at
+        upload_date: row.uploaded_at,
+        pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+        stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+        pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+        check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null
       };
     })
     .filter(r => r.status !== 'CHECKED');
@@ -5267,7 +5306,7 @@ function renderPendingTable() {
   document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="21" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
     return;
   }
 
@@ -5275,16 +5314,25 @@ function renderPendingTable() {
     <tr>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.upload_date)}</td>
       <td class="p-3 text-center"><button onclick="openPendingEditModal('${(r.so_number || '').replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
+      <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] border font-mono ${PENDING_STATUS_BADGE[r.status] || 'bg-slate-800 text-slate-300 border-slate-700'}">${r.status}</span></td>
       <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${r.truck_type || 'Unset'}</span></td>
       <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
       <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
       <td class="p-3 font-mono text-slate-400 text-[11px]">${r.billing_number || '—'}</td>
-      <td class="p-3 text-slate-300">${r.route_description || 'N/A'}</td>
       <td class="p-3 text-slate-300">${r.customer || 'N/A'}</td>
-      <td class="p-3 text-right font-mono text-slate-300">${Number(r.so_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-      <td class="p-3 text-right font-mono text-slate-300">${Number(r.quantity || 0).toLocaleString()}</td>
-      <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] border font-mono ${PENDING_STATUS_BADGE[r.status] || 'bg-slate-800 text-slate-300 border-slate-700'}">${r.status}</span></td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
+      <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
     </tr>`).join('');
 }
 
