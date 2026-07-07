@@ -850,8 +850,19 @@
       </div>
     </div>
 
-    <!-- MVP badges: one per ranking criterion, company-wide, always shown together -->
-    <div id="mvp-badge-row" class="flex flex-wrap gap-2"></div>
+    <!-- MVP badges: one per ranking criterion, split into the same two independent
+         role pools as the leaderboards below (Picking vs. Checking), so a Picking
+         MVP is never compared against a Checking MVP -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+        <p class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold mb-1.5">🧺 Picking Operations MVPs</p>
+        <div id="mvp-badge-row-PICK" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+        <p class="text-[10px] uppercase tracking-wider text-sky-300 font-bold mb-1.5">🧾 Checking Operations MVPs</p>
+        <div id="mvp-badge-row-CHECK" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
 
     <!-- Side by side on desktop (lg+), stacked on smaller screens -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
@@ -6465,16 +6476,17 @@ refreshAnalyticsView = async function (...args) {
   refreshStreakLeaders();
 };
 
-// --- GAMIFICATION: Daily MVP badges (one per ranking criterion) + confetti burst ---
-let _confettiFiredForKey = null;
-// Computes the top personnel for EACH of the four ranking criteria independently
-// (Productivity, Speed, Accuracy, Least Idle Time), using the exact same entries
-// the leaderboard itself ranks by (computeBulletinEntries), so the badges always
-// agree with what's on the board. Each MVP requires real, gradeable activity —
-// zero-activity personnel and, for Accuracy, personnel with no gradeable role
-// logged that day (e.g. Puller-only) are excluded from that criterion's MVP.
-function computeAllMvps() {
-  const entries = (typeof computeBulletinEntries === 'function') ? computeBulletinEntries() : [];
+// --- GAMIFICATION: Daily MVP badges (one per ranking criterion, per role pool) + confetti burst ---
+let _confettiFiredForKey = { PICK_GROUP: null, CHECK_GROUP: null };
+// Computes the top personnel for EACH of the four ranking criteria independently,
+// scoped to a single role pool (groupKey: 'PICK_GROUP' or 'CHECK_GROUP') — using
+// the exact same entries the corresponding leaderboard ranks by
+// (computeBulletinEntries(groupKey)), so the badges always agree with what's on
+// that board. Each MVP requires real, gradeable activity — zero-activity
+// personnel and, for Accuracy, personnel with no gradeable role logged that day
+// (e.g. Puller-only) are excluded from that criterion's MVP.
+function computeAllMvps(groupKey) {
+  const entries = (typeof computeBulletinEntries === 'function') ? computeBulletinEntries(groupKey) : [];
   const active = entries.filter(e => e.hasActivity && e.qtyLines > 0);
   if (!active.length) return { productivity: null, speed: null, accuracy: null, idle: null };
 
@@ -6516,28 +6528,35 @@ window.addEventListener('resize', () => {
   const canvas = document.getElementById('confetti-canvas');
   if (canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 });
-function updateMvpBadge() {
-  const row = document.getElementById('mvp-badge-row');
+const fmtMinutesShort = mins => {
+  mins = Math.round(mins || 0);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+};
+// Renders the MVP badge row for a single role pool (groupKey) into its own
+// container, and fires confetti (once per Activity Day per pool) when that
+// pool's Productivity MVP changes.
+function renderMvpBadgesForGroup(groupKey, containerId) {
+  const row = document.getElementById(containerId);
   if (!row) return;
-  const fmtMinutesShort = mins => {
-    mins = Math.round(mins || 0);
-    const h = Math.floor(mins / 60), m = mins % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  };
-  const mvps = computeAllMvps();
+  const mvps = computeAllMvps(groupKey);
   const badges = [];
   if (mvps.productivity) badges.push(`<span class="mvp-badge">🏆 Productivity MVP: ${mvps.productivity.name} (${mvps.productivity.productivityPct.toFixed(0)}%)</span>`);
   if (mvps.speed) badges.push(`<span class="mvp-badge mvp-speed">🏃 Speed MVP: ${mvps.speed.name} (${mvps.speed.speedPct.toFixed(0)}%)</span>`);
   if (mvps.accuracy) badges.push(`<span class="mvp-badge mvp-accuracy">🎯 Accuracy MVP: ${mvps.accuracy.name} (${mvps.accuracy.accuracyPct.toFixed(1)}%)</span>`);
   if (mvps.idle) badges.push(`<span class="mvp-badge mvp-idle">⏱ Least Idle MVP: ${mvps.idle.name} (${fmtMinutesShort(mvps.idle.idleMinutes)})</span>`);
-  row.innerHTML = badges.join('');
+  row.innerHTML = badges.length ? badges.join('') : '<span class="text-[11px] text-slate-600 italic">No qualifying activity yet</span>';
 
-  // Confetti fires once per Activity Day for the Productivity MVP crossing into the top spot.
+  // Confetti fires once per Activity Day, per role pool, for the Productivity MVP crossing into the top spot.
   const dayKey = (document.getElementById('bulletin-date')?.value) || defaultOperationalDateStr();
   if (mvps.productivity) {
     const fireKey = dayKey + '|' + mvps.productivity.name;
-    if (_confettiFiredForKey !== fireKey) { _confettiFiredForKey = fireKey; fireConfetti(); }
+    if (_confettiFiredForKey[groupKey] !== fireKey) { _confettiFiredForKey[groupKey] = fireKey; fireConfetti(); }
   }
+}
+function updateMvpBadge() {
+  renderMvpBadgesForGroup('PICK_GROUP', 'mvp-badge-row-PICK');
+  renderMvpBadgesForGroup('CHECK_GROUP', 'mvp-badge-row-CHECK');
 }
 const _origRefreshBulletinBoard = refreshBulletinBoard;
 refreshBulletinBoard = async function (...args) {
