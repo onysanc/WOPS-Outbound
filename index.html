@@ -6274,9 +6274,22 @@ async function refreshOpsAlertBar() {
   // nothing currently Ongoing/Paused, and 15+ min since their last completion —
   // any configured break window (e.g. lunch) overlapping that gap is subtracted
   // first, so someone on a scheduled break isn't flagged as idle ---
+  //
+  // "Currently Ongoing/Paused" is decided from `activeLogs` above (fetched
+  // with .in('status', [...]) so it stays small — every truly active row,
+  // nothing else) rather than from `todayLogs` below. todayLogs pulls EVERY
+  // log for the whole operational day with no status filter, which on a busy
+  // day can be a large result set; Supabase/PostgREST caps unpaginated
+  // queries at a default row limit, so a big enough todayLogs fetch can
+  // silently drop rows — including someone's live Ongoing row — which used
+  // to cause the exact bug where a person shows both "Ongoing" in Active
+  // Lines and "idle" in the alert bar at the same time. activeLogs can't be
+  // truncated away like that since it's filtered server-side to just the
+  // (much smaller) active set.
+  const activeNames = new Set((activeLogs || []).map(l => (l.personnel_name || '').trim()));
   const { startOfOpDay } = operationalDayWindowForDate(defaultOperationalDateStr());
   const { data: todayLogs, error: todayErr } = await supabaseClient.from('activity_logs')
-    .select('personnel_name,role,status,start_time,end_time').gte('start_time', startOfOpDay.toISOString());
+    .select('personnel_name,role,status,start_time,end_time').gte('start_time', startOfOpDay.toISOString()).limit(10000);
 
   // Idle chips can be dismissed by Outbound/Admin ("mark as out / already
   // finished for the day") straight from the alert bar — see dismissIdlePersonnel().
@@ -6302,7 +6315,7 @@ async function refreshOpsAlertBar() {
       (byPersonnel[key] = byPersonnel[key] || []).push(l);
     });
     Object.entries(byPersonnel).forEach(([name, logs]) => {
-      if (logs.some(l => l.status === 'Ongoing' || l.status === 'Paused')) return; // currently working — not idle
+      if (activeNames.has(name.trim())) return; // currently working (per the reliable activeLogs fetch) — not idle
       const completed = logs.filter(l => l.status === 'Completed' && l.end_time).sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
       if (!completed.length) return; // nothing completed yet today — no idle gap to measure
       const lastEnd = new Date(completed[0].end_time);
