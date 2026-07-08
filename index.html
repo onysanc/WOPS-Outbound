@@ -116,10 +116,8 @@
   .hdr-icon-btn:hover{background:#1a2436;color:var(--accent);border-color:#263349}
 
   /* --- Live Ops Alerts (Overdue / At-Risk tasks + idle personnel) --- */
-  @keyframes alertFlash{0%,100%{opacity:1}50%{opacity:.4}}
   .alert-chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:600;padding:.3rem .6rem;border-radius:.4rem;white-space:nowrap}
   .alert-chip b{color:#fff;font-weight:700}
-  .alert-chip.flash{animation:alertFlash 1.1s ease-in-out infinite}
   .alert-chip.overdue{background:rgba(244,63,94,.14);color:#fb7185;border:1px solid rgba(244,63,94,.4)}
   .alert-chip.at-risk{background:rgba(245,158,11,.14);color:#fbbf24;border:1px solid rgba(245,158,11,.4)}
   .alert-chip.idle{background:rgba(219,39,119,.14);color:#f472b6;border:1px solid rgba(219,39,119,.4)}
@@ -199,8 +197,6 @@
   .view{display:none}
   .view.active{display:block; animation:viewIn .22s ease-out}
   @keyframes viewIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(244,63,94,.45)}100%{box-shadow:0 0 0 8px rgba(244,63,94,0)}}
-  .overdue-ring{animation:pulseRing 1.6s infinite}
   @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   .toast{animation:toastIn .2s ease-out}
 </style>
@@ -714,7 +710,7 @@
          what already happened. -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 flex flex-wrap items-start gap-2.5">
       <span class="text-[10px] uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1 flex-shrink-0 pt-0.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-rose-400 overdue-ring"></span>ALERTS
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>ALERTS
       </span>
       <div id="ops-alert-row" class="flex flex-wrap items-start content-start gap-2 flex-1 min-w-0 max-h-[92px] overflow-y-auto pr-1">
         <span class="text-[11px] text-slate-600 italic">Loading alerts...</span>
@@ -6506,10 +6502,10 @@ async function refreshOpsAlertBar() {
   }
   idleChips.sort((a, b) => b.sortVal - a.sortVal);
 
-  const chip = (c, cls) => `<span class="alert-chip ${cls} flash"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label}</span>`;
+  const chip = (c, cls) => `<span class="alert-chip ${cls}"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label}</span>`;
   const canDismiss = userCanDismissIdle();
   const idleChip = c => canDismiss
-    ? `<span class="alert-chip idle clickable flash" title="Click to mark ${c.name} as out / already finished for the day — stops the idle alert unless they start a new task" onclick="dismissIdlePersonnel('${c.name.replace(/'/g, "\\'")}','${c.role.replace(/'/g, "\\'")}','${c.lastEndISO}', this)"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label} <span class="opacity-60">✕</span></span>`
+    ? `<span class="alert-chip idle clickable" title="Click to mark ${c.name} as out / already finished for the day — stops the idle alert unless they start a new task" onclick="dismissIdlePersonnel('${c.name.replace(/'/g, "\\'")}','${c.role.replace(/'/g, "\\'")}','${c.lastEndISO}', this)"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label} <span class="opacity-60">✕</span></span>`
     : chip(c, 'idle');
   const parts = [
     ...overdueChips.map(c => chip(c, 'overdue')),
