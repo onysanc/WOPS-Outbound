@@ -1469,10 +1469,25 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       </div>
     </div>
 
+    <div id="pending-bulk-bar" class="hidden items-center gap-2 bg-slate-900 border border-emerald-500/30 rounded-lg px-3 py-2">
+      <span id="pending-bulk-count" class="text-[11px] font-semibold text-emerald-300 mr-1"></span>
+      <label class="text-[11px] text-slate-400">Set status to</label>
+      <select id="pending-bulk-status" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <option value="PENDING">Pending</option>
+        <option value="PICKED">Picked</option>
+        <option value="STAGED">Staged</option>
+        <option value="PULLED">Pulled</option>
+        <option value="CHECKED">Checked</option>
+      </select>
+      <button onclick="applyPendingBulkStatus()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">Apply to Selected</button>
+      <button onclick="clearPendingSelection()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Clear Selection</button>
+    </div>
+
     <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
       <table id="pending-table" class="w-full text-xs whitespace-nowrap">
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
+            <th class="p-3 text-center"><input type="checkbox" id="pending-select-all" onchange="toggleSelectAllPending(this)" class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500"></th>
             <th class="p-3 text-center">Upload Date</th>
             <th class="p-3 text-center">Actions</th>
             <th class="p-3 text-center">Status</th>
@@ -1488,7 +1503,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
           </tr>
         </thead>
         <tbody id="pending-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -5205,15 +5220,17 @@ async function saveAgingRecordModal() {
 // status represents — same convention as ROLE_COMPLETE_LABEL, just inverted.
 const STATUS_TO_ROLE = { PICKED: 'Picker', STAGED: 'Staging Checker', PULLED: 'Puller', CHECKED: 'Outbound Checker' };
 let pendingRawRows = [];
+let pendingSelectedSo = new Set();
 
 async function loadPendingQueue() {
   const tbody = document.getElementById('pending-rows');
-  tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  pendingSelectedSo.clear();
 
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -5298,14 +5315,18 @@ function renderPendingTable() {
   document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    updatePendingBulkBar();
     return;
   }
 
-  tbody.innerHTML = rows.map(r => `
+  tbody.innerHTML = rows.map(r => {
+    const escapedSo = (r.so_number || '').replace(/'/g, "\\'");
+    return `
     <tr>
+      <td class="p-3 text-center"><input type="checkbox" class="pending-row-checkbox w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500" ${pendingSelectedSo.has(r.so_number) ? 'checked' : ''} onchange="togglePendingRowSelected('${escapedSo}', this.checked)"></td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.upload_date)}</td>
-      <td class="p-3 text-center"><button onclick="openPendingEditModal('${(r.so_number || '').replace(/'/g, "\\'")}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
+      <td class="p-3 text-center"><button onclick="openPendingEditModal('${escapedSo}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
       <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] border font-mono ${PENDING_STATUS_BADGE[r.status] || 'bg-slate-800 text-slate-300 border-slate-700'}">${r.status}</span></td>
       <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${r.truck_type || 'Unset'}</span></td>
       <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
@@ -5316,7 +5337,84 @@ function renderPendingTable() {
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+
+  updatePendingBulkBar();
+}
+
+// --- PENDING QUEUE: multi-select + mass status edit ---
+function togglePendingRowSelected(so_number, checked) {
+  if (checked) pendingSelectedSo.add(so_number);
+  else pendingSelectedSo.delete(so_number);
+  updatePendingBulkBar();
+}
+
+function toggleSelectAllPending(checkbox) {
+  const visibleSo = filteredPendingRows().map(r => r.so_number).filter(Boolean);
+  if (checkbox.checked) visibleSo.forEach(so => pendingSelectedSo.add(so));
+  else visibleSo.forEach(so => pendingSelectedSo.delete(so));
+  renderPendingTable();
+}
+
+function clearPendingSelection() {
+  pendingSelectedSo.clear();
+  renderPendingTable();
+}
+
+function updatePendingBulkBar() {
+  const bar = document.getElementById('pending-bulk-bar');
+  const countEl = document.getElementById('pending-bulk-count');
+  const selectAll = document.getElementById('pending-select-all');
+  if (!bar || !countEl) return;
+
+  const count = pendingSelectedSo.size;
+  countEl.innerText = `${count} selected`;
+  bar.classList.toggle('hidden', count === 0);
+  bar.classList.toggle('flex', count > 0);
+
+  if (selectAll) {
+    const visibleSo = filteredPendingRows().map(r => r.so_number).filter(Boolean);
+    const visibleSelectedCount = visibleSo.filter(so => pendingSelectedSo.has(so)).length;
+    selectAll.checked = visibleSo.length > 0 && visibleSelectedCount === visibleSo.length;
+    selectAll.indeterminate = visibleSelectedCount > 0 && visibleSelectedCount < visibleSo.length;
+  }
+}
+
+async function applyPendingBulkStatus() {
+  const newStatus = document.getElementById('pending-bulk-status').value;
+  const soArray = Array.from(pendingSelectedSo);
+  if (!soArray.length) return showToast("Select at least one pending row.", "error");
+  if (!confirm(`Set status to "${newStatus}" for ${soArray.length} selected record(s)?`)) return;
+
+  // Same PICKED/pgi_date convention used by the single-record edit modal.
+  const updatePayload = { status: newStatus };
+  if (newStatus === 'PICKED') updatePayload.pgi_date = new Date().toISOString();
+
+  const { error } = await supabaseClient.from('shipments').update(updatePayload).in('so_number', soArray);
+  if (error) return showToast("Bulk update failed: " + error.message, "error");
+
+  // Same ADVANCE-attributed documentation log as the single-record edit,
+  // fired once per record whose status actually changed.
+  const role = STATUS_TO_ROLE[newStatus];
+  if (role) {
+    const logsToInsert = soArray
+      .map(so => pendingRawRows.find(r => r.so_number === so))
+      .filter(row => row && row.status !== newStatus)
+      .map(row => ({
+        shipment_no: row.shipment_no, so_number: row.so_number, role,
+        personnel_name: 'ADVANCE', status: 'Completed', start_time: null, end_time: null
+      }));
+    if (logsToInsert.length) {
+      const { error: logErr } = await supabaseClient.from('activity_logs').insert(logsToInsert);
+      if (logErr) console.error('Could not log bulk ADVANCE status change:', logErr.message);
+    }
+  }
+
+  showToast(`Updated ${soArray.length} record(s) to ${newStatus}.`, "success");
+  pendingSelectedSo.clear();
+  await loadPendingQueue();
+  await refreshPipelineSummary();
 }
 
 function openPendingEditModal(so_number) {
