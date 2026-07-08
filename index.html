@@ -2976,15 +2976,20 @@ async function confirmStagingComplete() {
     staging_areas: [...stagingAreaChoices],
     remarks: document.getElementById('staging-remarks').value.trim() || null
   };
+
+  // Staging Checker can start while the Picker is still active — ask about
+  // that FIRST. If the person says "No", the Staging Check itself is also
+  // cancelled, not just the Picker's task, so nothing is marked Done. The
+  // modal stays open so they can go end Picking first, then come back and
+  // confirm.
+  const canProceed = await maybeAutoCompletePriorRole(members, 'Picker', 'Picking');
+  if (!canProceed) return;
+
   for (const m of members) {
     await completeLogById(m.id, m, extra);
   }
   closeStagingCompleteModal();
   showToast(choices.length ? `Staging check completed — ${choices.join(', ')} (${qty}) logged.` : "Staging check completed.", "success");
-
-  // Staging Checker can start while the Picker is still active — offer to
-  // close out any still-open Picker log(s) on the same shipment(s) too.
-  await maybeAutoCompletePriorRole(members, 'Picker', 'Picking');
 
   await fetchShipmentManifest();
   await refreshSidePanel();
@@ -3055,6 +3060,15 @@ async function confirmOutboundComplete() {
     if (isNaN(qty) || qty <= 0) return showToast("Enter a valid discrepancy quantity.", "error");
   }
 
+  // Overlapping stages are allowed (see fetchShipmentManifest's _prevReady
+  // comment), so it's possible to finish the Outbound Check while the Puller
+  // on the same shipment(s) is still Ongoing/Paused. Ask about that FIRST —
+  // if the person says "No", the Outbound Check itself is also cancelled, not
+  // just the Puller's task, so nothing is marked Done. The modal stays open
+  // so they can go end Pulling first, then come back and confirm.
+  const canProceed = await maybeAutoCompletePriorRole(members, 'Puller', 'Pulling');
+  if (!canProceed) return;
+
   const extra = {
     discrepancy_type: choices.length ? choices : null,
     discrepancy_qty: choices.length ? qty : null,
@@ -3066,13 +3080,6 @@ async function confirmOutboundComplete() {
   closeOutboundCompleteModal();
   showToast(choices.length ? `Outbound check completed — ${choices.join(', ')} (${qty}) logged.` : "Outbound check completed.", "success");
 
-  // Overlapping stages are allowed (see fetchShipmentManifest's _prevReady
-  // comment), so it's possible to finish the Outbound Check while the Puller
-  // on the same shipment(s) is still Ongoing/Paused. Offer to close that out
-  // too instead of leaving it stranded — if accepted, the Puller line(s) are
-  // marked Completed and credited to whoever just finished the Outbound Check.
-  await maybeAutoCompletePriorRole(members, 'Puller', 'Pulling');
-
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -3080,31 +3087,38 @@ async function confirmOutboundComplete() {
 
 // Checks for any still-open (Ongoing/Paused) log(s) belonging to the PRIOR
 // role in the chain (Picker -> Staging Checker -> Puller -> Outbound Checker)
-// on the same shipment(s) as a just-completed step. Overlapping stages are
-// allowed (see fetchShipmentManifest's _prevReady comment), so it's possible
-// to finish a later stage while the one before it is still open. If any are
-// found, asks the user once via a Yes/No popup naming the prior stage's
-// action; on "Yes" every matching log is marked Completed with its remarks
-// set to "Completed by <name of whoever just finished the later stage>" so
-// it's clear on Master Records / Data Export that the prior step wasn't
-// personally closed out by that role's own person.
-async function maybeAutoCompletePriorRole(completedMembers, priorRole, priorActionLabel) {
-  const soNumbers = [...new Set(completedMembers.map(m => m.so_number).filter(Boolean))];
-  if (!soNumbers.length) return;
+// on the same shipment(s) that's about to be completed. Overlapping stages
+// are allowed (see fetchShipmentManifest's _prevReady comment), so it's
+// possible to finish a later stage while the one before it is still open.
+// Called BEFORE the current role's own completion is committed. Returns
+// false if the person clicked "No" — in that case the CURRENT role's
+// completion must also be cancelled (nothing gets marked Done), so the
+// caller must check the return value and bail out instead of proceeding.
+// Returns true if there was nothing to check (proceed normally) or if the
+// person clicked "Yes" (prior log(s) get marked Completed with remarks set
+// to "Completed by <name of whoever is finishing the later stage>", then the
+// caller proceeds to complete the current role too).
+async function maybeAutoCompletePriorRole(completingMembers, priorRole, priorActionLabel) {
+  const soNumbers = [...new Set(completingMembers.map(m => m.so_number).filter(Boolean))];
+  if (!soNumbers.length) return true;
 
   const { data: priorLogs, error } = await supabaseClient.from('activity_logs').select('*')
     .in('so_number', soNumbers).eq('role', priorRole).in('status', ['Ongoing', 'Paused']);
-  if (error) { console.error(error); return; }
-  if (!priorLogs || !priorLogs.length) return;
+  if (error) { console.error(error); return true; }
+  if (!priorLogs || !priorLogs.length) return true;
 
-  const completerName = completedMembers[0]?.personnel_name || 'the next stage';
-  const shouldEndPrior = await showConfirm(`End ${priorActionLabel} also?`);
-  if (!shouldEndPrior) return;
+  const priorNames = [...new Set(priorLogs.map(l => l.personnel_name).filter(Boolean))];
+  const nameLabel = priorNames.length ? priorNames.join(', ') : 'Unknown';
+  const completerName = completingMembers[0]?.personnel_name || 'the next stage';
+  const message = `${priorActionLabel} is still ongoing under "${nameLabel}". Are these completed? YES to end the ${priorActionLabel} task, NO to cancel ending that task.`;
+  const shouldEndPrior = await showConfirm(message);
+  if (!shouldEndPrior) return false;
 
   for (const pLog of priorLogs) {
     await completeLogById(pLog.id, pLog, { remarks: `Completed by ${completerName}` });
   }
   showToast(`${priorActionLabel} also marked complete — credited to ${completerName}.`, "success");
+  return true;
 }
 
 // --- SIMPLE COMPLETE MODAL (Picker / Puller) ---
@@ -3128,18 +3142,23 @@ async function confirmSimpleComplete() {
   const members = simpleCompleteMembers;
   if (!members) return closeSimpleCompleteModal();
   const extra = { remarks: document.getElementById('simple-complete-remarks').value.trim() || null };
+
+  // Puller can start while the Staging Checker is still active — ask about
+  // that FIRST. If the person says "No", the Puller completion itself is
+  // also cancelled, not just the Staging Checker's task, so nothing is
+  // marked Done. The modal stays open so they can go end Staging first, then
+  // come back and confirm. Picker has no prior role in the chain, so it's
+  // skipped for that role.
+  if (members[0]?.role === 'Puller') {
+    const canProceed = await maybeAutoCompletePriorRole(members, 'Staging Checker', 'Staging');
+    if (!canProceed) return;
+  }
+
   for (const m of members) {
     await completeLogById(m.id, m, extra);
   }
   closeSimpleCompleteModal();
   showToast("Task completed.", "success");
-
-  // Puller can start while the Staging Checker is still active — offer to
-  // close out any still-open Staging Checker log(s) on the same shipment(s)
-  // too. Picker has no prior role in the chain, so it's skipped for that role.
-  if (members[0]?.role === 'Puller') {
-    await maybeAutoCompletePriorRole(members, 'Staging Checker', 'Staging');
-  }
 
   await fetchShipmentManifest();
   await refreshSidePanel();
