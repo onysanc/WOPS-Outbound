@@ -139,7 +139,6 @@
   .mvp-badge{background:linear-gradient(135deg,#f59e0b,#d97706);color:#1c1207;font-weight:800;font-size:.65rem;padding:.25rem .6rem;border-radius:999px;box-shadow:0 3px 10px -3px rgba(245,158,11,.6)}
   .mvp-badge.mvp-speed{background:linear-gradient(135deg,#2dd4bf,#0d8f79);color:#04231d;box-shadow:0 3px 10px -3px rgba(45,212,191,.6)}
   .mvp-badge.mvp-accuracy{background:linear-gradient(135deg,#60a5fa,#2563eb);color:#04152e;box-shadow:0 3px 10px -3px rgba(37,99,235,.6)}
-  .mvp-badge.mvp-idle{background:linear-gradient(135deg,#f472b6,#db2777);color:#2e0420;box-shadow:0 3px 10px -3px rgba(219,39,119,.6)}
   .streak-chip{background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.35);color:var(--accent);font-size:.65rem;font-weight:700;padding:.2rem .55rem;border-radius:999px}
 
   /* --- Performance Summary Leaderboard --- */
@@ -886,7 +885,6 @@
         <button type="button" data-group="PICK_GROUP" data-metric="productivity" onclick="setBulletinRankMetric('PICK_GROUP','productivity')" class="lb-filter-btn">⚡ Productivity</button>
         <button type="button" data-group="PICK_GROUP" data-metric="speed" onclick="setBulletinRankMetric('PICK_GROUP','speed')" class="lb-filter-btn">🏃 Speed</button>
         <button type="button" data-group="PICK_GROUP" data-metric="accuracy" onclick="setBulletinRankMetric('PICK_GROUP','accuracy')" class="lb-filter-btn">🎯 Accuracy</button>
-        <button type="button" data-group="PICK_GROUP" data-metric="idle" onclick="setBulletinRankMetric('PICK_GROUP','idle')" class="lb-filter-btn">⏱ Least Idle Time</button>
       </div>
 
       <div id="bulletin-podium-PICK" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
@@ -933,7 +931,6 @@
         <button type="button" data-group="CHECK_GROUP" data-metric="productivity" onclick="setBulletinRankMetric('CHECK_GROUP','productivity')" class="lb-filter-btn">⚡ Productivity</button>
         <button type="button" data-group="CHECK_GROUP" data-metric="speed" onclick="setBulletinRankMetric('CHECK_GROUP','speed')" class="lb-filter-btn">🏃 Speed</button>
         <button type="button" data-group="CHECK_GROUP" data-metric="accuracy" onclick="setBulletinRankMetric('CHECK_GROUP','accuracy')" class="lb-filter-btn">🎯 Accuracy</button>
-        <button type="button" data-group="CHECK_GROUP" data-metric="idle" onclick="setBulletinRankMetric('CHECK_GROUP','idle')" class="lb-filter-btn">⏱ Least Idle Time</button>
       </div>
 
       <div id="bulletin-podium-CHECK" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
@@ -3664,7 +3661,6 @@ function renderBulletinGroupBoard(groupKey) {
         if (bv == null) return -1;
         return bv - av;
       }
-      case 'idle': return a.idleMinutes - b.idleMinutes; // less idle = better rank
       case 'accuracy': {
         const av = a.accuracyPct, bv = b.accuracyPct;
         if (av == null && bv == null) return 0;
@@ -3708,8 +3704,6 @@ function renderBulletinGroupBoard(groupKey) {
           headline = e.speedPct == null ? '—' : `${e.speedPct.toFixed(0)}%`;
           headlineColor = e.speedPct == null ? 'text-slate-500' : e.speedPct >= 100 ? 'text-emerald-400' : e.speedPct >= 80 ? 'text-amber-400' : 'text-rose-400';
           subline = `${e.volume.toFixed(0)} units`;
-        } else if (rankMetric === 'idle') {
-          headline = fmtMinutes(e.idleMinutes); headlineColor = e.idleMinutes > 60 ? 'text-rose-400' : 'text-emerald-400'; subline = `${e.activeMinutes.toFixed(0)} active min`;
         } else if (rankMetric === 'accuracy') {
           headline = e.accuracyPct == null ? '—' : `${e.accuracyPct.toFixed(1)}%`;
           headlineColor = e.accuracyPct == null ? 'text-slate-500' : e.accuracyPct >= 98 ? 'text-emerald-400' : e.accuracyPct >= 90 ? 'text-amber-400' : 'text-rose-400';
@@ -6796,7 +6790,7 @@ refreshAnalyticsView = async function (...args) {
 };
 
 // --- GAMIFICATION: Daily MVP badges (one per ranking criterion, per role pool) ---
-// Computes the top personnel for EACH of the four ranking criteria independently,
+// Computes the top personnel for EACH of the three ranking criteria independently,
 // scoped to a single role pool (groupKey: 'PICK_GROUP' or 'CHECK_GROUP') — using
 // the exact same entries the corresponding leaderboard ranks by
 // (computeBulletinEntries(groupKey)), so the badges always agree with what's on
@@ -6806,15 +6800,14 @@ refreshAnalyticsView = async function (...args) {
 function computeAllMvps(groupKey) {
   const entries = (typeof computeBulletinEntries === 'function') ? computeBulletinEntries(groupKey) : [];
   const active = entries.filter(e => e.hasActivity && e.qtyLines > 0);
-  if (!active.length) return { productivity: null, speed: null, accuracy: null, idle: null };
+  if (!active.length) return { productivity: null, speed: null, accuracy: null };
 
   const productivity = [...active].filter(e => e.productivityPct > 0).sort((a, b) => b.productivityPct - a.productivityPct)[0] || null;
   const speed = [...active].filter(e => e.speedPct != null).sort((a, b) => b.speedPct - a.speedPct)[0] || null;
   const accuracyPool = active.filter(e => e.accuracyPct != null);
   const accuracy = accuracyPool.length ? [...accuracyPool].sort((a, b) => b.accuracyPct - a.accuracyPct)[0] : null;
-  const idle = [...active].sort((a, b) => a.idleMinutes - b.idleMinutes)[0] || null;
 
-  return { productivity, speed, accuracy, idle };
+  return { productivity, speed, accuracy };
 }
 const fmtMinutesShort = mins => {
   mins = Math.round(mins || 0);
@@ -6830,7 +6823,6 @@ function renderMvpBadgesForGroup(groupKey, containerId) {
   if (mvps.productivity) badges.push(`<span class="mvp-badge">🏆 Productivity MVP: ${mvps.productivity.name} (${mvps.productivity.productivityPct.toFixed(0)}%)</span>`);
   if (mvps.speed) badges.push(`<span class="mvp-badge mvp-speed">🏃 Speed MVP: ${mvps.speed.name} (${mvps.speed.speedPct.toFixed(0)}%)</span>`);
   if (mvps.accuracy) badges.push(`<span class="mvp-badge mvp-accuracy">🎯 Accuracy MVP: ${mvps.accuracy.name} (${mvps.accuracy.accuracyPct.toFixed(1)}%)</span>`);
-  if (mvps.idle) badges.push(`<span class="mvp-badge mvp-idle">⏱ Least Idle MVP: ${mvps.idle.name} (${fmtMinutesShort(mvps.idle.idleMinutes)})</span>`);
   row.innerHTML = badges.length ? badges.join('') : '<span class="text-[11px] text-slate-600 italic">No qualifying activity yet</span>';
 }
 function updateMvpBadge() {
