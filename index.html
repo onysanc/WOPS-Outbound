@@ -4976,23 +4976,37 @@ function clearAgingSelection() {
 async function deleteSelectedAgingRecords() {
   const list = Array.from(agingSelectedSoNumbers);
   if (!list.length) return;
-  const ok = await showConfirm(`Delete ${list.length} selected record(s)? This cannot be undone.`);
+  const ok = await showConfirm(`Delete ${list.length} selected record(s)? This permanently removes the shipment(s) AND all their activity logs (Picker/Staging/Puller/Outbound history) — no trace of these SO(s) will remain. This cannot be undone.`);
   if (!ok) return;
+  // Child records first (activity_logs references so_number), then the
+  // shipments row itself — so a totally clean delete, nothing orphaned.
+  const { error: logErr } = await supabaseClient.from('activity_logs').delete().in('so_number', list);
+  if (logErr) return showToast("Could not delete activity logs: " + logErr.message, "error");
   const { error } = await supabaseClient.from('shipments').delete().in('so_number', list);
   if (error) return showToast("Could not delete selected records: " + error.message, "error");
   agingSelectedSoNumbers.clear();
-  showToast(`${list.length} record(s) deleted.`, "success");
+  showToast(`${list.length} record(s) and all related activity logs deleted.`, "success");
   await loadAgingData();
+  await refreshPipelineSummary();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 async function deleteAgingRecord(so_number) {
-  const ok = await showConfirm(`Delete record "${so_number}"? This cannot be undone.`);
+  const ok = await showConfirm(`Delete record "${so_number}"? This permanently removes the shipment AND all its activity logs (Picker/Staging/Puller/Outbound history) — no trace of this SO will remain. This cannot be undone.`);
   if (!ok) return;
+  // Child records first (activity_logs references so_number), then the
+  // shipments row itself — so a totally clean delete, nothing orphaned.
+  const { error: logErr } = await supabaseClient.from('activity_logs').delete().eq('so_number', so_number);
+  if (logErr) return showToast("Could not delete activity logs: " + logErr.message, "error");
   const { error } = await supabaseClient.from('shipments').delete().eq('so_number', so_number);
   if (error) return showToast("Could not delete record: " + error.message, "error");
   agingSelectedSoNumbers.delete(so_number);
-  showToast(`Record "${so_number}" deleted.`, "success");
+  showToast(`Record "${so_number}" and all related activity logs deleted.`, "success");
   await loadAgingData();
+  await refreshPipelineSummary();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 // --- MASTER RECORDS: MASS EDIT (ADMIN ONLY) ---
