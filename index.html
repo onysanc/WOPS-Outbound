@@ -2981,6 +2981,11 @@ async function confirmStagingComplete() {
   }
   closeStagingCompleteModal();
   showToast(choices.length ? `Staging check completed — ${choices.join(', ')} (${qty}) logged.` : "Staging check completed.", "success");
+
+  // Staging Checker can start while the Picker is still active — offer to
+  // close out any still-open Picker log(s) on the same shipment(s) too.
+  await maybeAutoCompletePriorRole(members, 'Picker', 'Picking');
+
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -3060,9 +3065,46 @@ async function confirmOutboundComplete() {
   }
   closeOutboundCompleteModal();
   showToast(choices.length ? `Outbound check completed — ${choices.join(', ')} (${qty}) logged.` : "Outbound check completed.", "success");
+
+  // Overlapping stages are allowed (see fetchShipmentManifest's _prevReady
+  // comment), so it's possible to finish the Outbound Check while the Puller
+  // on the same shipment(s) is still Ongoing/Paused. Offer to close that out
+  // too instead of leaving it stranded — if accepted, the Puller line(s) are
+  // marked Completed and credited to whoever just finished the Outbound Check.
+  await maybeAutoCompletePriorRole(members, 'Puller', 'Pulling');
+
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
+}
+
+// Checks for any still-open (Ongoing/Paused) log(s) belonging to the PRIOR
+// role in the chain (Picker -> Staging Checker -> Puller -> Outbound Checker)
+// on the same shipment(s) as a just-completed step. Overlapping stages are
+// allowed (see fetchShipmentManifest's _prevReady comment), so it's possible
+// to finish a later stage while the one before it is still open. If any are
+// found, asks the user once via a Yes/No popup naming the prior stage's
+// action; on "Yes" every matching log is marked Completed with its remarks
+// set to "Completed by <name of whoever just finished the later stage>" so
+// it's clear on Master Records / Data Export that the prior step wasn't
+// personally closed out by that role's own person.
+async function maybeAutoCompletePriorRole(completedMembers, priorRole, priorActionLabel) {
+  const soNumbers = [...new Set(completedMembers.map(m => m.so_number).filter(Boolean))];
+  if (!soNumbers.length) return;
+
+  const { data: priorLogs, error } = await supabaseClient.from('activity_logs').select('*')
+    .in('so_number', soNumbers).eq('role', priorRole).in('status', ['Ongoing', 'Paused']);
+  if (error) { console.error(error); return; }
+  if (!priorLogs || !priorLogs.length) return;
+
+  const completerName = completedMembers[0]?.personnel_name || 'the next stage';
+  const shouldEndPrior = await showConfirm(`End ${priorActionLabel} also?`);
+  if (!shouldEndPrior) return;
+
+  for (const pLog of priorLogs) {
+    await completeLogById(pLog.id, pLog, { remarks: `Completed by ${completerName}` });
+  }
+  showToast(`${priorActionLabel} also marked complete — credited to ${completerName}.`, "success");
 }
 
 // --- SIMPLE COMPLETE MODAL (Picker / Puller) ---
@@ -3091,6 +3133,14 @@ async function confirmSimpleComplete() {
   }
   closeSimpleCompleteModal();
   showToast("Task completed.", "success");
+
+  // Puller can start while the Staging Checker is still active — offer to
+  // close out any still-open Staging Checker log(s) on the same shipment(s)
+  // too. Picker has no prior role in the chain, so it's skipped for that role.
+  if (members[0]?.role === 'Puller') {
+    await maybeAutoCompletePriorRole(members, 'Staging Checker', 'Staging');
+  }
+
   await fetchShipmentManifest();
   await refreshSidePanel();
   await refreshBulletinBoard();
