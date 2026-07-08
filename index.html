@@ -698,58 +698,64 @@
 
 <div class="w-full p-4 lg:p-6 flex items-start gap-4">
 
-<!-- Live Ops Alerts (Workbench-only, 20% left column): flashes Overdue & At-Risk
-     tasks (currently Ongoing/Paused, nearing or past target) and idle personnel
-     (logged activity today, nothing active, 15+ min since their last completion). -->
-<aside id="alerts-panel" class="sticky top-24 w-[max(220px,20%)] shrink-0 self-start max-h-[calc(100vh-7rem)] overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 hidden lg:block">
-  <div class="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-400 font-bold pb-1.5 border-b border-slate-800/60">
-    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>ALERTS
+<!-- Left column (Workbench-only, 20% width): Pipeline Summary stacked above
+     Live Ops Alerts, sticky together as one rail. -->
+<div id="left-rail" class="sticky top-24 w-[max(220px,20%)] shrink-0 self-start max-h-[calc(100vh-7rem)] overflow-y-auto space-y-4 hidden lg:block">
+
+  <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+    <div class="flex items-center justify-between mb-2 gap-1">
+      <h2 class="text-[10px] font-semibold tracking-wide uppercase text-slate-400 leading-tight">Pipeline Summary</h2>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="refreshPipelineSummary()" title="Refresh" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold">⟳</button>
+        <button id="pipeline-summary-collapse-btn" onclick="togglePipelineSummaryCollapse()" title="Minimize / expand this panel" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold w-5 h-5 flex items-center justify-center rounded border border-slate-800 hover:border-emerald-500">▾</button>
+      </div>
+    </div>
+    <div class="flex bg-slate-900 border border-slate-800 rounded-md p-0.5 text-[10px] font-semibold mb-2">
+      <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="flex-1 px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
+      <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="flex-1 px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
+    </div>
+    <div id="pipeline-summary-body">
+      <div class="grid grid-cols-1 gap-2" id="pipeline-summary-grid">
+        <div class="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 flex items-center justify-between gap-2">
+          <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold leading-tight">Pending to Pick</span>
+          <span id="pending-pick-count" class="text-xl font-black text-green-400 shrink-0">–</span>
+        </div>
+        <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 px-3 py-2 flex items-center justify-between gap-2">
+          <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold leading-tight">Pending to Staged</span>
+          <span id="pending-staged-count" class="text-xl font-black text-sky-300 shrink-0">–</span>
+        </div>
+        <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 px-3 py-2 flex items-center justify-between gap-2">
+          <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold leading-tight">Pending to Pull</span>
+          <span id="pending-pull-count" class="text-xl font-black text-pink-400 shrink-0">–</span>
+        </div>
+        <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 flex items-center justify-between gap-2">
+          <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold leading-tight">Pending to Check</span>
+          <span id="pending-check-count" class="text-xl font-black text-blue-400 shrink-0">–</span>
+        </div>
+      </div>
+      <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 gap-2 mt-1"></div>
+    </div>
   </div>
-  <div id="ops-alert-row" class="flex flex-col gap-2">
-    <span class="text-[11px] text-slate-600 italic">Loading alerts...</span>
-  </div>
-</aside>
+
+  <!-- Live Ops Alerts: flashes Overdue & At-Risk tasks (currently Ongoing/Paused,
+       nearing or past target) and idle personnel (logged activity today, nothing
+       active, 15+ min since their last completion). -->
+  <aside id="alerts-panel" class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+    <div class="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-400 font-bold pb-1.5 border-b border-slate-800/60">
+      <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>ALERTS
+    </div>
+    <div id="ops-alert-row" class="flex flex-col gap-2">
+      <span class="text-[11px] text-slate-600 italic">Loading alerts...</span>
+    </div>
+  </aside>
+
+</div>
 
 <main class="flex-1 min-w-0">
 
   <!-- ================= WORKBENCH VIEW ================= -->
   <section id="view-workbench" class="view space-y-6">
-
-    <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
-      <div class="flex items-center justify-between mb-3 gap-2">
-        <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400">Pipeline Summary — Pending by Stage</h2>
-        <div class="flex items-center gap-2">
-          <div class="flex bg-slate-900 border border-slate-800 rounded-md p-0.5 text-[10px] font-semibold">
-            <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
-            <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
-          </div>
-          <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold whitespace-nowrap">⟳ Refresh</button>
-          <button id="pipeline-summary-collapse-btn" onclick="togglePipelineSummaryCollapse()" title="Minimize / expand this panel" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold w-5 h-5 flex items-center justify-center rounded border border-slate-800 hover:border-emerald-500">▾</button>
-        </div>
-      </div>
-      <div id="pipeline-summary-body">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="pipeline-summary-grid">
-          <div class="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
-            <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold block mb-1">Pending to Pick</span>
-            <span id="pending-pick-count" class="text-2xl font-black text-green-400">–</span>
-          </div>
-          <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 p-3">
-            <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold block mb-1">Pending to Staged</span>
-            <span id="pending-staged-count" class="text-2xl font-black text-sky-300">–</span>
-          </div>
-          <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 p-3">
-            <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold block mb-1">Pending to Pull</span>
-            <span id="pending-pull-count" class="text-2xl font-black text-pink-400">–</span>
-          </div>
-          <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
-            <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold block mb-1">Pending to Check</span>
-            <span id="pending-check-count" class="text-2xl font-black text-blue-400">–</span>
-          </div>
-        </div>
-        <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-1"></div>
-      </div>
-    </div>
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
