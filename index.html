@@ -697,24 +697,23 @@
 </header>
 
 <div class="w-full p-4 lg:p-6 flex items-start gap-4">
+
+<!-- Live Ops Alerts (Workbench-only, 20% left column): flashes Overdue & At-Risk
+     tasks (currently Ongoing/Paused, nearing or past target) and idle personnel
+     (logged activity today, nothing active, 15+ min since their last completion). -->
+<aside id="alerts-panel" class="sticky top-24 w-[max(220px,20%)] shrink-0 self-start max-h-[calc(100vh-7rem)] overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 hidden lg:block">
+  <div class="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-400 font-bold pb-1.5 border-b border-slate-800/60">
+    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>ALERTS
+  </div>
+  <div id="ops-alert-row" class="flex flex-col gap-2">
+    <span class="text-[11px] text-slate-600 italic">Loading alerts...</span>
+  </div>
+</aside>
+
 <main class="flex-1 min-w-0">
 
   <!-- ================= WORKBENCH VIEW ================= -->
   <section id="view-workbench" class="view space-y-6">
-
-    <!-- Live Ops Alerts: flashes Overdue &amp; At-Risk tasks (currently Ongoing/Paused,
-         nearing or past target) and idle personnel (logged activity today, nothing
-         active, 15+ min since their last completion) — replaces the old
-         recent-activity ticker so the floor sees what needs attention, not just
-         what already happened. -->
-    <div class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 flex flex-wrap items-start gap-2.5">
-      <span class="text-[10px] uppercase tracking-wider text-rose-400 font-bold flex items-center gap-1 flex-shrink-0 pt-0.5">
-        <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>ALERTS
-      </span>
-      <div id="ops-alert-row" class="flex flex-wrap items-start content-start gap-2 flex-1 min-w-0 max-h-[92px] overflow-y-auto pr-1">
-        <span class="text-[11px] text-slate-600 italic">Loading alerts...</span>
-      </div>
-    </div>
 
     <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-4">
@@ -2055,11 +2054,15 @@ function activateView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  // "All Active Lines" side panel is only relevant to the Workbench — hide it
-  // everywhere else so it doesn't take up space on unrelated tabs.
+  // "All Active Lines" side panel and the Alerts panel are only relevant to
+  // the Workbench — hide them everywhere else so they don't take up space on
+  // unrelated tabs.
   const sidePanel = document.getElementById('side-panel');
   if (sidePanel) sidePanel.classList.toggle('lg:block', name === 'workbench');
   if (sidePanel) sidePanel.classList.toggle('hidden', name !== 'workbench');
+  const alertsPanel = document.getElementById('alerts-panel');
+  if (alertsPanel) alertsPanel.classList.toggle('lg:block', name === 'workbench');
+  if (alertsPanel) alertsPanel.classList.toggle('hidden', name !== 'workbench');
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
