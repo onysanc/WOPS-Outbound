@@ -774,13 +774,13 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/60">
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Personnel Name</label>
-          <input type="text" id="operator-input" list="personnel-datalist" oninput="onOperatorChange()" placeholder="Type or pick a name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <input type="text" id="operator-input" list="personnel-datalist" onchange="onOperatorChange()" placeholder="Type or pick a name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
           <datalist id="personnel-datalist"></datalist>
         </div>
         <div>
           <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment ID Reference</label>
           <div class="flex gap-1.5">
-            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="Type Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+            <input type="text" id="target-shipment-no" autocomplete="off" onchange="onShipmentInputChange()" placeholder="Type Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
             <button onclick="openScannerModal()" title="Scan barcode / QR" class="flex-shrink-0 px-3 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-emerald-500 hover:text-emerald-400 transition text-sm">▦</button>
           </div>
           <datalist id="shipment-datalist"></datalist>
@@ -1214,7 +1214,7 @@
         </div>
         <div class="sm:col-span-2">
           <label class="block text-[10px] text-slate-500 mb-1">Route Description</label>
-          <input type="text" id="md-route" placeholder="e.g. 1102 --> MANILA" required oninput="onManualRouteInput()" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
+          <input type="text" id="md-route" placeholder="e.g. 1102 --> MANILA" required onchange="onManualRouteInput()" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
           <select id="md-route-sto" onchange="onManualRouteSelectChange()" class="hidden bg-slate-900 border border-slate-800 text-xs rounded-lg px-3 py-2 w-full focus:outline-none focus:border-emerald-500">
             <option value="" disabled selected>-- Select Route --</option>
           </select>
@@ -1365,7 +1365,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <p class="text-xs text-slate-400">Full milestone timeline per Sales Order — Picker, Staging, Pulled, and Check start/end times</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <input type="text" id="export-search" oninput="renderExportTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-emerald-500">
+        <input type="text" id="export-search" onchange="renderExportTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-emerald-500">
         <button onclick="loadExportData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
         <button onclick="exportDataToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel</button>
       </div>
@@ -1411,7 +1411,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <p class="text-xs text-slate-400">Every Sales Order that hasn't reached <span class="text-slate-300 font-semibold">Checked</span> yet — regardless of which upload batch it came in on. Use Edit to correct a record's details or push its stage forward.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <input type="text" id="pending-search" oninput="renderPendingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+        <input type="text" id="pending-search" onchange="renderPendingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
         <select id="pending-stage-filter" onchange="renderPendingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[140px]">
           <option value="ALL">All Pending Stages</option>
           <option value="PENDING">Pending</option>
@@ -1473,7 +1473,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <p class="text-xs text-slate-400">All Sales Order records across every stage. Use the <span class="text-slate-300 font-semibold">Status</span> filter to show only <span class="text-slate-300 font-semibold">PENDING</span> (no movement yet), or leave it on <span class="text-slate-300 font-semibold">All Records</span> to see everything. Aging = days since the record was uploaded.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <input type="text" id="aging-search" oninput="renderAgingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+        <input type="text" id="aging-search" onchange="renderAgingTable()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
         <button onclick="loadAgingData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
         <button onclick="exportTableToCSVGeneric('aging-table', 'master-records.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
         <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
@@ -1516,7 +1516,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       </div>
       <div class="min-w-[240px] max-w-[420px] flex-1">
         <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Paste References (SO / Shipment / OBD — one per line or comma-separated)</label>
-        <textarea id="aging-multiref-filter" oninput="renderAgingTable()" rows="1" placeholder="Paste multiple reference numbers here…" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-full focus:outline-none focus:border-emerald-500 resize-y"></textarea>
+        <textarea id="aging-multiref-filter" onchange="renderAgingTable()" rows="1" placeholder="Paste multiple reference numbers here…" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-full focus:outline-none focus:border-emerald-500 resize-y"></textarea>
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <button onclick="document.getElementById('aging-multiref-filter').value=''; renderAgingTable();" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear refs</button>
@@ -1617,7 +1617,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">All Active Lines</h3>
     <button onclick="refreshSidePanel()" class="text-[10px] text-slate-500 hover:text-emerald-400">↻ refresh</button>
   </div>
-  <input type="text" id="side-panel-search" oninput="renderSidePanelList()" placeholder="Search dispatch or personnel name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-emerald-500">
+  <input type="text" id="side-panel-search" onchange="renderSidePanelList()" placeholder="Search dispatch or personnel name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-emerald-500">
   <div id="side-panel-list" class="grid grid-cols-2 gap-2">
     <p class="text-[11px] text-slate-600 italic">Loading...</p>
   </div>
