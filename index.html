@@ -849,7 +849,7 @@
       <div class="flex flex-wrap items-center gap-2">
         <label class="text-[11px] text-slate-400 font-semibold">Activity Day</label>
         <input type="date" id="bulletin-date" onchange="refreshBulletinBoard()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-        <input type="text" id="bulletin-search" oninput="renderBulletinBoard()" placeholder="Search personnel or role..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+
         <button onclick="exportSectionToPDF('view-bulletin')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 whitespace-nowrap">🖶 Export PDF Summary</button>
       </div>
     </div>
@@ -878,10 +878,7 @@
           <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider">🧺 Picking Operations Leaderboard <span class="text-slate-500 font-normal normal-case">(Picker + Puller)</span></h3>
           <p id="bulletin-subtitle-PICK" class="text-[11px] text-slate-500">Ranked by Productivity %</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button onclick="exportTableToCSVGeneric('bulletin-table-PICK', 'picking-operations-performance.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ CSV</button>
-          <button onclick="exportTableToXLSXGeneric('bulletin-table-PICK', 'picking-operations-performance.xlsx', 'Picking Operations')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Excel</button>
-        </div>
+
       </div>
 
       <div class="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-2.5">
@@ -893,27 +890,9 @@
 
       <div id="bulletin-podium-PICK" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
 
-      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950 p-2">
-        <table id="bulletin-table-PICK" class="w-full text-left text-xs">
-          <thead class="text-slate-400 font-medium">
-            <tr>
-              <th class="p-3 text-center w-12">Rank</th>
-              <th class="p-3">Personnel</th>
-              <th class="p-3">Role(s)</th>
-              <th class="p-3 text-center">Activity Day</th>
-              <th class="p-3 text-right">Shipments</th>
-              <th class="p-3 text-right">Qty (Lines)</th>
-              <th class="p-3 text-right">Volume (Selling Units)</th>
-              <th class="p-3 text-right">Active Minutes</th>
-              <th class="p-3">Productivity</th>
-              <th class="p-3 text-right">Speed % (vs. Target, max 150%)</th>
-              <th class="p-3 text-right">Accuracy</th>
-              <th class="p-3 text-right">Idle Time</th>
-              <th class="p-3 text-center w-10"></th>
-            </tr>
-          </thead>
-          <tbody id="bulletin-container-PICK"></tbody>
-        </table>
+      <div class="border border-slate-800 rounded-lg bg-slate-950 p-3">
+        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">📈 14-Day Trend — Productivity · Speed · Accuracy</p>
+        <div class="h-56"><canvas id="bulletin-trend-chart-PICK"></canvas></div>
       </div>
     </div>
 
@@ -924,10 +903,7 @@
           <h3 class="text-sm font-bold text-sky-300 uppercase tracking-wider">🧾 Checking Operations Leaderboard <span class="text-slate-500 font-normal normal-case">(Staging Checker + Outbound Checker)</span></h3>
           <p id="bulletin-subtitle-CHECK" class="text-[11px] text-slate-500">Ranked by Productivity %</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button onclick="exportTableToCSVGeneric('bulletin-table-CHECK', 'checking-operations-performance.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ CSV</button>
-          <button onclick="exportTableToXLSXGeneric('bulletin-table-CHECK', 'checking-operations-performance.xlsx', 'Checking Operations')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Excel</button>
-        </div>
+
       </div>
 
       <div class="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 rounded-xl p-2.5">
@@ -939,27 +915,9 @@
 
       <div id="bulletin-podium-CHECK" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
 
-      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950 p-2">
-        <table id="bulletin-table-CHECK" class="w-full text-left text-xs">
-          <thead class="text-slate-400 font-medium">
-            <tr>
-              <th class="p-3 text-center w-12">Rank</th>
-              <th class="p-3">Personnel</th>
-              <th class="p-3">Role(s)</th>
-              <th class="p-3 text-center">Activity Day</th>
-              <th class="p-3 text-right">Shipments</th>
-              <th class="p-3 text-right">Qty (Lines)</th>
-              <th class="p-3 text-right">Volume (Selling Units)</th>
-              <th class="p-3 text-right">Active Minutes</th>
-              <th class="p-3">Productivity</th>
-              <th class="p-3 text-right">Speed % (vs. Target, max 150%)</th>
-              <th class="p-3 text-right">Accuracy</th>
-              <th class="p-3 text-right">Idle Time</th>
-              <th class="p-3 text-center w-10"></th>
-            </tr>
-          </thead>
-          <tbody id="bulletin-container-CHECK"></tbody>
-        </table>
+      <div class="border border-slate-800 rounded-lg bg-slate-950 p-3">
+        <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">📈 14-Day Trend — Productivity · Speed · Accuracy</p>
+        <div class="h-56"><canvas id="bulletin-trend-chart-CHECK"></canvas></div>
       </div>
     </div>
 
@@ -3711,22 +3669,12 @@ function renderBulletinBoard() {
 
 function renderBulletinGroupBoard(groupKey) {
   const suffix = groupKey === 'PICK_GROUP' ? 'PICK' : 'CHECK';
-  const container = document.getElementById(`bulletin-container-${suffix}`);
   const podium = document.getElementById(`bulletin-podium-${suffix}`);
-  if (!container) return;
-  const searchText = (document.getElementById('bulletin-search')?.value || '').trim().toLowerCase();
   updateBulletinFilterButtons(groupKey);
 
-  const dateStr = document.getElementById('bulletin-date')?.value || defaultOperationalDateStr();
   const rankMetric = bulletinRankMetric[groupKey];
-  const fmtMinutes = mins => {
-    mins = Math.round(mins || 0);
-    const h = Math.floor(mins / 60), m = mins % 60;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  };
 
-  // --- Compute metrics for every personnel in THIS pool, then rank the FULL
-  // pool (unfiltered) so a search doesn't renumber anyone's standing. ---
+  // --- Compute metrics for every personnel in THIS pool, then rank the FULL pool. ---
   let entries = computeBulletinEntries(groupKey);
 
   // Rank the FULL pool by exactly ONE selected metric — zero-activity personnel
@@ -3755,31 +3703,16 @@ function renderBulletinGroupBoard(groupKey) {
   });
   entries = entries.map((e, i) => ({ ...e, rank: i + 1 }));
 
-  // Now apply the search filter for DISPLAY only — ranks computed above are preserved.
-  let visible = entries;
-  if (searchText) {
-    visible = entries.filter(e => {
-      const roleText = e.roles.join(' ').toLowerCase();
-      return e.name.toLowerCase().includes(searchText) || roleText.includes(searchText);
-    });
-  }
-
-  if (!visible.length) {
-    container.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">${searchText ? 'No personnel match found.' : 'No personnel on file for this pool yet.'}</td></tr>`;
-    if (podium) podium.innerHTML = '';
-    return;
-  }
-
-  // --- Top-3 podium cards (only shown unfiltered, and only for ranks that actually
-  // have logged activity — an empty podium slot for a zero-activity "leader" would
-  // be misleading). The headline number reflects whichever metric is selected. ---
+  // --- Top-3 podium cards, only for ranks that actually have logged activity —
+  // an empty podium slot for a zero-activity "leader" would be misleading. The
+  // headline number reflects whichever metric is selected. ---
   if (podium) {
-    if (searchText) {
-      podium.innerHTML = '';
+    const podiumMedals = ['🥇', '🥈', '🥉'];
+    const podiumClasses = ['lb-rank-1', 'lb-rank-2', 'lb-rank-3'];
+    const top3 = entries.slice(0, 3).filter(e => e.hasActivity);
+    if (!top3.length) {
+      podium.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-3">No personnel on file for this pool yet.</p>';
     } else {
-      const podiumMedals = ['🥇', '🥈', '🥉'];
-      const podiumClasses = ['lb-rank-1', 'lb-rank-2', 'lb-rank-3'];
-      const top3 = entries.slice(0, 3).filter(e => e.hasActivity);
       podium.innerHTML = top3.map((e, i) => {
         let headline, headlineColor, subline;
         if (rankMetric === 'speed') {
@@ -3809,71 +3742,103 @@ function renderBulletinGroupBoard(groupKey) {
     }
   }
 
-  container.innerHTML = visible.map((e) => {
-    const { name, roles, shipments, qtyLines, volume, activeMinutes, speedPct, productivityPct, accuracyPct, idleMinutes, gaps, hasActivity, rank } = e;
-    const productivityColor = productivityPct >= 100 ? 'text-emerald-400' : productivityPct >= 70 ? 'text-amber-400' : productivityPct > 0 ? 'text-rose-400' : 'text-slate-600';
-    const barColor = productivityPct >= 100 ? '#2dd4bf' : productivityPct >= 70 ? '#f59e0b' : '#f43f5e';
-    const barWidth = Math.max(0, Math.min(100, productivityPct));
-    const accuracyColor = accuracyPct == null ? 'text-slate-600' : accuracyPct >= 98 ? 'text-emerald-400' : accuracyPct >= 90 ? 'text-amber-400' : 'text-rose-400';
-    const speedColor = speedPct == null ? 'text-slate-600' : speedPct >= 100 ? 'text-emerald-400' : speedPct >= 80 ? 'text-amber-400' : 'text-rose-400';
-    const rankClass = rank === 1 ? 'lb-rank-1' : rank === 2 ? 'lb-rank-2' : rank === 3 ? 'lb-rank-3' : '';
-    const rankChipClass = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : '';
-    const rankDisplay = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
-    const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
-    const panelId = `perf-detail-${suffix}-${rank}`;
-    const gapRows = !hasActivity
-      ? '<div class="text-slate-600 italic py-1">No activity logged for this Activity Day.</div>'
-      : gaps.length
-      ? gaps.map(g => `
-          <div class="flex justify-between py-1 border-b border-slate-900 last:border-0">
-            <span class="text-slate-500">After <span class="text-slate-300 font-mono">${g.afterShipment || '—'}</span> → before <span class="text-slate-300 font-mono">${g.beforeShipment || '—'}</span></span>
-            <span class="text-amber-400 font-mono font-semibold">${fmtMinutes(g.minutes)}</span>
-          </div>`).join('')
-      : '<div class="text-slate-600 italic py-1">No idle gaps — tasks ran back-to-back.</div>';
-
-    return `
-      <tr class="lb-row ${rankClass} ${hasActivity ? '' : 'lb-no-activity'}">
-        <td class="p-3 text-center"><span class="rank-chip ${rankChipClass}">${rankDisplay}</span></td>
-        <td class="p-3">
-          <div class="flex items-center gap-2">
-            <span class="lb-avatar ${hasActivity ? '' : 'lb-avatar-dim'}">${initials}</span>
-            <span class="font-semibold ${hasActivity ? 'text-emerald-400' : 'text-slate-500'}">${name}</span>
-          </div>
-        </td>
-        <td class="p-3">${roles.length ? roles.map(r => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1 ${roleBadgeClass(r)}">${r}</span>`).join('') : '<span class="text-slate-600 italic text-[10px]">No role on file</span>'}</td>
-        <td class="p-3 text-center font-mono text-slate-400">${dateStr}</td>
-        <td class="p-3 text-right font-mono text-blue-400 font-semibold">${shipments}</td>
-        <td class="p-3 text-right font-mono text-slate-300">${qtyLines}</td>
-        <td class="p-3 text-right font-mono text-amber-400 font-semibold">${volume.toFixed(2)}</td>
-        <td class="p-3 text-right font-mono text-slate-300">${activeMinutes.toFixed(2)}</td>
-        <td class="p-3">
-          <div class="flex items-center gap-2">
-            <div class="lb-bar-track"><div class="lb-bar-fill" style="width:${barWidth}%;background:${barColor}"></div></div>
-            <span class="font-mono font-semibold text-[11px] ${productivityColor} w-12 text-right">${productivityPct.toFixed(1)}%</span>
-          </div>
-        </td>
-        <td class="p-3 text-right font-mono font-semibold ${speedColor}">${speedPct == null ? '—' : speedPct.toFixed(0) + '%'}</td>
-        <td class="p-3 text-right font-mono font-semibold ${accuracyColor}">${accuracyPct == null ? '—' : accuracyPct.toFixed(1) + '%'}</td>
-        <td class="p-3 text-right font-mono ${idleMinutes > 60 ? 'text-rose-400 font-bold' : 'text-slate-300'}">${hasActivity ? fmtMinutes(idleMinutes) : '—'}</td>
-        <td class="p-3 text-center">
-          <button onclick="toggleBulletinDetail('${panelId}')" class="text-[10px] text-slate-400 hover:text-emerald-400 font-semibold">▾</button>
-        </td>
-      </tr>
-      <tr id="${panelId}" class="hidden bg-slate-950/60">
-        <td colspan="13" class="px-4 pb-3 pt-0">
-          <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-[11px]">
-            <div class="text-slate-500 uppercase tracking-wider text-[10px] font-semibold mb-1">Task-to-task idle gaps</div>
-            ${gapRows}
-          </div>
-        </td>
-      </tr>`;
-  }).join('');
+  renderBulletinTrendChart(groupKey);
 }
 
+// --- 14-day trend chart (replaces the old per-personnel table): one line each
+// for Productivity %, Speed %, and Accuracy %, aggregated across the WHOLE role
+// pool per operational day, ending at the selected Activity Day. Reuses the same
+// per-day building blocks as the leaderboard (sumGroupMinutes, averageSpeedPctForLogs)
+// so the trend agrees with the day-of numbers shown in the podium cards. ---
+async function renderBulletinTrendChart(groupKey) {
+  const suffix = groupKey === 'PICK_GROUP' ? 'PICK' : 'CHECK';
+  const canvas = document.getElementById(`bulletin-trend-chart-${suffix}`);
+  if (!canvas || typeof Chart === 'undefined') return;
 
-function toggleBulletinDetail(panelId) {
-  const el = document.getElementById(panelId);
-  if (el) el.classList.toggle('hidden');
+  const endDateStr = document.getElementById('bulletin-date')?.value || defaultOperationalDateStr();
+  const [y, m, d] = endDateStr.split('-').map(Number);
+  const days = [];
+  for (let i = 13; i >= 0; i--) { const dt = new Date(y, m - 1, d - i); days.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`); }
+  const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
+  const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
+
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,status,start_time,end_time,rendered_minutes,target_hours,total_qty,discrepancy_qty,so_number')
+    .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString());
+  if (error) { console.error(error); return; }
+  const logs = (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
+
+  // Bucket every log into its operational day (05:00–04:59 window).
+  const byDay = {};
+  days.forEach(ds => byDay[ds] = []);
+  logs.forEach(l => {
+    const t = new Date(l.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    if (byDay[ds]) byDay[ds].push(l);
+  });
+
+  const groupRoles = ROLE_GROUPS[groupKey].roles;
+  const metricsByDay = days.map(ds => computeGroupDayMetrics(byDay[ds], groupKey, groupRoles));
+
+  upsertChart(`bulletin-trend-chart-${suffix}`, {
+    type: 'line',
+    data: {
+      labels: days.map(dd => dd.slice(5)),
+      datasets: [
+        { label: 'Productivity %', data: metricsByDay.map(mm => mm.productivityPct == null ? null : +mm.productivityPct.toFixed(1)), borderColor: '#2dd4bf', backgroundColor: 'rgba(45,212,191,.08)', tension: .3, spanGaps: true, fill: true },
+        { label: 'Speed %', data: metricsByDay.map(mm => mm.speedPct == null ? null : +mm.speedPct.toFixed(1)), borderColor: '#f59e0b', backgroundColor: 'transparent', tension: .3, spanGaps: true },
+        { label: 'Accuracy %', data: metricsByDay.map(mm => mm.accuracyPct == null ? null : +mm.accuracyPct.toFixed(1)), borderColor: '#60a5fa', backgroundColor: 'transparent', tension: .3, spanGaps: true }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#93a1b8', font: { size: 10 } } } },
+      scales: { x: CHART_AXIS_OPTS, y: { ...CHART_AXIS_OPTS, beginAtZero: true, suggestedMax: 150 } }
+    }
+  });
+}
+
+// Aggregates Productivity/Speed/Accuracy for a single operational day, scoped to
+// one role pool — same methodology as computeBulletinEntries, but rolled up
+// across the whole pool (average productivity/speed across active personnel,
+// volume-weighted accuracy) instead of per-personnel, since the trend chart
+// tracks the pool as a whole rather than ranking individuals.
+function computeGroupDayMetrics(dayLogsAll, groupKey, groupRoles) {
+  const completedAll = dayLogsAll.filter(l => l.status === 'Completed');
+  const groupLogs = completedAll.filter(l => groupRoles.includes(l.role));
+  if (!groupLogs.length) return { productivityPct: null, speedPct: null, accuracyPct: null };
+
+  const byPerson = {};
+  groupLogs.forEach(l => { const k = l.personnel_name || '—'; (byPerson[k] = byPerson[k] || []).push(l); });
+  const prodPcts = Object.values(byPerson).map(personLogs => {
+    const mins = sumGroupMinutes(personLogs);
+    return mins > 0 ? (mins / 60 / STANDARD_DAILY_HOURS) * 100 : 0;
+  }).filter(p => p > 0);
+  const productivityPct = prodPcts.length ? prodPcts.reduce((s, p) => s + p, 0) / prodPcts.length : null;
+
+  const speedPct = averageSpeedPctForLogs(groupLogs);
+
+  let gradedVol = 0, gradedDiscVol = 0;
+  if (groupKey === 'PICK_GROUP') {
+    const stagingLogsForDay = completedAll.filter(l => l.role === 'Staging Checker');
+    const seenSO = new Set();
+    groupLogs.filter(l => l.role === 'Picker').forEach(mline => {
+      if (seenSO.has(mline.so_number)) return;
+      seenSO.add(mline.so_number);
+      gradedVol += parseFloat(mline.total_qty) || 0;
+      const stageLog = stagingLogsForDay.find(l => l.so_number === mline.so_number);
+      if (stageLog && stageLog.discrepancy_qty) gradedDiscVol += parseFloat(stageLog.discrepancy_qty) || 0;
+    });
+  } else {
+    groupLogs.filter(l => l.role === 'Staging Checker' || l.role === 'Outbound Checker').forEach(mline => {
+      gradedVol += parseFloat(mline.total_qty) || 0;
+      gradedDiscVol += parseFloat(mline.discrepancy_qty) || 0;
+    });
+  }
+  const accuracyPct = gradedVol > 0 ? Math.max(0, Math.min(100, ((gradedVol - gradedDiscVol) / gradedVol) * 100)) : null;
+
+  return { productivityPct, speedPct, accuracyPct };
 }
 
 // ================= ANALYTICS & REPORTS =================
