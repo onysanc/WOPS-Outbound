@@ -703,7 +703,7 @@
 <div id="left-rail" class="sticky top-24 w-[max(220px,20%)] shrink-0 self-start max-h-[calc(100vh-7rem)] overflow-y-auto space-y-4 hidden lg:block">
 
   <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
-  <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+  <div id="pipeline-summary-panel" class="bg-slate-950 border border-slate-800 rounded-xl p-3">
     <div class="flex items-center justify-between mb-2 gap-1">
       <h2 class="text-[10px] font-semibold tracking-wide uppercase text-slate-400 leading-tight">Pipeline Summary</h2>
       <div class="flex items-center gap-1 shrink-0">
@@ -763,11 +763,11 @@
           <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">Active Deployment Role</h2>
           <p class="text-xs text-slate-500">Select a stage before assigning or actioning rows</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button onclick="setRole('Picker')" id="btn-Picker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">1. Picker</button>
-          <button onclick="setRole('Staging Checker')" id="btn-Staging Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">2. Staging Checker</button>
-          <button onclick="setRole('Puller')" id="btn-Puller" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">3. Puller</button>
-          <button onclick="setRole('Outbound Checker')" id="btn-Outbound Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition">4. Outbound Checker</button>
+        <div class="flex flex-nowrap gap-2">
+          <button onclick="setRole('Picker')" id="btn-Picker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">1. Picker</button>
+          <button onclick="setRole('Staging Checker')" id="btn-Staging Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">2. STG Checker</button>
+          <button onclick="setRole('Puller')" id="btn-Puller" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">3. Puller</button>
+          <button onclick="setRole('Outbound Checker')" id="btn-Outbound Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">4. OTB Checker</button>
         </div>
       </div>
 
@@ -790,18 +790,14 @@
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h2 class="text-lg font-bold text-slate-100">Target Action Line Manifest</h2>
-        <div class="flex gap-2 text-[11px]">
-          <input type="text" id="row-filter" oninput="renderManifestTable()" placeholder="Filter loaded rows..." class="bg-slate-900 border border-slate-800 rounded px-2 py-1.5 w-48 focus:outline-none focus:border-emerald-500">
-        </div>
+        <h2 class="text-lg font-bold text-slate-100"></h2>
       </div>
 
       <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
-        <table class="w-full text-left text-xs border-collapse">
+        <table class="w-full text-left text-sm border-collapse">
           <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
             <tr>
               <th class="p-3 text-center w-10"><input type="checkbox" id="select-all-rows" onchange="toggleSelectAllRows(this)" class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500" title="Select/deselect all selectable rows"></th>
-              <th class="p-3">SO Number</th>
               <th class="p-3">OBD Number</th>
               <th class="p-3">Customer</th>
               <th class="p-3">Route</th>
@@ -812,7 +808,7 @@
             </tr>
           </thead>
           <tbody id="manifest-rows" class="divide-y divide-slate-800/50">
-            <tr><td colspan="9" class="p-8 text-center text-slate-500 italic">Type a Shipment ID above to load matching lines.</td></tr>
+            <tr><td colspan="8" class="p-8 text-center text-slate-500 italic">Type a Shipment ID above to load matching lines.</td></tr>
           </tbody>
         </table>
       </div>
@@ -2069,6 +2065,9 @@ function activateView(name) {
   const alertsPanel = document.getElementById('alerts-panel');
   if (alertsPanel) alertsPanel.classList.toggle('lg:block', name === 'workbench');
   if (alertsPanel) alertsPanel.classList.toggle('hidden', name !== 'workbench');
+  const pipelinePanel = document.getElementById('pipeline-summary-panel');
+  if (pipelinePanel) pipelinePanel.classList.toggle('lg:block', name === 'workbench');
+  if (pipelinePanel) pipelinePanel.classList.toggle('hidden', name !== 'workbench');
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
@@ -2449,7 +2448,7 @@ function rowStatusLabel(row, log, role) {
 
 function renderManifestTable() {
   const tbody = document.getElementById('manifest-rows');
-  const filterText = (document.getElementById('row-filter').value || '').toLowerCase();
+  const filterText = (document.getElementById('row-filter')?.value || '').toLowerCase();
   const operator = document.getElementById('operator-input').value.trim();
   tbody.innerHTML = '';
   const selectAllCb = document.getElementById('select-all-rows');
@@ -2460,7 +2459,7 @@ function renderManifestTable() {
   );
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">No matching lines loaded.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-500 italic">No matching lines loaded.</td></tr>`;
     document.getElementById('target-summary-card').classList.add('hidden');
     return;
   }
@@ -2510,7 +2509,6 @@ function renderManifestTable() {
         <td class="p-3 text-center">
           <input type="checkbox" data-index="${i}" onchange="recalcSummary()" ${(status !== 'PENDING' || notReadyForStage) ? 'disabled' : ''} class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500">
         </td>
-        <td class="p-3 font-mono text-slate-300 font-semibold">${row.so_number}</td>
         <td class="p-3 font-mono text-slate-400 text-[11px]">${row.obd_number || '—'}</td>
         <td class="p-3 max-w-[160px] truncate text-slate-400" title="${row.sold_to_party_name || ''}">${row.sold_to_party_name || ''}</td>
         <td class="p-3 text-slate-400 font-mono text-[11px]">
