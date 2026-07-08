@@ -2062,6 +2062,9 @@ function activateView(name) {
   const sidePanel = document.getElementById('side-panel');
   if (sidePanel) sidePanel.classList.toggle('lg:block', name === 'workbench');
   if (sidePanel) sidePanel.classList.toggle('hidden', name !== 'workbench');
+  const leftRail = document.getElementById('left-rail');
+  if (leftRail) leftRail.classList.toggle('lg:block', name === 'workbench');
+  if (leftRail) leftRail.classList.toggle('hidden', name !== 'workbench');
   const alertsPanel = document.getElementById('alerts-panel');
   if (alertsPanel) alertsPanel.classList.toggle('lg:block', name === 'workbench');
   if (alertsPanel) alertsPanel.classList.toggle('hidden', name !== 'workbench');
