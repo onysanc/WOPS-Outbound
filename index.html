@@ -726,27 +726,30 @@
             <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
           </div>
           <button onclick="refreshPipelineSummary()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold whitespace-nowrap">⟳ Refresh</button>
+          <button id="pipeline-summary-collapse-btn" onclick="togglePipelineSummaryCollapse()" title="Minimize / expand this panel" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold w-5 h-5 flex items-center justify-center rounded border border-slate-800 hover:border-emerald-500">▾</button>
         </div>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="pipeline-summary-grid">
-        <div class="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
-          <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold block mb-1">Pending to Pick</span>
-          <span id="pending-pick-count" class="text-2xl font-black text-green-400">–</span>
+      <div id="pipeline-summary-body">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="pipeline-summary-grid">
+          <div class="rounded-lg border border-green-500/30 bg-green-500/10 p-3">
+            <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold block mb-1">Pending to Pick</span>
+            <span id="pending-pick-count" class="text-2xl font-black text-green-400">–</span>
+          </div>
+          <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 p-3">
+            <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold block mb-1">Pending to Staged</span>
+            <span id="pending-staged-count" class="text-2xl font-black text-sky-300">–</span>
+          </div>
+          <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 p-3">
+            <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold block mb-1">Pending to Pull</span>
+            <span id="pending-pull-count" class="text-2xl font-black text-pink-400">–</span>
+          </div>
+          <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+            <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold block mb-1">Pending to Check</span>
+            <span id="pending-check-count" class="text-2xl font-black text-blue-400">–</span>
+          </div>
         </div>
-        <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 p-3">
-          <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold block mb-1">Pending to Staged</span>
-          <span id="pending-staged-count" class="text-2xl font-black text-sky-300">–</span>
-        </div>
-        <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 p-3">
-          <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold block mb-1">Pending to Pull</span>
-          <span id="pending-pull-count" class="text-2xl font-black text-pink-400">–</span>
-        </div>
-        <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
-          <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold block mb-1">Pending to Check</span>
-          <span id="pending-check-count" class="text-2xl font-black text-blue-400">–</span>
-        </div>
+        <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-1"></div>
       </div>
-      <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-1"></div>
     </div>
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -6287,8 +6290,24 @@ function toggleScanMode() {
       document.body.classList.add('scan-mode');
       const b = document.getElementById('scan-mode-btn'); if (b) { b.style.color = 'var(--accent)'; b.style.borderColor = 'var(--accent)'; }
     }
+    if (localStorage.getItem('wh_pipeline_summary_collapsed') === '1') {
+      const body = document.getElementById('pipeline-summary-body');
+      const btn = document.getElementById('pipeline-summary-collapse-btn');
+      if (body) body.classList.add('hidden');
+      if (btn) btn.innerText = '▸';
+    }
   } catch (e) { /* storage unavailable — ignore */ }
 })();
+
+// --- PIPELINE SUMMARY: minimize / expand toggle (persisted via localStorage) ---
+function togglePipelineSummaryCollapse() {
+  const body = document.getElementById('pipeline-summary-body');
+  const btn = document.getElementById('pipeline-summary-collapse-btn');
+  if (!body) return;
+  const collapsed = body.classList.toggle('hidden');
+  if (btn) btn.innerText = collapsed ? '▸' : '▾';
+  try { localStorage.setItem('wh_pipeline_summary_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
 
 // --- COMMAND PALETTE (Ctrl/Cmd+K) ---
 let cmdkItems = [];
