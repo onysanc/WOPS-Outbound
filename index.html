@@ -1488,18 +1488,18 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
             <th class="p-3 text-center"><input type="checkbox" id="pending-select-all" onchange="toggleSelectAllPending(this)" class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500"></th>
-            <th class="p-3 text-center">Upload Date</th>
+            <th class="p-3 text-center cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('upload_date')">Upload Date<span id="pending-sort-arrow-upload_date" class="ml-0.5"></span></th>
             <th class="p-3 text-center">Actions</th>
-            <th class="p-3 text-center">Status</th>
-            <th class="p-3 text-left">Truck Type</th>
-            <th class="p-3 text-left">Shipment</th>
-            <th class="p-3 text-left">S.O. Number</th>
-            <th class="p-3 text-left">OBD Number</th>
-            <th class="p-3 text-left">Ship To Party Name</th>
-            <th class="p-3 text-center border-l border-slate-800/60 text-slate-300">Picker Name</th>
-            <th class="p-3 text-center border-l border-slate-800/60 text-cyan-300">Staging Name</th>
-            <th class="p-3 text-center border-l border-slate-800/60 text-purple-300">Pulled Name</th>
-            <th class="p-3 text-center border-l border-slate-800/60 text-emerald-300">Check Name</th>
+            <th class="p-3 text-center cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('status')">Status<span id="pending-sort-arrow-status" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('truck_type')">Truck Type<span id="pending-sort-arrow-truck_type" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('shipment_no')">Shipment<span id="pending-sort-arrow-shipment_no" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('so_number')">S.O. Number<span id="pending-sort-arrow-so_number" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('obd_number')">OBD Number<span id="pending-sort-arrow-obd_number" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('customer')">Ship To Party Name<span id="pending-sort-arrow-customer" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-slate-300 cursor-pointer select-none hover:text-slate-100" onclick="sortPendingBy('pick_name')">Picker Name<span id="pending-sort-arrow-pick_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-cyan-300 cursor-pointer select-none hover:text-cyan-200" onclick="sortPendingBy('stage_name')">Staging Name<span id="pending-sort-arrow-stage_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-purple-300 cursor-pointer select-none hover:text-purple-200" onclick="sortPendingBy('pull_name')">Pulled Name<span id="pending-sort-arrow-pull_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-emerald-300 cursor-pointer select-none hover:text-emerald-200" onclick="sortPendingBy('check_name')">Check Name<span id="pending-sort-arrow-check_name" class="ml-0.5"></span></th>
           </tr>
         </thead>
         <tbody id="pending-rows" class="divide-y divide-slate-800/50">
@@ -5302,6 +5302,57 @@ function filteredPendingRows() {
   });
 }
 
+// --- PENDING QUEUE: column sorting ---
+let pendingSortKey = null;   // one of PENDING_SORT_ACCESSORS' keys, or null for unsorted
+let pendingSortDir = 'asc';  // 'asc' | 'desc'
+
+const PENDING_SORT_ACCESSORS = {
+  upload_date: r => r.upload_date ? new Date(r.upload_date).getTime() : null,
+  status: r => PIPELINE_STAGE_ORDER.hasOwnProperty(r.status) ? PIPELINE_STAGE_ORDER[r.status] : null,
+  truck_type: r => (r.truck_type || '').toLowerCase() || null,
+  shipment_no: r => (r.shipment_no || '').toLowerCase() || null,
+  so_number: r => (r.so_number || '').toLowerCase() || null,
+  obd_number: r => (r.obd_number || '').toLowerCase() || null,
+  customer: r => (r.customer || '').toLowerCase() || null,
+  pick_name: r => (r.pick_name || '').toLowerCase() || null,
+  stage_name: r => (r.stage_name || '').toLowerCase() || null,
+  pull_name: r => (r.pull_name || '').toLowerCase() || null,
+  check_name: r => (r.check_name || '').toLowerCase() || null
+};
+
+function sortPendingBy(key) {
+  if (!PENDING_SORT_ACCESSORS[key]) return;
+  if (pendingSortKey === key) pendingSortDir = pendingSortDir === 'asc' ? 'desc' : 'asc';
+  else { pendingSortKey = key; pendingSortDir = 'asc'; }
+  renderPendingTable();
+}
+
+function sortPendingRows(rows) {
+  if (!pendingSortKey) return rows;
+  const accessor = PENDING_SORT_ACCESSORS[pendingSortKey];
+  if (!accessor) return rows;
+  const dir = pendingSortDir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = accessor(a), bv = accessor(b);
+    const aEmpty = av === null || av === undefined;
+    const bEmpty = bv === null || bv === undefined;
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;  // blanks always sink to the bottom, regardless of direction
+    if (bEmpty) return -1;
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+}
+
+function updatePendingSortIndicators() {
+  Object.keys(PENDING_SORT_ACCESSORS).forEach(key => {
+    const el = document.getElementById(`pending-sort-arrow-${key}`);
+    if (!el) return;
+    el.textContent = key === pendingSortKey ? (pendingSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  });
+}
+
 const PENDING_STATUS_BADGE = {
   PENDING: 'bg-green-500/10 text-green-400 border-green-500/30',
   PICKED: 'bg-sky-400/10 text-sky-300 border-sky-400/30',
@@ -5310,9 +5361,10 @@ const PENDING_STATUS_BADGE = {
 };
 
 function renderPendingTable() {
-  const rows = filteredPendingRows();
+  const rows = sortPendingRows(filteredPendingRows());
   const tbody = document.getElementById('pending-rows');
   document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
+  updatePendingSortIndicators();
 
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
