@@ -4908,6 +4908,23 @@ function clearAgingFilters() {
   renderAgingTable();
 }
 
+// --- SAFETY GUARD: block deleting/renaming a shipment while it still has
+// Ongoing/Paused activity — this is what caused orphaned "ghost" logs in the
+// past (a picker/checker actively working a row while the row itself gets
+// deleted or renamed out from under them, e.g. Master Records shows nothing
+// but the Active Lines panel still shows their session as Ongoing).
+// Returns the list of so_numbers (subset of the input) that currently have
+// live work against them, so the caller can name them in a warning.
+async function soNumbersWithActiveLogs(soNumbers) {
+  const list = (soNumbers || []).filter(Boolean);
+  if (!list.length) return [];
+  const { data, error } = await supabaseClient.from('activity_logs')
+    .select('so_number,personnel_name,role,status')
+    .in('so_number', list).in('status', ['Ongoing', 'Paused']);
+  if (error) { console.error('Could not check for active activity logs:', error.message); return []; }
+  return [...new Set((data || []).map(l => l.so_number))];
+}
+
 // --- MASTER RECORDS: ADMIN ADD / EDIT / DELETE ---
 function updateAgingBulkBar() {
   const count = agingSelectedSoNumbers.size;
@@ -4941,6 +4958,10 @@ function clearAgingSelection() {
 async function deleteSelectedAgingRecords() {
   const list = Array.from(agingSelectedSoNumbers);
   if (!list.length) return;
+  const active = await soNumbersWithActiveLogs(list);
+  if (active.length) {
+    return showToast(`Cannot delete — ${active.length} of the selected record(s) still have Ongoing/Paused work logged against them: ${active.join(', ')}. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
+  }
   const ok = await showConfirm(`Delete ${list.length} selected record(s)? This permanently removes the shipment(s) AND all their activity logs (Picker/Staging/Puller/Outbound history) — no trace of these SO(s) will remain. This cannot be undone.`);
   if (!ok) return;
   // Child records first (activity_logs references so_number), then the
@@ -4958,6 +4979,10 @@ async function deleteSelectedAgingRecords() {
 }
 
 async function deleteAgingRecord(so_number) {
+  const active = await soNumbersWithActiveLogs([so_number]);
+  if (active.length) {
+    return showToast(`Cannot delete "${so_number}" — it still has Ongoing/Paused work logged against it. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
+  }
   const ok = await showConfirm(`Delete record "${so_number}"? This permanently removes the shipment AND all its activity logs (Picker/Staging/Puller/Outbound history) — no trace of this SO will remain. This cannot be undone.`);
   if (!ok) return;
   // Child records first (activity_logs references so_number), then the
@@ -5199,7 +5224,15 @@ async function saveAgingRecordModal() {
   // doesn't linger as a duplicate alongside the renamed one. Also repoint
   // every activity_logs row still referencing the old SO Number, so the
   // per-line edits below (and everything else keyed off so_number) still match.
+  // Blocked outright while the OLD SO still has Ongoing/Paused work logged
+  // against it — otherwise the delete succeeds, the repoint below can
+  // silently fail, and the assigned personnel end up working a row that no
+  // longer exists anywhere except their own active session.
   if (originalSo && originalSo !== soNumber) {
+    const active = await soNumbersWithActiveLogs([originalSo]);
+    if (active.length) {
+      return showToast(`Cannot rename "${originalSo}" — it still has Ongoing/Paused work logged against it. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
+    }
     const { error: delError } = await supabaseClient.from('shipments').delete().eq('so_number', originalSo);
     if (delError) return showToast("Could not update record: " + delError.message, "error");
     const { error: renameErr } = await supabaseClient.from('activity_logs').update({ so_number: soNumber }).eq('so_number', originalSo);
@@ -5565,7 +5598,15 @@ async function savePendingEditModal() {
   if (newStatus === 'PICKED') row.pgi_date = new Date().toISOString();
 
   // Renaming the SO Number is the upsert conflict key — same handling as Master Records.
+  // Blocked outright while the OLD SO still has Ongoing/Paused work logged
+  // against it — otherwise the delete succeeds, the repoint below can
+  // silently fail, and the assigned personnel end up working a row that no
+  // longer exists anywhere except their own active session.
   if (originalSo && originalSo !== soNumber) {
+    const active = await soNumbersWithActiveLogs([originalSo]);
+    if (active.length) {
+      return showToast(`Cannot rename "${originalSo}" — it still has Ongoing/Paused work logged against it. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
+    }
     const { error: delError } = await supabaseClient.from('shipments').delete().eq('so_number', originalSo);
     if (delError) return showToast("Could not update record: " + delError.message, "error");
     const { error: renameErr } = await supabaseClient.from('activity_logs').update({ so_number: soNumber }).eq('so_number', originalSo);
