@@ -198,6 +198,22 @@
   @keyframes viewIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
   @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   .toast{animation:toastIn .2s ease-out}
+
+  /* --- Popup/modal text bump: every modal container's id ends in "-modal".
+     Bumps each Tailwind text-size utility used inside popups by ~3pt so all
+     confirmation/completion dialogs read larger, without touching the same
+     classes anywhere else in the app (dashboard, tables, etc). Covers content
+     injected dynamically via innerHTML too, since it still matches by id. --- */
+  [id$="-modal"] .text-\[9px\]{font-size:12px !important}
+  [id$="-modal"] .text-\[10px\]{font-size:13px !important}
+  [id$="-modal"] .text-\[11px\]{font-size:14px !important}
+  [id$="-modal"] .text-xs{font-size:15px !important}
+  [id$="-modal"] .text-sm{font-size:17px !important}
+  [id$="-modal"] .text-base{font-size:19px !important}
+  [id$="-modal"] .text-lg{font-size:21px !important}
+  [id$="-modal"] .text-xl{font-size:23px !important}
+  [id$="-modal"] .text-2xl{font-size:28px !important}
+  [id$="-modal"] .text-3xl{font-size:35px !important}
 </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen pb-10">
@@ -816,7 +832,7 @@
       <div id="target-summary-card" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-5 grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
         <div>
           <span class="text-xs text-slate-400 block mb-0.5">Selected Volume</span>
-          <span id="summary-total-qty" class="text-2xl font-black text-amber-400">0.00</span> <span class="text-xs text-slate-400">Selling Units</span>
+          <span id="summary-total-qty" class="text-2xl font-black text-amber-400">0.00</span> <span class="text-xs text-slate-400">QTY</span>
         </div>
         <div>
           <span class="text-xs text-slate-400 block mb-0.5">Net Baseline Minutes</span>
@@ -1115,7 +1131,7 @@
         <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-              <tr><th class="p-2">Truck Type</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (Selling Units)</th></tr>
+              <tr><th class="p-2">Truck Type</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (QTY)</th></tr>
             </thead>
             <tbody id="truck-breakdown-rows" class="divide-y divide-slate-800/50"></tbody>
           </table>
@@ -1126,7 +1142,7 @@
         <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950 max-h-72 overflow-y-auto">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium sticky top-0">
-              <tr><th class="p-2">Route</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (Selling Units)</th></tr>
+              <tr><th class="p-2">Route</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (QTY)</th></tr>
             </thead>
             <tbody id="route-breakdown-rows" class="divide-y divide-slate-800/50"></tbody>
           </table>
@@ -2848,7 +2864,7 @@ async function openDispatchModal() {
     <div class="flex justify-between"><span>Operator</span><strong class="text-slate-200">${operator}</strong></div>
     <div class="flex justify-between"><span>PICKLIST selected</span><strong class="text-slate-200">${checkboxes.length}</strong></div>
     ${stagingAreaRow}
-    <div class="flex justify-between"><span>Total volume</span><strong class="text-amber-400">${totalQty} Selling Units</strong></div>
+    <div class="flex justify-between"><span>Total volume</span><strong class="text-amber-400">${totalQty} QTY</strong></div>
     <div class="flex justify-between"><span>Target w/ breaks</span><strong class="text-blue-400">${finalHours} min</strong></div>`;
   document.getElementById('dispatch-modal').classList.remove('hidden');
 }
