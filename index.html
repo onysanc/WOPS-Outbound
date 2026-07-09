@@ -1383,9 +1383,9 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="flex flex-wrap items-center gap-2">
         <input type="text" id="export-search" oninput="debouncedExportSearch()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-emerald-500">
         <span class="text-[10px] text-slate-500">Record Date:</span>
-        <input type="date" id="export-date-from" onchange="renderExportTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <input type="date" id="export-date-from" onchange="loadExportData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
         <span class="text-[10px] text-slate-600">to</span>
-        <input type="date" id="export-date-to" onchange="renderExportTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <input type="date" id="export-date-to" onchange="loadExportData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
         <button onclick="clearExportDateFilter()" class="text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Clear date filter">✕</button>
         <button onclick="loadExportData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
         <button onclick="exportDataToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel</button>
@@ -1529,11 +1529,11 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       </div>
       <div>
         <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date From</label>
-        <input type="date" id="aging-date-from" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <input type="date" id="aging-date-from" onchange="loadAgingData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
       </div>
       <div>
         <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date To</label>
-        <input type="date" id="aging-date-to" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <input type="date" id="aging-date-to" onchange="loadAgingData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
       </div>
       <div class="min-w-[240px] max-w-[420px] flex-1">
         <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Paste References (SO / Shipment / OBD — one per line or comma-separated)</label>
@@ -1839,8 +1839,8 @@ function gatedSearchHandler(inputId, fn, delay = 250) {
 // function declarations are hoisted, so these already point at the real
 // functions by the time any of this actually runs.
 const debouncedPendingSearch = gatedSearchHandler('pending-search', () => renderPendingTable());
-const debouncedAgingSearch = gatedSearchHandler('aging-search', () => renderAgingTable());
-const debouncedExportSearch = gatedSearchHandler('export-search', () => renderExportTable());
+const debouncedAgingSearch = gatedSearchHandler('aging-search', () => loadAgingData());
+const debouncedExportSearch = gatedSearchHandler('export-search', () => loadExportData());
 const debouncedSidePanelSearch = gatedSearchHandler('side-panel-search', () => renderSidePanelList());
 
 // Names an admin has flagged "Exclude from computations" on the Personnel Roster
@@ -4391,8 +4391,26 @@ let agingRawRows = [];
 let agingSelectedSoNumbers = new Set();
 let agingDatesInitialized = false;
 
+// Guard: only hit the DB once the user has narrowed things down with a
+// Record Date range or a search term — opening the tab (or clearing both)
+// should never pull the full shipments/activity_logs tables.
+function exportHasActiveFilter() {
+  const searchText = (document.getElementById('export-search').value || '').trim();
+  const fromVal = document.getElementById('export-date-from').value;
+  const toVal = document.getElementById('export-date-to').value;
+  return !!(searchText || fromVal || toVal);
+}
+
 async function loadExportData() {
   const tbody = document.getElementById('export-rows');
+
+  if (!exportHasActiveFilter()) {
+    exportRawRows = [];
+    tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Select a date range or enter a search term to load records.</td></tr>`;
+    document.getElementById('export-count').innerText = '0 line(s)';
+    return;
+  }
+
   tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false }).limit(20000);
@@ -4682,7 +4700,7 @@ function filteredExportRows() {
 function clearExportDateFilter() {
   document.getElementById('export-date-from').value = '';
   document.getElementById('export-date-to').value = '';
-  renderExportTable();
+  loadExportData();
 }
 
 function renderExportTable() {
@@ -4785,10 +4803,30 @@ function exportDataToExcel() {
 // rule as refreshPipelineSummary() so this tab always agrees with the
 // Workbench pipeline counters — a row is only PENDING here if it's PENDING
 // everywhere else in the app too.
+// Guard: only hit the DB once the user has narrowed things down with a
+// Record Date range or a search term — opening the tab (or clearing both)
+// should never pull the full shipments/activity_logs tables.
+function agingHasActiveFilter() {
+  const searchText = (document.getElementById('aging-search').value || '').trim();
+  const fromVal = document.getElementById('aging-date-from').value;
+  const toVal = document.getElementById('aging-date-to').value;
+  return !!(searchText || fromVal || toVal);
+}
+
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
-  tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
+
+  if (!agingHasActiveFilter()) {
+    agingRawRows = [];
+    agingSelectedSoNumbers.clear();
+    tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Select a date range or enter a search term to load records.</td></tr>`;
+    populateAgingFilterOptions();
+    renderAgingTable();
+    return;
+  }
+
+  tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   // Newest-first: with the 20,000-row cap, an ascending fetch drops the most
   // recently uploaded shipments off the end once the table grows past the
@@ -4994,7 +5032,7 @@ function clearAgingFilters() {
   document.getElementById('aging-truck-filter').value = '';
   document.getElementById('aging-search').value = '';
   document.getElementById('aging-multiref-filter').value = '';
-  renderAgingTable();
+  loadAgingData();
 }
 
 // --- SAFETY GUARD: block deleting/renaming a shipment while it still has
