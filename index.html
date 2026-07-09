@@ -1382,6 +1382,11 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <input type="text" id="export-search" oninput="debouncedExportSearch()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-emerald-500">
+        <span class="text-[10px] text-slate-500">Record Date:</span>
+        <input type="date" id="export-date-from" onchange="renderExportTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <span class="text-[10px] text-slate-600">to</span>
+        <input type="date" id="export-date-to" onchange="renderExportTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <button onclick="clearExportDateFilter()" class="text-[10px] font-semibold px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" title="Clear date filter">✕</button>
         <button onclick="loadExportData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
         <button onclick="exportDataToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel</button>
       </div>
@@ -4640,22 +4645,44 @@ function fmtDiscrepancy(types, qty) {
 
 function filteredExportRows() {
   const searchText = (document.getElementById('export-search').value || '').trim().toLowerCase();
-  if (!searchText) return exportRawRows;
-  return exportRawRows.filter(r =>
-    (r.so_number || '').toLowerCase().includes(searchText) ||
-    (r.shipment_no || '').toLowerCase().includes(searchText) ||
-    (r.obd_number || '').toLowerCase().includes(searchText) ||
-    (r.customer || '').toLowerCase().includes(searchText) ||
-    (r.pick_name || '').toLowerCase().includes(searchText) ||
-    (r.stage_name || '').toLowerCase().includes(searchText) ||
-    (r.pull_name || '').toLowerCase().includes(searchText) ||
-    (r.check_name || '').toLowerCase().includes(searchText) ||
-    (r.staging_area || []).join(' ').toLowerCase().includes(searchText) ||
-    (r.pick_remarks || '').toLowerCase().includes(searchText) ||
-    (r.stage_remarks || '').toLowerCase().includes(searchText) ||
-    (r.pull_remarks || '').toLowerCase().includes(searchText) ||
-    (r.check_remarks || '').toLowerCase().includes(searchText)
-  );
+  const fromVal = document.getElementById('export-date-from').value;
+  const toVal = document.getElementById('export-date-to').value;
+  const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+  const toDate = toVal ? new Date(toVal + 'T23:59:59') : null;
+
+  return exportRawRows.filter(r => {
+    if (fromDate || toDate) {
+      // record_date is already backfilled to upload_date in loadExportData(),
+      // but guard anyway so a row never vanishes just for lacking one.
+      if (!r.record_date) return false;
+      const recorded = new Date(r.record_date);
+      if (fromDate && recorded < fromDate) return false;
+      if (toDate && recorded > toDate) return false;
+    }
+    if (!searchText) return true;
+    return (
+      (r.so_number || '').toLowerCase().includes(searchText) ||
+      (r.shipment_no || '').toLowerCase().includes(searchText) ||
+      (r.obd_number || '').toLowerCase().includes(searchText) ||
+      (r.customer || '').toLowerCase().includes(searchText) ||
+      (r.pick_name || '').toLowerCase().includes(searchText) ||
+      (r.stage_name || '').toLowerCase().includes(searchText) ||
+      (r.pull_name || '').toLowerCase().includes(searchText) ||
+      (r.check_name || '').toLowerCase().includes(searchText) ||
+      (r.staging_area || []).join(' ').toLowerCase().includes(searchText) ||
+      (r.pick_remarks || '').toLowerCase().includes(searchText) ||
+      (r.stage_remarks || '').toLowerCase().includes(searchText) ||
+      (r.pull_remarks || '').toLowerCase().includes(searchText) ||
+      (r.check_remarks || '').toLowerCase().includes(searchText)
+    );
+  });
+}
+
+// Clears only the Record Date range (leaves search text alone) and re-renders.
+function clearExportDateFilter() {
+  document.getElementById('export-date-from').value = '';
+  document.getElementById('export-date-to').value = '';
+  renderExportTable();
 }
 
 function renderExportTable() {
