@@ -2268,7 +2268,7 @@ const SPEED_PCT_CAP = 150;
 let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // line-level — feeds Backlog Forecast, which measures throughput per completed line
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
 async function refreshPipelineSummary() {
-  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at');
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').limit(20000);
   if (error) return console.error(error);
   const rows = data || [];
 
@@ -4327,7 +4327,7 @@ async function loadExportData() {
   const tbody = document.getElementById('export-rows');
   tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
-  const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false });
+  const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false }).limit(20000);
   if (shipErr) {
     console.error(shipErr);
     tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
@@ -4700,7 +4700,7 @@ async function loadAgingData() {
   tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
 
-  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
+  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true }).limit(20000);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
@@ -5278,7 +5278,7 @@ async function loadPendingQueue() {
   tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   pendingSelectedSo.clear();
 
-  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true });
+  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true }).limit(20000);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
