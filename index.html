@@ -2321,7 +2321,10 @@ const SPEED_PCT_CAP = 150;
 let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // line-level — feeds Backlog Forecast, which measures throughput per completed line
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
 async function refreshPipelineSummary() {
-  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').limit(20000);
+  // Explicit newest-first order (same reasoning as loadAgingData()/loadPendingQueue()):
+  // without an explicit order, a capped fetch has no guarantee it favors
+  // recent rows once the table exceeds the limit.
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) return console.error(error);
   const rows = data || [];
 
@@ -5370,7 +5373,12 @@ async function loadPendingQueue() {
   tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   pendingSelectedSo.clear();
 
-  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true }).limit(20000);
+  // Newest-first for the same reason as loadAgingData(): an ascending fetch
+  // capped at 20,000 rows drops the newest shipments off the end once the
+  // table exceeds the cap, so brand-new pending dispatches can silently
+  // never appear in the queue. Descending guarantees new rows always land
+  // inside the window.
+  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
