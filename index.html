@@ -4760,7 +4760,14 @@ async function loadAgingData() {
   tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   applyAgingAdminUI();
 
-  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: true }).limit(20000);
+  // Newest-first: with the 20,000-row cap, an ascending fetch drops the most
+  // recently uploaded shipments off the end once the table grows past the
+  // cap, so brand-new dispatches silently never appear here even though
+  // they're in the DB (they still show in Data Export, which sorts by
+  // so_number instead). Descending order guarantees the newest rows are
+  // always inside the 20k window; final display order is re-sorted by
+  // aging_days anyway, so fetch order here doesn't affect what's shown.
+  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
@@ -4872,21 +4879,13 @@ function applyAgingAdminUI() {
   }
 }
 
-// Defaults the Record Date filter to the 1st day of the current month
-// through the last day of the current month, the first time the tab is
-// opened in this session. Only applied once so it never clobbers a filter
-// range the user has since chosen themselves. Built from local Y/M/D parts
-// (not toISOString) so it matches the browser's own calendar month, same
-// reasoning as localDateStr() above.
+// Previously defaulted the Record Date filter to the current month on the
+// first tab open each session. Removed per request: Master Records should
+// show ALL records by default (no implicit date filter hiding anything),
+// and the user picks a date range explicitly only when they want one.
 function ensureAgingDefaultDateRange() {
-  if (agingDatesInitialized) return;
-  agingDatesInitialized = true;
-  const now = new Date();
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const toYmd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  document.getElementById('aging-date-from').value = toYmd(firstOfMonth);
-  document.getElementById('aging-date-to').value = toYmd(lastOfMonth);
+  // intentionally a no-op now — kept as a named hook in case a default
+  // is wanted again later, but it no longer sets aging-date-from/to.
 }
 
 // Populate the Customer / Truck Type dropdowns from whatever values actually
