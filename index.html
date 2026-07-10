@@ -125,6 +125,11 @@
   .alert-chip.idle.clickable:hover{background:rgba(219,39,119,.28);transform:translateY(-1px)}
   .alert-chip.idle.clickable:active{transform:translateY(0)}
 
+  /* --- Master Records: drag-and-drop personnel record move (admin only) --- */
+  .aging-drag-handle{cursor:grab}
+  .aging-drag-handle:active{cursor:grabbing}
+  .aging-row.aging-drop-target{outline:2px dashed var(--accent);outline-offset:-2px;background:rgba(45,212,191,.1) !important}
+
   /* --- Kanban board --- */
   .kanban-col{background:#0c1220;border:1px solid #1a2436;border-radius:.6rem;min-height:120px;display:flex;flex-direction:column}
   .kanban-col-head{padding:.55rem .75rem;border-bottom:1px solid #1a2436;font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;display:flex;justify-content:space-between}
@@ -4863,7 +4868,7 @@ async function loadAgingData() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
+        .select('id,so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!logErr) logs.push(...(logChunk || []));
       else console.error(logErr);
@@ -4898,6 +4903,11 @@ async function loadAgingData() {
       quantity: row.quantity, so_amount: row.so_amount,
       qty: rowQtySum(row), status: effective,
       upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.record_date || row.uploaded_at),
+      // *_id below is the activity_logs.id for that stage's Completed record —
+      // kept on the row so the Master Records drag-and-drop (move a personnel
+      // record to a different S.O.) can target the exact log row instead of
+      // guessing by so_number+role (which could match a stale/duplicate log).
+      pick_id: pick?.id || null,
       pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
       pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
       // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
@@ -4906,6 +4916,7 @@ async function loadAgingData() {
       pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
       pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
       pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
+      stage_id: stage?.id || null,
       stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
       stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
       stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
@@ -4913,10 +4924,12 @@ async function loadAgingData() {
       stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
       stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
       staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
+      pull_id: pull?.id || null,
       pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
       pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
       pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
       pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
+      check_id: check?.id || null,
       check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
       check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
       check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
@@ -5841,6 +5854,97 @@ function agingStatusBadgeClass(status) {
   }
 }
 
+// --- MASTER RECORDS: DRAG-AND-DROP PERSONNEL RECORD MOVE (ADMIN ONLY) ---
+// Lets an admin drag a stage's personnel record (Picker / Staging Checker /
+// Puller / Outbound Checker — whichever cell has a name in it) off one S.O.
+// row and drop it onto a different S.O. row. That reassigns the underlying
+// activity_logs row's so_number to the destination S.O. Because every
+// Master Records row (and every downstream screen: Data Export, Pipeline
+// Summary, Side Panel, Bulletin Board/MVP) is computed live by joining
+// shipments + activity_logs on so_number, moving the log automatically
+// updates every related total for BOTH the source and destination S.O. the
+// next time those views refresh — which we trigger right after the move.
+let agingDragPayload = null; // { sourceSo, role, logId }
+
+// Builds one draggable personnel-name <td> for the Master Records row. Only
+// draggable for admins, and only once the stage actually has a completed
+// log (id) to drag — an empty "—" cell has nothing to move.
+function agingPersonnelCell(r, role, prefix, colorClass) {
+  const name = r[`${prefix}_name`];
+  const logId = r[`${prefix}_id`];
+  const soEsc = String(r.so_number).replace(/'/g, "\\'");
+  const roleEsc = role.replace(/'/g, "\\'");
+  if (isAgingAdmin() && logId) {
+    return `<td class="p-3 text-center border-l border-slate-800/60 text-[10px] ${colorClass} font-semibold aging-drag-handle" draggable="true" ondragstart="handleAgingDragStart(event,'${soEsc}','${roleEsc}','${logId}')" ondragend="handleAgingDragEnd(event)" title="Drag onto another S.O. row to move this ${roleEsc} record there">${name || '—'}</td>`;
+  }
+  return `<td class="p-3 text-center border-l border-slate-800/60 text-[10px] ${colorClass} font-semibold">${name || '—'}</td>`;
+}
+
+function handleAgingDragStart(e, sourceSo, role, logId) {
+  agingDragPayload = { sourceSo, role, logId };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', `${sourceSo}||${role}||${logId}`);
+}
+
+function handleAgingDragEnd() {
+  agingDragPayload = null;
+  document.querySelectorAll('.aging-row.aging-drop-target').forEach(el => el.classList.remove('aging-drop-target'));
+}
+
+function handleAgingDragOver(e) {
+  if (!agingDragPayload) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('aging-drop-target');
+}
+
+function handleAgingDragLeave(e) {
+  e.currentTarget.classList.remove('aging-drop-target');
+}
+
+async function handleAgingDrop(e, targetSo) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('aging-drop-target');
+  const payload = agingDragPayload;
+  agingDragPayload = null;
+  if (!payload) return;
+  const { sourceSo, role, logId } = payload;
+  if (!targetSo || targetSo === sourceSo) return; // dropped back on the same row — no-op
+  await moveAgingPersonnelRecord(sourceSo, targetSo, role, logId);
+}
+
+// Reassigns activity_logs.so_number for a single stage's log from sourceSo
+// to targetSo. If the destination already has a completed log for that same
+// role, it's cleared first (a role only has one "current" log per S.O. on
+// this screen) — the admin is warned and must confirm before that happens.
+async function moveAgingPersonnelRecord(sourceSo, targetSo, role, logId) {
+  if (!isAgingAdmin()) return;
+  const targetRow = agingRawRows.find(r => r.so_number === targetSo);
+  const prefix = AGING_LINE_ROLE_PREFIX[role];
+  const existingId = targetRow ? targetRow[`${prefix}_id`] : null;
+  const existingName = targetRow ? targetRow[`${prefix}_name`] : null;
+
+  const msg = existingId
+    ? `S.O. "${targetSo}" already has a ${role} record (${existingName}). Moving this record here will permanently delete that existing ${role} log and replace it with the one from "${sourceSo}". Continue?`
+    : `Move this ${role} record from S.O. "${sourceSo}" to S.O. "${targetSo}"? Its start/end times, remarks, and stats move with it and it will no longer show under "${sourceSo}". Related totals for both Sales Orders will refresh automatically.`;
+  const ok = await showConfirm(msg);
+  if (!ok) return;
+
+  if (existingId) {
+    const { error: delErr } = await supabaseClient.from('activity_logs').delete().eq('id', existingId);
+    if (delErr) return showToast("Could not clear the existing record at the destination: " + delErr.message, "error");
+  }
+
+  const { error } = await supabaseClient.from('activity_logs').update({ so_number: targetSo }).eq('id', logId);
+  if (error) return showToast("Move failed: " + error.message, "error");
+
+  showToast(`Moved ${role} record from "${sourceSo}" to "${targetSo}". Related records for both S.O.s have been refreshed.`, "success");
+  await loadAgingData();
+  await refreshPipelineSummary();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
+}
+
 function renderAgingTable() {
   const tbody = document.getElementById('aging-rows');
   const rows = filteredAgingRows().sort((a, b) => (b.aging_days ?? 0) - (a.aging_days ?? 0));
@@ -5861,7 +5965,7 @@ function renderAgingTable() {
   }
 
   tbody.innerHTML = rows.map(r => `
-    <tr class="hover:bg-slate-900/60 transition">
+    <tr class="hover:bg-slate-900/60 transition aging-row" ondragover="handleAgingDragOver(event)" ondragleave="handleAgingDragLeave(event)" ondrop="handleAgingDrop(event,'${String(r.so_number).replace(/'/g, "\\'")}')">
       <td class="p-3 text-left aging-admin-col ${adminColClass}"><input type="checkbox" ${agingSelectedSoNumbers.has(r.so_number) ? 'checked' : ''} onchange="toggleAgingRowSelect('${String(r.so_number).replace(/'/g, "\\'")}', this.checked)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></td>
       <td class="p-3 text-center aging-admin-col ${adminColClass}">
         <div class="flex items-center justify-center gap-2">
@@ -5880,7 +5984,7 @@ function renderAgingTable() {
       <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] font-mono ${agingStatusBadgeClass(r.status)}">${r.status}</span></td>
       <td class="p-3 text-center font-mono text-[11px] ${agingColorClass(r.aging_days)}">${r.aging_days === null ? '—' : r.aging_days + 'd'}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-300">${r.staging_area || '—'}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
+      ${agingPersonnelCell(r, 'Picker', 'pick', 'text-slate-300')}
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtExportDT(r.pick_end)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pick_remarks || ''}">${r.pick_remarks || '—'}</td>
@@ -5890,7 +5994,7 @@ function renderAgingTable() {
       <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.pick_hitmiss)}">${fmtHitMiss(r.pick_hitmiss)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.pick_speedpct)}">${fmtSpeedPct(r.pick_speedpct)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.pick_idle)}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+      ${agingPersonnelCell(r, 'Staging Checker', 'stage', 'text-cyan-300')}
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-cyan-400">${fmtExportDT(r.stage_end)}</td>
       <td class="p-3 text-center text-[10px] ${r.stage_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty)}</td>
@@ -5901,7 +6005,7 @@ function renderAgingTable() {
       <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.stage_hitmiss)}">${fmtHitMiss(r.stage_hitmiss)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.stage_speedpct)}">${fmtSpeedPct(r.stage_speedpct)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.stage_idle)}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
+      ${agingPersonnelCell(r, 'Puller', 'pull', 'text-purple-300')}
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-purple-400">${fmtExportDT(r.pull_end)}</td>
       <td class="p-3 max-w-[140px] truncate text-[10px] text-slate-400" title="${r.pull_remarks || ''}">${r.pull_remarks || '—'}</td>
@@ -5910,7 +6014,7 @@ function renderAgingTable() {
       <td class="p-3 text-center font-mono text-[10px] ${hitMissColorClass(r.pull_hitmiss)}">${fmtHitMiss(r.pull_hitmiss)}</td>
       <td class="p-3 text-center font-mono text-[10px] ${speedColorClass(r.pull_speedpct)}">${fmtSpeedPct(r.pull_speedpct)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtIdleMinutes(r.pull_idle)}</td>
-      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
+      ${agingPersonnelCell(r, 'Outbound Checker', 'check', 'text-emerald-300')}
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_start)}</td>
       <td class="p-3 text-center font-mono text-[10px] text-emerald-400">${fmtExportDT(r.check_end)}</td>
       <td class="p-3 text-center text-[10px] ${r.check_discrepancy_type ? 'text-rose-400 font-semibold' : 'text-slate-500'}">${fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty)}</td>
