@@ -1474,12 +1474,13 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('customer')">Ship To Party Name<span id="pending-sort-arrow-customer" class="ml-0.5"></span></th>
             <th class="p-3 text-center border-l border-slate-800/60 text-slate-300 cursor-pointer select-none hover:text-slate-100" onclick="sortPendingBy('pick_name')">Picker Name<span id="pending-sort-arrow-pick_name" class="ml-0.5"></span></th>
             <th class="p-3 text-center border-l border-slate-800/60 text-cyan-300 cursor-pointer select-none hover:text-cyan-200" onclick="sortPendingBy('stage_name')">Staging Name<span id="pending-sort-arrow-stage_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center text-cyan-300 cursor-pointer select-none hover:text-cyan-200" onclick="sortPendingBy('staging_area')">Staging Area<span id="pending-sort-arrow-staging_area" class="ml-0.5"></span></th>
             <th class="p-3 text-center border-l border-slate-800/60 text-purple-300 cursor-pointer select-none hover:text-purple-200" onclick="sortPendingBy('pull_name')">Pulled Name<span id="pending-sort-arrow-pull_name" class="ml-0.5"></span></th>
             <th class="p-3 text-center border-l border-slate-800/60 text-emerald-300 cursor-pointer select-none hover:text-emerald-200" onclick="sortPendingBy('check_name')">Check Name<span id="pending-sort-arrow-check_name" class="ml-0.5"></span></th>
           </tr>
         </thead>
         <tbody id="pending-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+          <tr><td colspan="14" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
         </tbody>
       </table>
     </div>
@@ -5435,7 +5436,7 @@ let pendingSelectedSo = new Set();
 
 async function loadPendingQueue() {
   const tbody = document.getElementById('pending-rows');
-  tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
   pendingSelectedSo.clear();
 
   // Newest-first for the same reason as loadAgingData(): an ascending fetch
@@ -5446,7 +5447,7 @@ async function loadPendingQueue() {
   const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
     return;
   }
 
@@ -5460,7 +5461,7 @@ async function loadPendingQueue() {
     for (let i = 0; i < soNumbers.length; i += chunkSize) {
       const chunk = soNumbers.slice(i, i + chunkSize);
       const { data: logData, error: logErr } = await supabaseClient.from('activity_logs')
-        .select('so_number,role,personnel_name,start_time,end_time,status')
+        .select('so_number,role,personnel_name,start_time,end_time,status,staging_areas')
         .in('so_number', chunk).eq('status', 'Completed');
       if (!logErr) logs.push(...(logData || []));
       else console.error(logErr);
@@ -5494,6 +5495,7 @@ async function loadPendingQueue() {
         upload_date: row.uploaded_at,
         pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
         stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+        staging_area: stage?.staging_areas || null,
         pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
         check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null
       };
@@ -5513,7 +5515,8 @@ function filteredPendingRows() {
       (r.so_number || '').toLowerCase().includes(searchText) ||
       (r.shipment_no || '').toLowerCase().includes(searchText) ||
       (r.obd_number || '').toLowerCase().includes(searchText) ||
-      (r.customer || '').toLowerCase().includes(searchText)
+      (r.customer || '').toLowerCase().includes(searchText) ||
+      (r.staging_area || []).join(' ').toLowerCase().includes(searchText)
     );
   });
 }
@@ -5532,6 +5535,7 @@ const PENDING_SORT_ACCESSORS = {
   customer: r => (r.customer || '').toLowerCase() || null,
   pick_name: r => (r.pick_name || '').toLowerCase() || null,
   stage_name: r => (r.stage_name || '').toLowerCase() || null,
+  staging_area: r => ((r.staging_area || []).join(', ').toLowerCase()) || null,
   pull_name: r => (r.pull_name || '').toLowerCase() || null,
   check_name: r => (r.check_name || '').toLowerCase() || null
 };
@@ -5583,7 +5587,7 @@ function renderPendingTable() {
   updatePendingSortIndicators();
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
     updatePendingBulkBar();
     return;
   }
@@ -5603,6 +5607,7 @@ function renderPendingTable() {
       <td class="p-3 text-slate-300">${r.customer || 'N/A'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+      <td class="p-3 text-center text-[10px] text-cyan-300 font-mono">${(r.staging_area || []).join(', ') || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
       <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
     </tr>`;
