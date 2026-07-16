@@ -3661,10 +3661,36 @@ const BULLETIN_METRIC_LABELS = {
   idle: 'Idle Time (least first)'
 };
 
+// Auto-rotation: each board's "Rank by" cycles Productivity -> Speed -> Accuracy
+// -> repeat, once every 10 seconds, independently per group. A manual click on a
+// filter button (setBulletinRankMetric) still works instantly and just restarts
+// that group's 10s countdown from the newly chosen metric.
+const BULLETIN_AUTO_METRICS = ['productivity', 'speed', 'accuracy'];
+const BULLETIN_AUTO_ROTATE_MS = 10000;
+let bulletinAutoTimers = { PICK_GROUP: null, CHECK_GROUP: null };
+
+function startBulletinAutoRotate(groupKey) {
+  if (bulletinAutoTimers[groupKey]) clearInterval(bulletinAutoTimers[groupKey]);
+  bulletinAutoTimers[groupKey] = setInterval(() => {
+    const cur = BULLETIN_AUTO_METRICS.indexOf(bulletinRankMetric[groupKey]);
+    const next = BULLETIN_AUTO_METRICS[(cur === -1 ? 0 : cur + 1) % BULLETIN_AUTO_METRICS.length];
+    bulletinRankMetric[groupKey] = next;
+    updateBulletinFilterButtons(groupKey);
+    renderBulletinGroupBoard(groupKey);
+  }, BULLETIN_AUTO_ROTATE_MS);
+}
+
+function startAllBulletinAutoRotate() {
+  BULLETIN_GROUP_KEYS.forEach(startBulletinAutoRotate);
+}
+
 function setBulletinRankMetric(groupKey, metric) {
   bulletinRankMetric[groupKey] = metric;
   updateBulletinFilterButtons(groupKey);
   renderBulletinGroupBoard(groupKey);
+  // Manual pick restarts this group's auto-rotate countdown so it doesn't
+  // immediately jump away from what was just clicked.
+  startBulletinAutoRotate(groupKey);
 }
 
 function updateBulletinFilterButtons(groupKey) {
@@ -3827,6 +3853,10 @@ function averageSpeedPctForLogs(logs) {
 
 function renderBulletinBoard() {
   BULLETIN_GROUP_KEYS.forEach(groupKey => renderBulletinGroupBoard(groupKey));
+  // Kick off the 10s auto-rotate loop once; safe to call again since
+  // startBulletinAutoRotate/startAllBulletinAutoRotate clear any existing
+  // interval before setting a new one, so re-renders never stack timers.
+  startAllBulletinAutoRotate();
 }
 
 function renderBulletinGroupBoard(groupKey) {
