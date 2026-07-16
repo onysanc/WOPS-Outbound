@@ -2123,7 +2123,8 @@ const ALL_TABS = [
 // nav button, and userCanAccess()/the tab-rendering loop ignore them.
 const EXTRA_PERMISSIONS = [
   { key: 'idle_dismiss', label: 'Dismiss Idle Alerts (Workbench)', hint: 'Lets this user click an idle-personnel chip and mark them out / already finished for the day.' },
-  { key: 'duty_edit', label: 'Edit Duty Log Times (Workbench)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' }
+  { key: 'duty_edit', label: 'Edit Duty Log Times (Workbench)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
+  { key: 'duty_roster_view', label: 'View Duty Roster (Workbench)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' }
 ];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
@@ -2242,6 +2243,17 @@ function userCanEditDuty() {
   return (currentUser.allowed_tabs || []).includes('duty_edit');
 }
 
+// Same convention as userCanDismissIdle()/userCanEditDuty() above — the
+// literal "admin" account always sees it implicitly, everyone else needs the
+// 'duty_roster_view' special permission explicitly granted from User
+// Management. Gates whether the whole Duty Roster panel renders at all,
+// not just the edit/correction ability inside it.
+function userCanViewDutyRoster() {
+  if (!currentUser) return false;
+  if (isAdminAccount()) return true;
+  return (currentUser.allowed_tabs || []).includes('duty_roster_view');
+}
+
 function firstAllowedTab() {
   const found = ALL_TABS.find(t => userCanAccess(t.key));
   return found ? found.key : 'workbench';
@@ -2264,6 +2276,8 @@ function applyUserPermissions() {
   if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
   const dutyShiftCard = document.getElementById('duty-shift-window-card');
   if (dutyShiftCard) dutyShiftCard.classList.toggle('hidden', !isAdminAccount());
+  const dutyRosterCard = document.getElementById('duty-roster-card');
+  if (dutyRosterCard) dutyRosterCard.classList.toggle('hidden', !userCanViewDutyRoster());
 }
 
 // --- TAB NAVIGATION ---
@@ -7952,6 +7966,10 @@ function fmtDutyClock(d) { return d ? d.toLocaleTimeString([], { hour: '2-digit'
 function fmtDutyMin(mins) { return (typeof fmtMinutesShort === 'function') ? fmtMinutesShort(mins) : `${Math.round(mins || 0)}m`; }
 
 async function refreshDutyRoster() {
+  const card = document.getElementById('duty-roster-card');
+  if (card) card.classList.toggle('hidden', !userCanViewDutyRoster());
+  if (!userCanViewDutyRoster()) return; // no permission — don't even fetch
+
   const body = document.getElementById('duty-roster-body');
   if (!body) return;
 
