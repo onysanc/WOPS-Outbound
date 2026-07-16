@@ -923,17 +923,34 @@
         </div>
       </div>
       <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
+        <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-900/60 border-b border-slate-800" onclick="event.stopPropagation()">
+          <input type="text" id="duty-roster-search" placeholder="🔎 Search personnel…" oninput="dutyRosterSetSearch(this.value)"
+                 class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 w-40" />
+          <select id="duty-roster-status-filter" onchange="dutyRosterSetFilterStatus(this.value)"
+                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
+            <option value="all">All Status</option>
+            <option value="on">On Duty</option>
+            <option value="break">On Break</option>
+            <option value="off">Off Duty</option>
+          </select>
+          <select id="duty-roster-role-filter" onchange="dutyRosterSetFilterRole(this.value)"
+                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
+            <option value="all">All Roles</option>
+          </select>
+          <button onclick="dutyRosterClearFilters()" class="text-[10px] text-slate-500 hover:text-emerald-400">Clear filters</button>
+          <span id="duty-roster-filter-count" class="text-[10px] text-slate-500 ml-auto"></span>
+        </div>
         <table class="w-full text-left text-xs border-collapse">
           <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
             <tr>
-              <th class="p-2">Personnel</th>
+              <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
               <th class="p-2">Role(s)</th>
-              <th class="p-2 text-center">Status</th>
-              <th class="p-2 text-center">Since</th>
-              <th class="p-2 text-right">On-Duty Today</th>
-              <th class="p-2 text-right">Break Today</th>
-              <th class="p-2 text-right">Idle Today</th>
-              <th class="p-2 text-right">Productivity</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="since" data-label="Since" onclick="dutyRosterSort('since')">Since</th>
+              <th class="p-2 text-right cursor-pointer select-none hover:text-emerald-400" data-sort-key="onDuty" data-label="On-Duty Today" onclick="dutyRosterSort('onDuty')">On-Duty Today</th>
+              <th class="p-2 text-right cursor-pointer select-none hover:text-emerald-400" data-sort-key="break" data-label="Break Today" onclick="dutyRosterSort('break')">Break Today</th>
+              <th class="p-2 text-right cursor-pointer select-none hover:text-emerald-400" data-sort-key="idle" data-label="Idle Today" onclick="dutyRosterSort('idle')">Idle Today</th>
+              <th class="p-2 text-right cursor-pointer select-none hover:text-emerald-400" data-sort-key="productivity" data-label="Productivity" onclick="dutyRosterSort('productivity')">Productivity</th>
               <th class="p-2 text-center">Actions</th>
             </tr>
           </thead>
@@ -7998,7 +8015,104 @@ async function refreshDutyRoster() {
     roleLabel.innerText = `(${onCount} on duty · ${breakCount} on break · ${metrics.length} total)`;
   }
 
-  body.innerHTML = metrics.map(m => {
+  dutyRosterMetricsCache = metrics;
+  populateDutyRosterRoleFilterOptions();
+  renderDutyRosterRows();
+}
+
+// --- Duty Roster: filter + sort state (client-side, no re-fetch needed) ---
+let dutyRosterMetricsCache = [];
+let dutyRosterFilterStatus = 'all';   // 'all' | 'on' | 'break' | 'off'
+let dutyRosterFilterRole = 'all';
+let dutyRosterSearchTerm = '';
+let dutyRosterSortKey = 'name';       // name | status | since | onDuty | break | idle | productivity
+let dutyRosterSortDir = 'asc';
+
+// Role dropdown is populated dynamically since roles vary per deployment
+// (Picker/STG Checker/Puller/OTB Checker etc.) rather than hardcoded.
+function populateDutyRosterRoleFilterOptions() {
+  const sel = document.getElementById('duty-roster-role-filter');
+  if (!sel) return;
+  const roles = [...new Set(dutyRosterPeople.flatMap(p => p.roles || []))].sort();
+  const current = sel.value || 'all';
+  sel.innerHTML = `<option value="all">All Roles</option>` + roles.map(r => `<option value="${r}">${r}</option>`).join('');
+  if (roles.includes(current)) sel.value = current;
+}
+
+function dutyRosterSetFilterStatus(v) { dutyRosterFilterStatus = v; renderDutyRosterRows(); }
+function dutyRosterSetFilterRole(v) { dutyRosterFilterRole = v; renderDutyRosterRows(); }
+function dutyRosterSetSearch(v) { dutyRosterSearchTerm = (v || '').trim().toLowerCase(); renderDutyRosterRows(); }
+function dutyRosterClearFilters() {
+  dutyRosterFilterStatus = 'all'; dutyRosterFilterRole = 'all'; dutyRosterSearchTerm = '';
+  const s = document.getElementById('duty-roster-search'); if (s) s.value = '';
+  const st = document.getElementById('duty-roster-status-filter'); if (st) st.value = 'all';
+  const rl = document.getElementById('duty-roster-role-filter'); if (rl) rl.value = 'all';
+  renderDutyRosterRows();
+}
+// Clicking a sortable header toggles asc/desc if it's already the active
+// column, otherwise switches column with a sensible default direction
+// (name A→Z first click; numeric/status columns show the "most notable"
+// end first — worst idle, lowest productivity, longest on-duty, etc.).
+function dutyRosterSort(key) {
+  if (dutyRosterSortKey === key) {
+    dutyRosterSortDir = dutyRosterSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    dutyRosterSortKey = key;
+    dutyRosterSortDir = key === 'name' ? 'asc' : 'desc';
+  }
+  renderDutyRosterRows();
+}
+
+function renderDutyRosterRows() {
+  const body = document.getElementById('duty-roster-body');
+  if (!body) return;
+  const canEdit = userCanEditDuty();
+
+  let rows = dutyRosterMetricsCache.filter(m => {
+    if (dutyRosterFilterStatus !== 'all' && m.status !== dutyRosterFilterStatus) return false;
+    if (dutyRosterSearchTerm && !m.name.toLowerCase().includes(dutyRosterSearchTerm)) return false;
+    if (dutyRosterFilterRole !== 'all') {
+      const person = dutyRosterPeople.find(p => p.name === m.name);
+      if (!person || !(person.roles || []).includes(dutyRosterFilterRole)) return false;
+    }
+    return true;
+  });
+
+  const dir = dutyRosterSortDir === 'asc' ? 1 : -1;
+  const statusOrder = { on: 0, break: 1, off: 2 };
+  rows = rows.slice().sort((a, b) => {
+    switch (dutyRosterSortKey) {
+      case 'status': return (statusOrder[a.status] - statusOrder[b.status]) * dir;
+      case 'since': return ((a.since ? a.since.getTime() : -Infinity) - (b.since ? b.since.getTime() : -Infinity)) * dir;
+      case 'onDuty': return (a.onDutyMinutes - b.onDutyMinutes) * dir;
+      case 'break': return (a.breakMinutes - b.breakMinutes) * dir;
+      case 'idle': return (a.idleMinutes - b.idleMinutes) * dir;
+      case 'productivity': {
+        const av = a.productivityPct == null ? -1 : a.productivityPct;
+        const bv = b.productivityPct == null ? -1 : b.productivityPct;
+        return (av - bv) * dir;
+      }
+      default: return a.name.localeCompare(b.name) * dir;
+    }
+  });
+
+  const countEl = document.getElementById('duty-roster-filter-count');
+  if (countEl) {
+    const filtered = dutyRosterFilterStatus !== 'all' || dutyRosterFilterRole !== 'all' || dutyRosterSearchTerm;
+    countEl.innerText = filtered ? `Showing ${rows.length} of ${dutyRosterMetricsCache.length}` : '';
+  }
+
+  document.querySelectorAll('#duty-roster-card th[data-sort-key]').forEach(th => {
+    const active = th.dataset.sortKey === dutyRosterSortKey;
+    th.innerHTML = th.dataset.label + (active ? (dutyRosterSortDir === 'asc' ? ' ▲' : ' ▼') : '');
+  });
+
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500 italic">No personnel match the current filter.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows.map(m => {
     const person = dutyRosterPeople.find(p => p.name === m.name);
     const roleBadges = (person ? person.roles : []).map(r => `<span class="${roleTextClass(r)} text-[10px] font-semibold">${r}</span>`).join('<span class="text-slate-700">, </span>') || '<span class="text-slate-600">—</span>';
     const pill = `<span class="duty-pill ${m.status}"><span class="duty-dot ${m.status}"></span>${m.status === 'on' ? 'On Duty' : m.status === 'break' ? 'On Break' : 'Off Duty'}</span>`;
