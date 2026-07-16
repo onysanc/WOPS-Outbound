@@ -125,6 +125,24 @@
   .alert-chip.idle.clickable:hover{background:rgba(219,39,119,.28);transform:translateY(-1px)}
   .alert-chip.idle.clickable:active{transform:translateY(0)}
 
+  /* --- Duty Roster: report-for-duty / break / idle / productivity monitor --- */
+  .duty-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .duty-dot.on{background:#2dd4bf;box-shadow:0 0 6px rgba(45,212,191,.7)}
+  .duty-dot.break{background:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,.7)}
+  .duty-dot.off{background:#647089}
+  .duty-pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;font-weight:700;padding:.25rem .55rem;border-radius:9999px;white-space:nowrap}
+  .duty-pill.on{background:rgba(45,212,191,.14);color:#2dd4bf;border:1px solid rgba(45,212,191,.4)}
+  .duty-pill.break{background:rgba(251,191,36,.14);color:#fbbf24;border:1px solid rgba(251,191,36,.4)}
+  .duty-pill.off{background:rgba(100,112,137,.14);color:#93a1b8;border:1px solid rgba(100,112,137,.4)}
+  .duty-action-btn{font-size:.63rem;font-weight:700;padding:.3rem .55rem;border-radius:.4rem;border:1px solid transparent;white-space:nowrap;transition:filter .12s ease,transform .1s ease}
+  .duty-action-btn:hover{filter:brightness(1.15)}
+  .duty-action-btn:active{transform:translateY(1px)}
+  .duty-action-btn.in{background:rgba(45,212,191,.16);color:#2dd4bf;border-color:rgba(45,212,191,.4)}
+  .duty-action-btn.break-start{background:rgba(251,191,36,.16);color:#fbbf24;border-color:rgba(251,191,36,.4)}
+  .duty-action-btn.break-end{background:rgba(56,189,248,.16);color:#38bdf8;border-color:rgba(56,189,248,.4)}
+  .duty-action-btn.out{background:rgba(244,63,94,.14);color:#fb7185;border-color:rgba(244,63,94,.4)}
+  .duty-idle-warn{color:#fb7185;font-weight:700}
+
   /* --- Master Records: drag-and-drop personnel record move (admin only) --- */
   .aging-drag-handle{cursor:grab}
   .aging-drag-handle:active{cursor:grabbing}
@@ -816,6 +834,40 @@
           </div>
           <datalist id="shipment-datalist"></datalist>
         </div>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3" id="duty-roster-card">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">Duty Roster — <span id="duty-roster-role-label" class="text-slate-200 normal-case">Picker</span></h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Personnel must report for duty before being assigned a task. Idle, break and productivity figures below come from actual duty clock times, not just task gaps.</p>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0">
+          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
+          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
+          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
+          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2">Personnel</th>
+              <th class="p-2 text-center">Status</th>
+              <th class="p-2 text-center">Since</th>
+              <th class="p-2 text-right">On-Duty Today</th>
+              <th class="p-2 text-right">Break Today</th>
+              <th class="p-2 text-right">Idle Today</th>
+              <th class="p-2 text-right">Productivity</th>
+              <th class="p-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="duty-roster-body">
+            <tr><td colspan="8" class="p-4 text-center text-slate-500 italic">Select a role above to load its duty roster.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -7562,12 +7614,298 @@ refreshBulletinBoard = async function (...args) {
 };
 
 
+// =====================================================================
+// --- DUTY ROSTER: report-for-duty clock, so idle time / break time /
+// productivity are measured against actual duty hours instead of just the
+// gaps between logged tasks.
+//
+// REQUIRES a `duty_logs` table in Supabase. Run this once in the SQL editor:
+//
+//   create table public.duty_logs (
+//     id bigint generated always as identity primary key,
+//     personnel_name text not null,
+//     role text,
+//     event_type text not null check (event_type in ('IN','BREAK_START','BREAK_END','OUT')),
+//     event_time timestamptz not null default now(),
+//     reported_by text,
+//     created_at timestamptz not null default now()
+//   );
+//   -- match whatever RLS/policy setup the rest of this app's tables use
+//   -- (e.g. enable RLS + an anon insert/select policy, or leave RLS off
+//   -- if activity_logs/personnel are already open to the anon key).
+//
+// Until that table exists, every duty_logs call below fails gracefully
+// (caught, logged to console, roster shows a setup notice) so nothing else
+// in the app breaks — dispatch enforcement (dutyGuardMessage) also simply
+// stops blocking, same "missing table = feature quietly off" convention
+// idle_dismissals already uses above.
+// =====================================================================
+
+let dutyLogsToday = [];       // cached today's duty_logs rows, refreshed on a timer + realtime
+let dutyTableMissing = false; // flips true the first time a query 42P01s, so we stop hammering it and show one clear setup message
+
+// One duty session is tracked per PERSON (not per role) — someone who works
+// Picker in the morning and Puller in the afternoon still only reports for
+// duty once. `role` on each row is just which stage they were on when they
+// tapped the button, kept for record-keeping.
+function dutyEventsForName(name) {
+  const n = (name || '').trim().toLowerCase();
+  return dutyLogsToday.filter(e => (e.personnel_name || '').trim().toLowerCase() === n)
+    .sort((a, b) => new Date(a.event_time) - new Date(b.event_time));
+}
+
+// Walks a person's IN/BREAK_START/BREAK_END/OUT events chronologically and
+// returns their current status plus every on-duty span and break span for
+// the day (spans, not just a running total, so callers can both sum minutes
+// AND show "since HH:MM"). An open span (no matching OUT/BREAK_END yet) is
+// closed at "now" so live badges keep counting up between refreshes.
+function computeDutySpans(events) {
+  let dutyStart = null, breakStart = null;
+  const onDutySpans = [], breakSpans = [];
+  events.forEach(e => {
+    const t = new Date(e.event_time);
+    if (e.event_type === 'IN') { if (!dutyStart) dutyStart = t; }
+    else if (e.event_type === 'BREAK_START') { if (dutyStart && !breakStart) breakStart = t; }
+    else if (e.event_type === 'BREAK_END') { if (breakStart) { breakSpans.push([breakStart, t]); breakStart = null; } }
+    else if (e.event_type === 'OUT') {
+      if (breakStart) { breakSpans.push([breakStart, t]); breakStart = null; }
+      if (dutyStart) { onDutySpans.push([dutyStart, t]); dutyStart = null; }
+    }
+  });
+  const now = new Date();
+  let status = 'off';
+  if (dutyStart) { onDutySpans.push([dutyStart, now]); status = breakStart ? 'break' : 'on'; }
+  if (breakStart) breakSpans.push([breakStart, now]);
+  const since = events.length ? new Date(events[events.length - 1].event_time) : null;
+  return { onDutySpans, breakSpans, status, since };
+}
+
+function sumSpanMinutes(spans) {
+  return spans.reduce((s, [a, b]) => s + Math.max(0, (b - a) / 60000), 0);
+}
+
+// Today's operational-day window, same helper the rest of the app uses so
+// "today" always lines up with the same 5am-to-5am (or whatever's
+// configured) boundary as every other idle/productivity figure on screen.
+function todayOpDayWindow() {
+  return operationalDayWindowForDate(defaultOperationalDateStr());
+}
+
+async function fetchDutyLogsToday() {
+  if (dutyTableMissing) return dutyLogsToday;
+  const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
+  const { data, error } = await supabaseClient.from('duty_logs').select('*')
+    .gte('event_time', startOfOpDay.toISOString()).lte('event_time', endOfOpDay.toISOString())
+    .order('event_time');
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message || '')) dutyTableMissing = true;
+    console.error('duty_logs fetch failed:', error.message);
+    return dutyLogsToday;
+  }
+  dutyLogsToday = data || [];
+  return dutyLogsToday;
+}
+
+// Blocks dispatch (startRow / commitJobTransaction) unless the named
+// operator is actually reported "on" for the day. Fetches a fresh, narrow
+// slice (just this person's rows) instead of trusting the cached roster
+// list, so a duty action from a moment ago can never race a dispatch click.
+// Returns null (proceed) if the duty table isn't set up yet or the name is
+// blank/invalid — those cases are left to the existing validation checks.
+async function dutyGuardMessage(name) {
+  if (!name || dutyTableMissing) return null;
+  try {
+    const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
+    const { data, error } = await supabaseClient.from('duty_logs').select('personnel_name,event_type,event_time')
+      .ilike('personnel_name', name.trim())
+      .gte('event_time', startOfOpDay.toISOString()).lte('event_time', endOfOpDay.toISOString())
+      .order('event_time');
+    if (error) { if (error.code === '42P01') dutyTableMissing = true; return null; }
+    const { status } = computeDutySpans(data || []);
+    if (status === 'off') return `${name} hasn't reported for duty yet. Report them in from the Duty Roster panel first.`;
+    if (status === 'break') return `${name} is currently on break. End their break on the Duty Roster panel before starting a new task.`;
+    return null;
+  } catch (e) { return null; }
+}
+
+async function reportForDuty(name) {
+  if (!isValidPersonnel(name)) return showToast(`"${name}" is not on the ${currentRole} roster.`, "error");
+  const events = dutyEventsForName(name);
+  const { status } = computeDutySpans(events);
+  if (status !== 'off') return showToast(`${name} is already reported in for today.`, "info");
+  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: currentRole, event_type: 'IN' }]);
+  if (error) return showToast(dutyTableMissing || error.code === '42P01'
+    ? "Duty Roster isn't set up yet — ask an admin to create the duty_logs table (see code comments)."
+    : "Could not report for duty: " + error.message, "error");
+  showToast(`${name} reported for duty.`, "success");
+  await refreshDutyRoster();
+}
+
+async function startDutyBreak(name) {
+  const events = dutyEventsForName(name);
+  const { status } = computeDutySpans(events);
+  if (status !== 'on') return showToast(`${name} must be on duty (not already on break) to start a break.`, "error");
+  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: currentRole, event_type: 'BREAK_START' }]);
+  if (error) return showToast("Could not start break: " + error.message, "error");
+  showToast(`${name} is now on break.`, "success");
+  await refreshDutyRoster();
+}
+
+async function endDutyBreak(name) {
+  const events = dutyEventsForName(name);
+  const { status } = computeDutySpans(events);
+  if (status !== 'break') return showToast(`${name} isn't currently on break.`, "error");
+  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: currentRole, event_type: 'BREAK_END' }]);
+  if (error) return showToast("Could not end break: " + error.message, "error");
+  showToast(`${name} is back from break.`, "success");
+  await refreshDutyRoster();
+}
+
+async function reportOffDuty(name) {
+  const events = dutyEventsForName(name);
+  const { status } = computeDutySpans(events);
+  if (status === 'off') return showToast(`${name} is already off duty.`, "info");
+  if (await personnelHasOngoing(name, currentRole)) {
+    return showToast(`${name} still has an ongoing task. Pause or complete it before reporting off duty.`, "error");
+  }
+  const ok = await showConfirm(`Report ${name} off duty for the day? This closes out their duty, break and idle-time totals for today.`);
+  if (!ok) return;
+  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: currentRole, event_type: 'OUT' }]);
+  if (error) return showToast("Could not report off duty: " + error.message, "error");
+  showToast(`${name} reported off duty.`, "success");
+  await refreshDutyRoster();
+}
+
+// Per-person duty metrics for today: on-duty minutes (wall clock from report
+// -in to report-out/now), break minutes (from BREAK_START/BREAK_END pairs),
+// worked minutes (sum of rendered_minutes on today's Completed tasks — same
+// dedupe-by-batch helper the Performance Summary uses so a multi-line batch
+// isn't counted multiple times), idle minutes (on-duty minus break minus
+// worked, i.e. clocked in, not on break, and not actually working a task),
+// and productivity % (worked ÷ (on-duty minus break)).
+async function computeDutyMetricsForRoster(names) {
+  const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
+  const { data: logs, error } = await supabaseClient.from('activity_logs')
+    .select('personnel_name,role,status,start_time,end_time,rendered_minutes')
+    .eq('role', currentRole).eq('status', 'Completed')
+    .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString());
+  const workedByName = {};
+  if (!error) {
+    const byName = {};
+    (logs || []).forEach(l => { const k = (l.personnel_name || '').trim(); (byName[k] = byName[k] || []).push(l); });
+    Object.entries(byName).forEach(([k, rows]) => { workedByName[k] = sumGroupMinutes(rows); });
+  }
+  return names.map(name => {
+    const events = dutyEventsForName(name);
+    const { onDutySpans, breakSpans, status, since } = computeDutySpans(events);
+    const onDutyMinutes = sumSpanMinutes(onDutySpans);
+    const breakMinutes = sumSpanMinutes(breakSpans);
+    const workedMinutes = workedByName[(name || '').trim()] || 0;
+    const availableMinutes = Math.max(0, onDutyMinutes - breakMinutes);
+    const idleMinutes = Math.max(0, availableMinutes - workedMinutes);
+    const productivityPct = availableMinutes > 0.5 ? Math.min(100, (workedMinutes / availableMinutes) * 100) : null;
+    return { name, status, since, onDutyMinutes, breakMinutes, idleMinutes, workedMinutes, productivityPct };
+  });
+}
+
+function fmtDutyClock(d) { return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'; }
+function fmtDutyMin(mins) { return (typeof fmtMinutesShort === 'function') ? fmtMinutesShort(mins) : `${Math.round(mins || 0)}m`; }
+
+async function refreshDutyRoster() {
+  const body = document.getElementById('duty-roster-body');
+  if (!body) return;
+  const roleLabel = document.getElementById('duty-roster-role-label');
+  if (roleLabel) roleLabel.innerText = currentRole || '—';
+
+  if (dutyTableMissing) {
+    body.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-amber-400 italic">Duty Roster isn't set up yet — create the <code>duty_logs</code> table in Supabase (see code comments near the DUTY ROSTER section) to enable report-for-duty tracking.</td></tr>`;
+    return;
+  }
+
+  const names = [...new Set((allPersonnel || []).map(p => (p.name || '').trim()).filter(Boolean))].sort();
+  if (!names.length) {
+    body.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500 italic">No personnel on the ${currentRole} roster yet.</td></tr>`;
+    return;
+  }
+
+  await fetchDutyLogsToday();
+  if (dutyTableMissing) return refreshDutyRoster();
+
+  const metrics = await computeDutyMetricsForRoster(names);
+
+  body.innerHTML = metrics.map(m => {
+    const pill = `<span class="duty-pill ${m.status}"><span class="duty-dot ${m.status}"></span>${m.status === 'on' ? 'On Duty' : m.status === 'break' ? 'On Break' : 'Off Duty'}</span>`;
+    const idleCell = m.idleMinutes >= 30 ? `<span class="duty-idle-warn">${fmtDutyMin(m.idleMinutes)}</span>` : fmtDutyMin(m.idleMinutes);
+    const prodCell = m.productivityPct == null ? '—' : `${m.productivityPct.toFixed(0)}%`;
+    const nameAttr = m.name.replace(/'/g, "\\'");
+    let actions = '';
+    if (m.status === 'off') {
+      actions = `<button class="duty-action-btn in" onclick="reportForDuty('${nameAttr}')">Report for Duty</button>`;
+    } else if (m.status === 'on') {
+      actions = `<button class="duty-action-btn break-start" onclick="startDutyBreak('${nameAttr}')">Start Break</button>
+                 <button class="duty-action-btn out" onclick="reportOffDuty('${nameAttr}')">Report Off Duty</button>`;
+    } else {
+      actions = `<button class="duty-action-btn break-end" onclick="endDutyBreak('${nameAttr}')">End Break</button>
+                 <button class="duty-action-btn out" onclick="reportOffDuty('${nameAttr}')">Report Off Duty</button>`;
+    }
+    return `<tr>
+      <td class="p-2 font-semibold text-slate-200">${m.name}</td>
+      <td class="p-2 text-center">${pill}</td>
+      <td class="p-2 text-center font-mono text-slate-400">${fmtDutyClock(m.since)}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${fmtDutyMin(m.onDutyMinutes)}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${fmtDutyMin(m.breakMinutes)}</td>
+      <td class="p-2 text-right font-mono">${idleCell}</td>
+      <td class="p-2 text-right font-mono text-emerald-400">${prodCell}</td>
+      <td class="p-2"><div class="flex items-center justify-center gap-1.5 flex-wrap">${actions}</div></td>
+    </tr>`;
+  }).join('');
+}
+
+let _dutyRosterInterval = null;
+function subscribeDutyRealtime() {
+  try {
+    supabaseClient.channel('duty-roster-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'duty_logs' }, () => refreshDutyRoster())
+      .subscribe();
+  } catch (e) { /* realtime not available — polling below still covers it */ }
+  if (_dutyRosterInterval) clearInterval(_dutyRosterInterval);
+  // On-duty/break/idle minutes keep climbing with no new DB writes, so poll too.
+  _dutyRosterInterval = setInterval(refreshDutyRoster, 30000);
+}
+
+// --- Wire the Duty Roster into role switching + enforce "must be on duty"
+// before a task can be dispatched, exactly the same wrap-the-original
+// pattern this file already uses for refreshAnalyticsView/refreshBulletinBoard.
+const _origSetRoleForDuty = setRole;
+setRole = async function (...args) {
+  await _origSetRoleForDuty.apply(this, args);
+  await refreshDutyRoster();
+};
+
+const _origStartRowForDuty = startRow;
+startRow = async function (...args) {
+  const operator = document.getElementById('operator-input').value.trim();
+  const guard = await dutyGuardMessage(operator);
+  if (guard) return showToast(guard, "error");
+  return _origStartRowForDuty.apply(this, args);
+};
+
+const _origCommitJobTransactionForDuty = commitJobTransaction;
+commitJobTransaction = async function (...args) {
+  const operator = document.getElementById('operator-input').value.trim();
+  const guard = await dutyGuardMessage(operator);
+  if (guard) { closeDispatchModal(); return showToast(guard, "error"); }
+  return _origCommitJobTransactionForDuty.apply(this, args);
+};
+
 // --- BOOT: start the ticker once the app is up ---
 const _origStartApp = startApp;
 startApp = async function (...args) {
   await _origStartApp.apply(this, args);
   refreshOpsAlertBar();
   subscribeOpsAlertRealtime();
+  refreshDutyRoster();
+  subscribeDutyRealtime();
 };
 </script>
 </body>
