@@ -3805,24 +3805,26 @@ function renderSidePanelList() {
           </div>`;
       }).join('');
 
-      // Picker name is the primary reference here — it's how a picker recognizes
-      // they already have a pending/ongoing task before starting a new one.
-      // Compact layout: name sits inline with Target time on one row (the two
-      // things worth a glance); Qty/Cust/OBDs/staging area fold into a single
-      // minimized strip; full detail lives behind the ▾ toggle. Pause/Done
-      // stay full-size since they're the only actions actually taken from here.
+      // Compact layout: name has moved up to the outer dispatch header (same
+      // row as Target, directly under the shipment/dispatch number) so it
+      // isn't repeated per-batch. This row keeps role/status + a minimized
+      // Qty/Cust/OBDs/staging strip, with full detail behind the ▾ toggle.
+      // Pause/Done stay full-size since they're the only actions taken here.
+      // When a shipment has more than one batch (multiple personnel working
+      // it), a small name tag is re-added here so each card is still
+      // attributable to the right person.
       const staginBit = rep.role === 'Puller'
         ? ` · 📍 ${batchStagingAreas.length ? batchStagingAreas.join(', ') : 'no area'}`
         : '';
       const custBit = customers.length ? (customers.length > 1 ? `${customers.length} custs` : customers[0]) : '—';
+      const nameTag = batchList.length > 1 ? `<span class="text-[10px] font-black text-emerald-400 truncate">👤 ${rep.personnel_name}</span>` : '';
       return `
         <div class="bg-slate-900 border ${isOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2 space-y-1 min-w-0">
           <div class="flex justify-between items-center gap-1.5 cursor-pointer" onclick="toggleBatchDetail('${panelId}')">
             <div class="flex items-baseline gap-1 min-w-0">
               <span class="text-[8px] uppercase tracking-wider font-bold ${roleTextClass(rep.role)} shrink-0">${rep.role}</span>
-              <span class="text-[11px] font-black text-emerald-400 leading-tight truncate">👤 ${rep.personnel_name}</span>
+              ${nameTag}
             </div>
-            <span class="text-[9px] shrink-0 whitespace-nowrap">Tgt <span class="${isOverdue ? 'text-rose-400 font-bold' : 'text-blue-400'} font-mono font-semibold">${target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${isOverdue ? ' ⚠' : ''}</span>
             <span class="text-[8px] px-1 py-0.5 rounded shrink-0 ${rep.status === 'Ongoing' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'}">${rep.status}</span>
           </div>
           <div class="flex justify-between items-center gap-1 cursor-pointer" onclick="toggleBatchDetail('${panelId}')">
@@ -3840,22 +3842,22 @@ function renderSidePanelList() {
         </div>`;
     }).join('');
 
+    // Names of everyone actively working this dispatch, deduped, for the
+    // header row. Almost always one name; comma-joined if more than one.
+    const namesJoined = [...new Set(batchList.map(m => m[0].personnel_name).filter(Boolean))].join(', ') || '—';
+
     return `
       <div class="bg-slate-900 border ${anyOverdue ? 'border-rose-500/40' : 'border-slate-800'} rounded-lg p-2 space-y-1.5 min-w-0">
-        <div class="flex justify-between items-start gap-1">
-          <div class="min-w-0">
-            <span class="text-[8px] uppercase tracking-wider text-slate-500 block">Dispatch</span>
-            <div class="flex items-baseline gap-1.5 min-w-0">
-              <span class="text-[11px] font-black text-emerald-400 font-mono truncate">${shipmentNo}</span>
-              <span class="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 shrink-0">${truckType}</span>
-            </div>
+        <div class="min-w-0">
+          <span class="text-[8px] uppercase tracking-wider text-slate-500 block">Dispatch</span>
+          <div class="flex items-baseline gap-1.5 min-w-0">
+            <span class="text-[11px] font-black text-emerald-400 font-mono truncate">${shipmentNo}</span>
+            <span class="text-[8px] font-mono font-bold px-1 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 shrink-0">${truckType}</span>
           </div>
-          <div class="text-right shrink-0">
-            <span class="text-[8px] uppercase tracking-wider text-slate-500 block">Start</span>
-            <span class="text-[10px] font-mono font-semibold text-slate-400 block">${earliestStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            <span class="text-[8px] uppercase tracking-wider text-slate-500 block mt-0.5">Target</span>
-            <span class="text-[10px] font-mono font-bold ${anyOverdue ? 'text-rose-400' : 'text-blue-400'}">${latestTarget.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
+        </div>
+        <div class="flex justify-between items-center gap-1.5 min-w-0">
+          <span class="text-[11px] font-black text-slate-200 truncate min-w-0">👤 ${namesJoined}</span>
+          <span class="text-[9px] shrink-0 whitespace-nowrap">Tgt <span class="${anyOverdue ? 'text-rose-400 font-bold' : 'text-blue-400'} font-mono font-semibold">${latestTarget.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${anyOverdue ? ' ⚠' : ''}</span>
         </div>
         <div class="space-y-1.5">${batchCardsHtml}</div>
         <div class="flex justify-between items-center pt-1 border-t border-slate-800">
