@@ -142,6 +142,8 @@
   .duty-action-btn.break-end{background:rgba(56,189,248,.16);color:#38bdf8;border-color:rgba(56,189,248,.4)}
   .duty-action-btn.out{background:rgba(244,63,94,.14);color:#fb7185;border-color:rgba(244,63,94,.4)}
   .duty-action-btn.edit{background:rgba(147,161,184,.14);color:#c1cbdc;border-color:rgba(147,161,184,.35)}
+  #duty-roster-card.collapsed #duty-roster-content{display:none}
+  #duty-roster-card.collapsed #duty-roster-chevron{transform:rotate(-90deg)}
   .duty-idle-warn{color:#fb7185;font-weight:700}
 
   /* --- Master Records: drag-and-drop personnel record move (admin only) --- */
@@ -862,41 +864,6 @@
       </div>
     </div>
 
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3" id="duty-roster-card">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2">
-        <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
-          <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Idle, break and productivity figures below come from actual duty clock times, not just task gaps.</p>
-        </div>
-        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0">
-          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
-          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
-          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
-          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
-        </div>
-      </div>
-      <div class="overflow-x-auto border border-slate-800 rounded-lg">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-            <tr>
-              <th class="p-2">Personnel</th>
-              <th class="p-2">Role(s)</th>
-              <th class="p-2 text-center">Status</th>
-              <th class="p-2 text-center">Since</th>
-              <th class="p-2 text-right">On-Duty Today</th>
-              <th class="p-2 text-right">Break Today</th>
-              <th class="p-2 text-right">Idle Today</th>
-              <th class="p-2 text-right">Productivity</th>
-              <th class="p-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="duty-roster-body">
-            <tr><td colspan="9" class="p-4 text-center text-slate-500 italic">Loading duty roster…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <h2 class="text-lg font-bold text-slate-100"></h2>
@@ -938,6 +905,42 @@
         <div>
           <button onclick="openDispatchModal()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs py-3 px-4 rounded-xl shadow-lg transition tracking-wider uppercase">Review &amp; Dispatch Batch</button>
         </div>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3" id="duty-roster-card">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2 cursor-pointer" onclick="toggleDutyRosterCollapse()">
+        <div>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▾</span>Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Idle, break and productivity figures below come from actual duty clock times, not just task gaps.</p>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0" onclick="event.stopPropagation()">
+          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
+          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
+          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
+          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
+          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">— minimize</button>
+        </div>
+      </div>
+      <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2">Personnel</th>
+              <th class="p-2">Role(s)</th>
+              <th class="p-2 text-center">Status</th>
+              <th class="p-2 text-center">Since</th>
+              <th class="p-2 text-right">On-Duty Today</th>
+              <th class="p-2 text-right">Break Today</th>
+              <th class="p-2 text-right">Idle Today</th>
+              <th class="p-2 text-right">Productivity</th>
+              <th class="p-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="duty-roster-body">
+            <tr><td colspan="9" class="p-4 text-center text-slate-500 italic">Loading duty roster…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </section>
@@ -7092,8 +7095,28 @@ function toggleScanMode() {
       if (body) body.classList.add('hidden');
       if (btn) btn.innerText = '▸';
     }
+    if (localStorage.getItem('wh_duty_roster_collapsed') === '1') {
+      const card = document.getElementById('duty-roster-card');
+      if (card) card.classList.add('collapsed');
+      const chev = document.getElementById('duty-roster-chevron');
+      if (chev) chev.innerText = '▸';
+      const btn = document.getElementById('duty-roster-toggle-btn');
+      if (btn) btn.innerText = '+ expand';
+    }
   } catch (e) { /* storage unavailable — ignore */ }
 })();
+
+// --- DUTY ROSTER: minimize / expand toggle (persisted via localStorage) ---
+function toggleDutyRosterCollapse() {
+  const card = document.getElementById('duty-roster-card');
+  if (!card) return;
+  const collapsed = card.classList.toggle('collapsed');
+  const chev = document.getElementById('duty-roster-chevron');
+  if (chev) chev.innerText = collapsed ? '▸' : '▾';
+  const btn = document.getElementById('duty-roster-toggle-btn');
+  if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
+  try { localStorage.setItem('wh_duty_roster_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
 
 // --- PIPELINE SUMMARY: minimize / expand toggle (persisted via localStorage) ---
 function togglePipelineSummaryCollapse() {
