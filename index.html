@@ -1503,6 +1503,23 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="max-h-[340px] overflow-y-auto space-y-1" id="break-list-container"></div>
       <p class="text-[10px] text-slate-600 border-t border-slate-800/60 pt-3">Duration is derived automatically from start/end. Break windows are subtracted from worked time whenever a task's active period overlaps them.</p>
     </div>
+
+    <div id="duty-shift-window-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
+      <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">🕕 Duty Shift Window</h2>
+      <p class="text-[11px] text-slate-500">Personnel who report for duty within this window get credited as reporting exactly at Shift Start — e.g. Shift Start 6:00 AM, Grace End 8:00 AM means anyone tapping "Report for Duty" between 6:00–8:00 AM is recorded as 6:00 AM. Anyone reporting outside the window is recorded at their actual tap time (so late arrivals still show as late).</p>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">Shift Start</label>
+          <input type="time" id="duty-shift-start-input" value="06:00" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">Grace End</label>
+          <input type="time" id="duty-grace-end-input" value="08:00" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+      </div>
+      <button onclick="saveDutyShiftWindow()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Save Shift Window</button>
+      <p id="duty-shift-window-status" class="text-[10px] text-slate-600"></p>
+    </div>
    </div>
   </section>
 
@@ -2245,6 +2262,8 @@ function applyUserPermissions() {
   });
   const breakCard = document.getElementById('break-scheduler-card');
   if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
+  const dutyShiftCard = document.getElementById('duty-shift-window-card');
+  if (dutyShiftCard) dutyShiftCard.classList.toggle('hidden', !isAdminAccount());
 }
 
 // --- TAB NAVIGATION ---
@@ -2289,7 +2308,7 @@ function activateView(name) {
   if (pipelinePanel) pipelinePanel.classList.toggle('hidden', name !== 'workbench');
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
-  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
+  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftWindow(); }
   if (name === 'export') loadExportData();
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -7679,7 +7698,7 @@ refreshBulletinBoard = async function (...args) {
 // productivity are measured against actual duty hours instead of just the
 // gaps between logged tasks.
 //
-// REQUIRES a `duty_logs` table in Supabase. Run this once in the SQL editor:
+// REQUIRES two tables in Supabase. Run this once in the SQL editor:
 //
 //   create table public.duty_logs (
 //     id bigint generated always as identity primary key,
@@ -7690,14 +7709,40 @@ refreshBulletinBoard = async function (...args) {
 //     reported_by text,
 //     created_at timestamptz not null default now()
 //   );
-//   -- match whatever RLS/policy setup the rest of this app's tables use
-//   -- (e.g. enable RLS + an anon insert/select policy, or leave RLS off
-//   -- if activity_logs/personnel are already open to the anon key).
 //
-// Until that table exists, every duty_logs call below fails gracefully
-// (caught, logged to console, roster shows a setup notice) so nothing else
-// in the app breaks — dispatch enforcement (dutyGuardMessage) also simply
-// stops blocking, same "missing table = feature quietly off" convention
+//   create table public.duty_shift_settings (
+//     id int primary key default 1,
+//     shift_start_time time not null default '06:00',
+//     grace_end_time time not null default '08:00',
+//     updated_at timestamptz not null default now(),
+//     constraint duty_shift_settings_singleton check (id = 1)
+//   );
+//   insert into public.duty_shift_settings (id) values (1) on conflict (id) do nothing;
+//
+//   -- RLS: "new row violates row-level security policy" means RLS is ON
+//   -- but no policy allows the anon key through. This app doesn't use
+//   -- Supabase Auth (login is a custom RPC — see verify_login), so every
+//   -- other table (activity_logs, personnel, break_settings, ...) is
+//   -- presumably wide open to anon; mirror that here:
+//   alter table public.duty_logs enable row level security;
+//   create policy "duty_logs_select" on public.duty_logs for select using (true);
+//   create policy "duty_logs_insert" on public.duty_logs for insert with check (true);
+//   create policy "duty_logs_update" on public.duty_logs for update using (true) with check (true);
+//   create policy "duty_logs_delete" on public.duty_logs for delete using (true);
+//
+//   alter table public.duty_shift_settings enable row level security;
+//   create policy "duty_shift_settings_select" on public.duty_shift_settings for select using (true);
+//   create policy "duty_shift_settings_insert" on public.duty_shift_settings for insert with check (true);
+//   create policy "duty_shift_settings_update" on public.duty_shift_settings for update using (true) with check (true);
+//
+//   -- (Or, if RLS is simply disabled on your other tables instead of
+//   -- policy-gated, just: alter table public.duty_logs disable row level
+//   -- security; -- and the same for duty_shift_settings.)
+//
+// Until these tables exist, every call below fails gracefully (caught,
+// logged to console, roster shows a setup notice) so nothing else in the
+// app breaks — dispatch enforcement (dutyGuardMessage) also simply stops
+// blocking, same "missing table = feature quietly off" convention
 // idle_dismissals already uses above.
 // =====================================================================
 
