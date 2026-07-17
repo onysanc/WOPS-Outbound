@@ -8099,8 +8099,14 @@ async function fetchDutyLogsToday() {
 // list, so a duty action from a moment ago can never race a dispatch click.
 // Returns null (proceed) if the duty table isn't set up yet or the name is
 // blank/invalid — those cases are left to the existing validation checks.
+//
+// Backup (duty_backup) and Excluded personnel never formally report for
+// duty / are outside normal duty tracking, so they're always let through
+// here regardless of their duty_logs status for the day.
 async function dutyGuardMessage(name) {
   if (!name || dutyTableMissing) return null;
+  const trimmedName = name.trim();
+  if (dutyBackupNames.has(trimmedName) || excludedPersonnelNames.has(trimmedName)) return null;
   try {
     const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
     const { data, error } = await supabaseClient.from('duty_logs').select('personnel_name,event_type,event_time')
