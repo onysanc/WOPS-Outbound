@@ -1671,6 +1671,11 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <button onclick="loadAgingData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
         <button onclick="exportTableToCSVGeneric('aging-table', 'master-records.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
         <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+        <button id="aging-export-all-btn" onclick="exportAgingAllToExcel()" title="Exports every record in the database, ignoring the search/status/customer/truck/date filters above and the 20,000-row browse cap" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export All Data (XLSX)</button>
+        <span class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg pl-2 pr-1 py-1">
+          <input type="month" id="aging-export-month" title="Pick a month, then click Export by Month" class="bg-transparent text-xs focus:outline-none">
+          <button id="aging-export-month-btn" onclick="exportAgingByMonthToExcel()" title="Exports every record whose Record Date falls in the selected month, ignoring the filters above and the 20,000-row browse cap" class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 whitespace-nowrap">⬇ Export by Month</button>
+        </span>
         <button onclick="exportSectionToPDF('view-aging')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
         <button id="aging-add-btn" onclick="openAgingRecordModal(null)" class="hidden text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">+ Add Record</button>
       </div>
@@ -6624,11 +6629,12 @@ function renderAgingTable() {
   updateAgingBulkBar();
 }
 
-function exportAgingToExcel() {
-  const rows = filteredAgingRows();
-  if (!rows.length) return showToast("No rows to export.", "error");
-
-  const excelRows = rows.map(r => ({
+// Shared row->Excel-columns mapping, used by the on-screen "Export Excel
+// (XLSX)" button (filtered/loaded rows only) as well as the "Export All
+// Data" and "Export by Month" buttons below (which bypass the on-screen
+// filters and the 20,000-row browse cap entirely).
+function agingRowsToExcelSheet(rows) {
+  return rows.map(r => ({
     'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '',
     'Upload Date': fmtAgingDate(r.upload_date), 'Record Date': fmtAgingDate(r.record_date),
     'OBD': r.obd_number || '',
@@ -6651,16 +6657,168 @@ function exportAgingToExcel() {
     'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered != null ? Math.round(r.check_rendered) : '', 'Check Productivity': fmtProductivity(r.check_productivity),
     'Check Accuracy': fmtAccuracy(r.check_accuracy), 'Check Hit/Miss': fmtHitMiss(r.check_hitmiss), 'Check Speed %': fmtSpeedPct(r.check_speedpct), 'Check Idle Time': fmtIdleMinutes(r.check_idle)
   }));
+}
 
+function writeAgingExcelFile(rows, sheetLabel, filename) {
+  const excelRows = agingRowsToExcelSheet(rows);
   const ws = XLSX.utils.json_to_sheet(excelRows);
   ws['!cols'] = new Array(52).fill({ wch: 14 });
   const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, String(sheetLabel).slice(0, 31));
+  XLSX.writeFile(wb, filename);
+}
+
+function exportAgingToExcel() {
+  const rows = filteredAgingRows();
+  if (!rows.length) return showToast("No rows to export.", "error");
+
   const statusVal = document.getElementById('aging-status-filter').value;
   const sheetLabel = (statusVal && statusVal !== 'ALL') ? statusVal.charAt(0) + statusVal.slice(1).toLowerCase() : 'All';
-  XLSX.utils.book_append_sheet(wb, ws, `${sheetLabel} Aging`.slice(0, 31));
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, `aging-${statusVal.toLowerCase()}-${stamp}.xlsx`);
+  writeAgingExcelFile(rows, `${sheetLabel} Aging`, `aging-${statusVal.toLowerCase()}-${stamp}.xlsx`);
   showToast(`Exported ${rows.length} line(s) to Excel.`, "success");
+}
+
+// --- MASTER RECORDS: EXPORT ALL / EXPORT BY MONTH ---
+// Both bypass whatever is currently in the search box / Status / Customer /
+// Truck Type / Record Date filters, and also bypass the 20,000-row browse
+// cap that loadAgingData() applies when just scrolling the on-screen table.
+// They page straight through the full `shipments` table (Supabase caps a
+// single request at 1000 rows, hence the .range() loop) and re-use the same
+// per-stage Picker/Staging/Puller/Outbound-Checker enrichment as the
+// on-screen Master Records table, so the exported columns match exactly.
+async function fetchAllShipmentsRowsPaginated() {
+  const pageSize = 1000;
+  let from = 0;
+  const all = [];
+  while (true) {
+    const { data, error } = await supabaseClient.from('shipments').select('*')
+      .order('uploaded_at', { ascending: false }).range(from, from + pageSize - 1);
+    if (error) throw error;
+    all.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+async function buildAgingRowsFromShipments(shipRows) {
+  const soNumbers = (shipRows || []).map(r => r.so_number).filter(Boolean);
+  let logs = [];
+  if (soNumbers.length) {
+    const chunkSize = 300;
+    for (let i = 0; i < soNumbers.length; i += chunkSize) {
+      const chunk = soNumbers.slice(i, i + chunkSize);
+      const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
+        .select('id,so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
+        .in('so_number', chunk).eq('status', 'Completed');
+      if (!logErr) logs.push(...(logChunk || []));
+      else console.error(logErr);
+    }
+  }
+  const logMap = {};
+  logs.forEach(l => {
+    const key = `${l.so_number}||${l.role}`;
+    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
+  });
+  const idleLookup = buildIdleLookup(logs);
+
+  return (shipRows || []).map(row => {
+    let effective = row.status;
+    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
+      effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
+    }
+    const pick = logMap[`${row.so_number}||Picker`];
+    const stage = logMap[`${row.so_number}||Staging Checker`];
+    const pull = logMap[`${row.so_number}||Puller`];
+    const check = logMap[`${row.so_number}||Outbound Checker`];
+    return {
+      so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
+      billing_number: row.billing_number, route_description: row.route_description,
+      customer: row.sold_to_party_name, truck_type: row.truck_type,
+      quantity: row.quantity, so_amount: row.so_amount,
+      qty: rowQtySum(row), status: effective,
+      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.record_date || row.uploaded_at),
+      pick_id: pick?.id || null,
+      pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+      pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
+      pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
+      pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
+      pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
+      stage_id: stage?.id || null,
+      stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+      stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
+      stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
+      stage_accuracy: stage ? calcCheckerAccuracy(stage) : null,
+      stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
+      stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
+      staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
+      pull_id: pull?.id || null,
+      pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+      pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
+      pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
+      pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
+      check_id: check?.id || null,
+      check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
+      check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
+      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
+      check_accuracy: check ? calcCheckerAccuracy(check) : null,
+      check_hitmiss: calcHitMiss(check), check_speedpct: calcSpeedPct(check),
+      check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
+    };
+  });
+}
+
+async function exportAgingAllToExcel() {
+  const btn = document.getElementById('aging-export-all-btn');
+  if (btn) { btn.disabled = true; btn.dataset.origText = btn.innerText; btn.innerText = '⏳ Exporting...'; }
+  showToast("Fetching every record — this can take a moment for large tables...", "success");
+  try {
+    const shipRows = await fetchAllShipmentsRowsPaginated();
+    if (!shipRows.length) { showToast("No records found.", "error"); return; }
+    const rows = await buildAgingRowsFromShipments(shipRows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    writeAgingExcelFile(rows, 'All Records', `master-records-all-${stamp}.xlsx`);
+    showToast(`Exported all ${rows.length} record(s) to Excel.`, "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Export failed: " + (err.message || err), "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.origText || '⬇ Export All Data (XLSX)'; }
+  }
+}
+
+async function exportAgingByMonthToExcel() {
+  const monthVal = document.getElementById('aging-export-month').value; // "YYYY-MM"
+  if (!monthVal) return showToast("Pick a month first.", "error");
+  const [y, m] = monthVal.split('-').map(Number);
+  const fromDate = new Date(y, m - 1, 1, 0, 0, 0);
+  const toDate = new Date(y, m, 0, 23, 59, 59, 999); // last day of that month
+
+  const btn = document.getElementById('aging-export-month-btn');
+  if (btn) { btn.disabled = true; btn.dataset.origText = btn.innerText; btn.innerText = '⏳ Exporting...'; }
+  showToast(`Fetching records for ${monthVal}...`, "success");
+  try {
+    const shipRows = await fetchAllShipmentsRowsPaginated();
+    if (!shipRows.length) { showToast("No records found.", "error"); return; }
+    const allRows = await buildAgingRowsFromShipments(shipRows);
+    // Same fallback used everywhere else on this tab: record_date, falling
+    // back to upload_date when a record was never explicitly re-dated.
+    const rows = allRows.filter(r => {
+      if (!r.record_date) return false;
+      const d = new Date(r.record_date);
+      return d >= fromDate && d <= toDate;
+    });
+    if (!rows.length) { showToast(`No records found for ${monthVal}.`, "error"); return; }
+    const monthLabel = fromDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    writeAgingExcelFile(rows, monthLabel, `master-records-${monthVal}.xlsx`);
+    showToast(`Exported ${rows.length} record(s) for ${monthLabel}.`, "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Export failed: " + (err.message || err), "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.origText || '⬇ Export by Month'; }
+  }
 }
 
 // --- DATA INGESTION ---
