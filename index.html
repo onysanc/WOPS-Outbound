@@ -950,6 +950,7 @@
               <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
               <th class="p-2">Role(s)</th>
               <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
+              <th class="p-2 text-center">Schedule</th>
               <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="since" data-label="Since" onclick="dutyRosterSort('since')">Since</th>
               <th class="p-2 text-right cursor-pointer select-none hover:text-emerald-400" data-sort-key="onDuty" data-label="On-Duty Today" onclick="dutyRosterSort('onDuty')">On-Duty Today</th>
               <th class="p-2 text-right cursor-pointer select-none hover:text-emerald-400" data-sort-key="break" data-label="Break Today" onclick="dutyRosterSort('break')">Break Today</th>
@@ -959,7 +960,7 @@
             </tr>
           </thead>
           <tbody id="duty-roster-body">
-            <tr><td colspan="9" class="p-4 text-center text-slate-500 italic">Loading duty roster…</td></tr>
+            <tr><td colspan="10" class="p-4 text-center text-slate-500 italic">Loading duty roster…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1526,20 +1527,24 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     </div>
 
     <div id="duty-shift-window-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
-      <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">🕕 Duty Shift Window</h2>
-      <p class="text-[11px] text-slate-500">Personnel who report for duty within this window get credited as reporting exactly at Shift Start — e.g. Shift Start 6:00 AM, Grace End 8:00 AM means anyone tapping "Report for Duty" between 6:00–8:00 AM is recorded as 6:00 AM. Anyone reporting outside the window is recorded at their actual tap time (so late arrivals still show as late).</p>
-      <div class="grid grid-cols-2 gap-2">
+      <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">🕕 Duty Shift Schedule</h2>
+      <p class="text-[11px] text-slate-500">Fixed shifts set by the admin — e.g. AM = 6:00 AM–3:00 PM, PM = 3:00 PM–12:00 AM. Reporting for duty anywhere inside a shift's window locks that person's schedule to the shift's official start/end (e.g. tapping in at 7:40 AM under AM still records 6:00 AM–3:00 PM). Break time is separate — see Break Windows above; it's checked automatically against whichever shift the person is on.</p>
+      <form id="duty-shift-form" onsubmit="addDutyShiftSchedule(event)" class="grid grid-cols-3 gap-2 items-end">
         <div>
-          <label class="block text-[10px] text-slate-500 mb-1">Shift Start</label>
-          <input type="time" id="duty-shift-start-input" value="06:00" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
+          <label class="block text-[10px] text-slate-500 mb-1">Shift Name</label>
+          <input type="text" id="duty-shift-name" placeholder="AM" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
         </div>
         <div>
-          <label class="block text-[10px] text-slate-500 mb-1">Grace End</label>
-          <input type="time" id="duty-grace-end-input" value="08:00" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
+          <label class="block text-[10px] text-slate-500 mb-1">Start</label>
+          <input type="time" id="duty-shift-start" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
         </div>
-      </div>
-      <button onclick="saveDutyShiftWindow()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Save Shift Window</button>
-      <p id="duty-shift-window-status" class="text-[10px] text-slate-600"></p>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-1">End</label>
+          <input type="time" id="duty-shift-end" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
+        </div>
+        <button type="submit" class="col-span-3 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 text-xs font-bold rounded-lg">+ Add Shift</button>
+      </form>
+      <div class="space-y-1" id="duty-shift-list-container"></div>
     </div>
    </div>
   </section>
@@ -2108,6 +2113,7 @@ async function startApp() {
   setView(firstAllowedTab());
   await setRole('Picker');
   await refreshConfiguredBreaks();
+  await loadDutyShiftSchedules();
   await refreshStagingAreas();
   await refreshExcludedPersonnel();
   await refreshBulletinBoard();
@@ -2344,7 +2350,7 @@ function activateView(name) {
   if (pipelinePanel) pipelinePanel.classList.toggle('hidden', name !== 'workbench');
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
-  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftWindow(); }
+  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
   if (name === 'export') loadExportData();
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -7810,18 +7816,36 @@ refreshBulletinBoard = async function (...args) {
 //     role text,
 //     event_type text not null check (event_type in ('IN','BREAK_START','BREAK_END','OUT')),
 //     event_time timestamptz not null default now(),
+//     shift_name text,
+//     scheduled_start timestamptz,
+//     scheduled_end timestamptz,
 //     reported_by text,
 //     created_at timestamptz not null default now()
 //   );
 //
-//   create table public.duty_shift_settings (
-//     id int primary key default 1,
-//     shift_start_time time not null default '06:00',
-//     grace_end_time time not null default '08:00',
-//     updated_at timestamptz not null default now(),
-//     constraint duty_shift_settings_singleton check (id = 1)
+//   -- Already have duty_logs from before this update? Just add the three
+//   -- new columns instead of recreating the table:
+//   -- alter table public.duty_logs add column if not exists shift_name text;
+//   -- alter table public.duty_logs add column if not exists scheduled_start timestamptz;
+//   -- alter table public.duty_logs add column if not exists scheduled_end timestamptz;
+//
+//   -- Admin-configured fixed shift schedules (e.g. AM 6:00 AM–3:00 PM,
+//   -- PM 3:00 PM–12:00 AM). Reporting for duty anywhere inside a shift's
+//   -- start–end window locks that person's recorded time (and downstream
+//   -- on-duty/idle math) to the shift's official start/end instead of
+//   -- their literal tap time — see resolveDutyShiftForTime() below.
+//   -- Replaces the old, never-actually-wired duty_shift_settings table.
+//   create table public.duty_shift_schedules (
+//     id bigint generated always as identity primary key,
+//     shift_name text not null unique,
+//     start_time time not null,
+//     end_time time not null,
+//     created_at timestamptz not null default now()
 //   );
-//   insert into public.duty_shift_settings (id) values (1) on conflict (id) do nothing;
+//   insert into public.duty_shift_schedules (shift_name, start_time, end_time) values
+//     ('AM', '06:00', '15:00'),
+//     ('PM', '15:00', '00:00')
+//   on conflict (shift_name) do nothing;
 //
 //   -- RLS: "new row violates row-level security policy" means RLS is ON
 //   -- but no policy allows the anon key through. This app doesn't use
@@ -7834,25 +7858,38 @@ refreshBulletinBoard = async function (...args) {
 //   create policy "duty_logs_update" on public.duty_logs for update using (true) with check (true);
 //   create policy "duty_logs_delete" on public.duty_logs for delete using (true);
 //
-//   alter table public.duty_shift_settings enable row level security;
-//   create policy "duty_shift_settings_select" on public.duty_shift_settings for select using (true);
-//   create policy "duty_shift_settings_insert" on public.duty_shift_settings for insert with check (true);
-//   create policy "duty_shift_settings_update" on public.duty_shift_settings for update using (true) with check (true);
+//   alter table public.duty_shift_schedules enable row level security;
+//   create policy "duty_shift_schedules_select" on public.duty_shift_schedules for select using (true);
+//   create policy "duty_shift_schedules_insert" on public.duty_shift_schedules for insert with check (true);
+//   create policy "duty_shift_schedules_update" on public.duty_shift_schedules for update using (true) with check (true);
+//   create policy "duty_shift_schedules_delete" on public.duty_shift_schedules for delete using (true);
 //
 //   -- (Or, if RLS is simply disabled on your other tables instead of
 //   -- policy-gated, just: alter table public.duty_logs disable row level
-//   -- security; -- and the same for duty_shift_settings.)
+//   -- security; -- and the same for duty_shift_schedules.)
 //
 // Until these tables exist, every call below fails gracefully (caught,
 // logged to console, roster shows a setup notice) so nothing else in the
 // app breaks — dispatch enforcement (dutyGuardMessage) also simply stops
 // blocking, same "missing table = feature quietly off" convention
 // idle_dismissals already uses above.
+//
+// BREAK TIME IS NOW FULLY AUTOMATIC — there is no personnel-facing Start
+// Break / End Break action anymore. A person's break minutes (and live
+// "On Break" status) are derived by overlapping their on-duty span against
+// the admin-configured Break Windows (the same break_settings table/logic
+// already used to subtract break time from task target hours elsewhere in
+// the app — see computeBreakOverlapMinutes / autoBreakSpansForDuty). The
+// BREAK_START/BREAK_END event types still exist for one-off admin
+// corrections via the Edit Duty Log modal, but nothing creates them
+// automatically anymore.
 // =====================================================================
 
 let dutyLogsToday = [];       // cached today's duty_logs rows, refreshed on a timer + realtime
 let dutyTableMissing = false; // flips true the first time a query 42P01s, so we stop hammering it and show one clear setup message
 let dutyRosterPeople = [];    // [{name, roles:[...]}] — EVERY personnel across EVERY role (not just currentRole), deduped by name
+let dutyShiftSchedules = [];      // [{id, shift_name, start_time, end_time}] — admin-configured fixed shifts (e.g. AM/PM)
+let dutyShiftTableMissing = false; // same "missing table = feature quietly off" convention as dutyTableMissing
 
 // The Duty Roster tracks the whole company, not just whichever role tab is
 // currently selected on the Workbench — a Picker and an Outbound Checker
@@ -7890,29 +7927,86 @@ function dutyEventsForName(name) {
     .sort((a, b) => new Date(a.event_time) - new Date(b.event_time));
 }
 
+// Merges overlapping/adjacent [start,end] Date pairs into the smallest
+// non-overlapping set — used so manual break corrections and
+// auto-detected break windows never double-count the same minutes.
+function mergeSpans(spans) {
+  if (!spans.length) return [];
+  const sorted = spans.slice().sort((a, b) => a[0] - b[0]);
+  const merged = [sorted[0].slice()];
+  for (let i = 1; i < sorted.length; i++) {
+    const [s, e] = sorted[i];
+    const last = merged[merged.length - 1];
+    if (s <= last[1]) { if (e > last[1]) last[1] = e; }
+    else merged.push([s, e]);
+  }
+  return merged;
+}
+
+// Break spans automatically derived from the admin-configured Break Windows
+// (break_settings — the same table/logic the app already uses to subtract
+// break time from task target hours) intersected with a person's on-duty
+// span(s) for the day. This is what makes Duty Roster break time fully
+// automatic: no Start Break/End Break tap needed — if a configured window
+// (e.g. 10:00–10:30, 12:00–13:00) falls inside someone's on-duty time, it
+// counts as their break.
+function autoBreakSpansForDuty(onDutySpans) {
+  const spans = [];
+  onDutySpans.forEach(([dutyS, dutyE]) => {
+    const dayStr = dutyS.toISOString().slice(0, 10);
+    (configuredBreaks || []).forEach(b => {
+      if (!b.start_time || !b.end_time) return;
+      const bs = new Date(`${dayStr}T${b.start_time}`);
+      let be = new Date(`${dayStr}T${b.end_time}`);
+      if (be <= bs) be.setDate(be.getDate() + 1); // overnight break window
+      const os = new Date(Math.max(dutyS, bs));
+      const oe = new Date(Math.min(dutyE, be));
+      if (oe > os) spans.push([os, oe]);
+    });
+  });
+  return spans;
+}
+
 // Walks a person's IN/BREAK_START/BREAK_END/OUT events chronologically and
 // returns their current status plus every on-duty span and break span for
 // the day (spans, not just a running total, so callers can both sum minutes
-// AND show "since HH:MM"). An open span (no matching OUT/BREAK_END yet) is
+// AND show "since HH:MM"). An open on-duty span (no matching OUT yet) is
 // closed at "now" so live badges keep counting up between refreshes.
+//
+// Break spans/status are now fully automatic — see autoBreakSpansForDuty()
+// above — merged with any manual BREAK_START/BREAK_END pairs an admin
+// backfilled for a one-off correction via the Edit Duty Log modal.
 function computeDutySpans(events) {
-  let dutyStart = null, breakStart = null;
-  const onDutySpans = [], breakSpans = [];
+  let dutyStart = null;
+  const onDutySpans = [];
+  const manualBreakSpans = [];
+  let manualBreakStart = null;
   events.forEach(e => {
     const t = new Date(e.event_time);
     if (e.event_type === 'IN') { if (!dutyStart) dutyStart = t; }
-    else if (e.event_type === 'BREAK_START') { if (dutyStart && !breakStart) breakStart = t; }
-    else if (e.event_type === 'BREAK_END') { if (breakStart) { breakSpans.push([breakStart, t]); breakStart = null; } }
+    else if (e.event_type === 'BREAK_START') { if (dutyStart && !manualBreakStart) manualBreakStart = t; }
+    else if (e.event_type === 'BREAK_END') { if (manualBreakStart) { manualBreakSpans.push([manualBreakStart, t]); manualBreakStart = null; } }
     else if (e.event_type === 'OUT') {
-      if (breakStart) { breakSpans.push([breakStart, t]); breakStart = null; }
+      if (manualBreakStart) { manualBreakSpans.push([manualBreakStart, t]); manualBreakStart = null; }
       if (dutyStart) { onDutySpans.push([dutyStart, t]); dutyStart = null; }
     }
   });
+
   const now = new Date();
-  let status = 'off';
-  if (dutyStart) { onDutySpans.push([dutyStart, now]); status = breakStart ? 'break' : 'on'; }
-  if (breakStart) breakSpans.push([breakStart, now]);
+  const stillOnDuty = !!dutyStart;
+  if (dutyStart) onDutySpans.push([dutyStart, now]);
+  if (manualBreakStart) manualBreakSpans.push([manualBreakStart, now]);
+
+  const breakSpans = mergeSpans([...manualBreakSpans, ...autoBreakSpansForDuty(onDutySpans)]);
+
   const since = events.length ? new Date(events[events.length - 1].event_time) : null;
+  let status = 'off';
+  if (stillOnDuty) {
+    // "On break" is purely time-of-day driven now: on duty AND the current
+    // moment falls inside a merged break span (auto window or manual override).
+    const onBreakNow = breakSpans.some(([s, e]) => now >= s && now < e);
+    status = onBreakNow ? 'break' : 'on';
+  }
   return { onDutySpans, breakSpans, status, since };
 }
 
@@ -7964,38 +8058,104 @@ async function dutyGuardMessage(name) {
   } catch (e) { return null; }
 }
 
+// --- ADMIN: fixed AM/PM (or however many) duty shift schedules ---
+async function loadDutyShiftSchedules() {
+  const { data, error } = await supabaseClient.from('duty_shift_schedules').select('*').order('start_time');
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message || '')) dutyShiftTableMissing = true;
+    console.error('duty_shift_schedules fetch failed:', error.message);
+    renderDutyShiftSchedules();
+    return;
+  }
+  dutyShiftTableMissing = false;
+  dutyShiftSchedules = data || [];
+  renderDutyShiftSchedules();
+}
+
+function renderDutyShiftSchedules() {
+  const container = document.getElementById('duty-shift-list-container');
+  if (!container) return;
+  if (dutyShiftTableMissing) {
+    container.innerHTML = `<p class="text-[10px] text-amber-400 italic">Not set up yet — create the <code>duty_shift_schedules</code> table (see code comments near the DUTY ROSTER section) to enable fixed shift schedules.</p>`;
+    return;
+  }
+  container.innerHTML = dutyShiftSchedules.length ? dutyShiftSchedules.map(s => `
+    <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
+      <span class="text-slate-300 font-medium">${s.shift_name}</span>
+      <div class="flex items-center gap-3">
+        <span class="font-mono text-slate-500">${s.start_time}–${s.end_time}</span>
+        <button onclick="deleteDutyShiftSchedule(${s.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
+      </div>
+    </div>`).join('') : '<p class="text-[10px] text-slate-600 italic">No shift schedules configured yet — personnel will be credited at their literal report-in time until at least one is added.</p>';
+}
+
+async function addDutyShiftSchedule(e) {
+  e.preventDefault();
+  const name = document.getElementById('duty-shift-name').value.trim();
+  const start = document.getElementById('duty-shift-start').value;
+  const end = document.getElementById('duty-shift-end').value;
+  if (!name || !start || !end) return;
+  const { error } = await supabaseClient.from('duty_shift_schedules').insert([{ shift_name: name, start_time: start, end_time: end }]);
+  if (error) return showToast(error.message, "error");
+  document.getElementById('duty-shift-form').reset();
+  await loadDutyShiftSchedules();
+}
+
+async function deleteDutyShiftSchedule(id) {
+  await supabaseClient.from('duty_shift_schedules').delete().eq('id', id);
+  await loadDutyShiftSchedules();
+}
+
+// Given a JS Date, finds the admin-configured shift whose start–end window
+// contains it and returns the shift plus its resolved start/end as real
+// Date objects for THAT calendar day — handling a shift that crosses
+// midnight (e.g. PM 3:00 PM–12:00 AM) by rolling its end into the next
+// calendar day rather than treating 00:00 as "before" its own start.
+// Returns null if no configured shift covers this moment (e.g. reporting
+// in at 2 AM with only AM/PM configured) — callers fall back to the
+// literal tap time in that case, same as before this feature existed.
+function resolveDutyShiftForTime(t) {
+  const dayStr = t.toISOString().slice(0, 10);
+  for (const s of dutyShiftSchedules) {
+    if (!s.start_time || !s.end_time) continue;
+    const start = new Date(`${dayStr}T${s.start_time}`);
+    let end = new Date(`${dayStr}T${s.end_time}`);
+    if (end <= start) end.setDate(end.getDate() + 1);
+    if (t >= start && t < end) return { ...s, resolvedStart: start, resolvedEnd: end };
+  }
+  return null;
+}
+
 async function reportForDuty(name) {
   if (!dutyRosterPeople.some(p => p.name === name)) return showToast(`"${name}" is not on the personnel roster.`, "error");
   const events = dutyEventsForName(name);
   const { status } = computeDutySpans(events);
   if (status !== 'off') return showToast(`${name} is already reported in for today.`, "info");
-  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: rolesForDutyName(name), event_type: 'IN' }]);
+
+  const now = new Date();
+  const shift = resolveDutyShiftForTime(now);
+  const payload = { personnel_name: name, role: rolesForDutyName(name), event_type: 'IN' };
+  if (shift) {
+    // Fixed-schedule crediting: tapping in anywhere inside a configured
+    // shift's start–end window locks the recorded time to that shift's
+    // official start (e.g. AM = 6:00 AM–3:00 PM → tap at 7:40 AM still
+    // records/credits 6:00 AM), and stamps the shift name + scheduled end
+    // for display and for downstream idle/productivity math.
+    payload.event_time = shift.resolvedStart.toISOString();
+    payload.shift_name = shift.shift_name;
+    payload.scheduled_start = shift.resolvedStart.toISOString();
+    payload.scheduled_end = shift.resolvedEnd.toISOString();
+  }
+  const { error } = await supabaseClient.from('duty_logs').insert([payload]);
   if (error) return showToast(dutyTableMissing || error.code === '42P01'
     ? "Duty Roster isn't set up yet — ask an admin to create the duty_logs table (see code comments)."
     : "Could not report for duty: " + error.message, "error");
-  showToast(`${name} reported for duty.`, "success");
+  showToast(shift
+    ? `${name} reported for duty — ${shift.shift_name} schedule (${fmtDutyClock(shift.resolvedStart)}–${fmtDutyClock(shift.resolvedEnd)}).`
+    : `${name} reported for duty.`, "success");
   await refreshDutyRoster();
 }
 
-async function startDutyBreak(name) {
-  const events = dutyEventsForName(name);
-  const { status } = computeDutySpans(events);
-  if (status !== 'on') return showToast(`${name} must be on duty (not already on break) to start a break.`, "error");
-  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: rolesForDutyName(name), event_type: 'BREAK_START' }]);
-  if (error) return showToast("Could not start break: " + error.message, "error");
-  showToast(`${name} is now on break.`, "success");
-  await refreshDutyRoster();
-}
-
-async function endDutyBreak(name) {
-  const events = dutyEventsForName(name);
-  const { status } = computeDutySpans(events);
-  if (status !== 'break') return showToast(`${name} isn't currently on break.`, "error");
-  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: rolesForDutyName(name), event_type: 'BREAK_END' }]);
-  if (error) return showToast("Could not end break: " + error.message, "error");
-  showToast(`${name} is back from break.`, "success");
-  await refreshDutyRoster();
-}
 
 // Ongoing-task check across EVERY role a person might hold (personnelHasOngoing
 // is role-scoped and meant for the single-role dispatch flow) — reporting off
@@ -8024,13 +8184,15 @@ async function reportOffDuty(name) {
 }
 
 // Per-person duty metrics for today: on-duty minutes (wall clock from report
-// -in to report-out/now), break minutes (from BREAK_START/BREAK_END pairs),
-// worked minutes (sum of rendered_minutes on today's Completed tasks, across
-// EVERY role that person worked — same dedupe-by-batch helper the
-// Performance Summary uses so a multi-line batch isn't counted multiple
-// times), idle minutes (on-duty minus break minus worked, i.e. clocked in,
-// not on break, and not actually working a task), and productivity %
-// (worked ÷ (on-duty minus break)).
+// -in to report-out/now, credited to the fixed shift start/end when a
+// configured shift schedule matched at report-in time), break minutes (now
+// fully automatic — configured Break Windows overlapping the on-duty span,
+// see computeDutySpans/autoBreakSpansForDuty), worked minutes (sum of
+// rendered_minutes on today's Completed tasks, across EVERY role that
+// person worked — same dedupe-by-batch helper the Performance Summary uses
+// so a multi-line batch isn't counted multiple times), idle minutes
+// (on-duty minus break minus worked, i.e. clocked in, not on break, and not
+// actually working a task), and productivity % (worked ÷ (on-duty minus break)).
 async function computeDutyMetricsForRoster(names) {
   const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
   const { data: logs, error } = await supabaseClient.from('activity_logs')
@@ -8052,7 +8214,15 @@ async function computeDutyMetricsForRoster(names) {
     const availableMinutes = Math.max(0, onDutyMinutes - breakMinutes);
     const idleMinutes = Math.max(0, availableMinutes - workedMinutes);
     const productivityPct = availableMinutes > 0.5 ? Math.min(100, (workedMinutes / availableMinutes) * 100) : null;
-    return { name, status, since, onDutyMinutes, breakMinutes, idleMinutes, workedMinutes, productivityPct };
+    // The fixed shift (if any) was resolved and stamped on the IN event at
+    // report-in time — pull it straight off that event rather than
+    // re-resolving now, so it stays correct even if admin edits the shift
+    // schedule list later in the day.
+    const inEvent = events.find(e => e.event_type === 'IN' && e.shift_name);
+    const shiftName = inEvent ? inEvent.shift_name : null;
+    const scheduledStart = inEvent && inEvent.scheduled_start ? new Date(inEvent.scheduled_start) : null;
+    const scheduledEnd = inEvent && inEvent.scheduled_end ? new Date(inEvent.scheduled_end) : null;
+    return { name, status, since, onDutyMinutes, breakMinutes, idleMinutes, workedMinutes, productivityPct, shiftName, scheduledStart, scheduledEnd };
   });
 }
 
@@ -8068,14 +8238,14 @@ async function refreshDutyRoster() {
   if (!body) return;
 
   if (dutyTableMissing) {
-    body.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-amber-400 italic">Duty Roster isn't set up yet — create the <code>duty_logs</code> table in Supabase (see code comments near the DUTY ROSTER section) to enable report-for-duty tracking.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-amber-400 italic">Duty Roster isn't set up yet — create the <code>duty_logs</code> table in Supabase (see code comments near the DUTY ROSTER section) to enable report-for-duty tracking.</td></tr>`;
     return;
   }
 
   await fetchAllPersonnelRoster();
   const names = dutyRosterPeople.map(p => p.name);
   if (!names.length) {
-    body.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500 italic">No personnel on file yet — add them under Personnel &amp; Breaks first.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500 italic">No personnel on file yet — add them under Personnel &amp; Breaks first.</td></tr>`;
     return;
   }
 
@@ -8185,7 +8355,7 @@ function renderDutyRosterRows() {
   });
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-slate-500 italic">No personnel match the current filter.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500 italic">No personnel match the current filter.</td></tr>`;
     return;
   }
 
@@ -8195,22 +8365,26 @@ function renderDutyRosterRows() {
     const pill = `<span class="duty-pill ${m.status}"><span class="duty-dot ${m.status}"></span>${m.status === 'on' ? 'On Duty' : m.status === 'break' ? 'On Break' : 'Off Duty'}</span>`;
     const idleCell = m.idleMinutes >= 30 ? `<span class="duty-idle-warn">${fmtDutyMin(m.idleMinutes)}</span>` : fmtDutyMin(m.idleMinutes);
     const prodCell = m.productivityPct == null ? '—' : `${m.productivityPct.toFixed(0)}%`;
+    const scheduleCell = m.shiftName
+      ? `<span class="text-slate-300 font-semibold">${m.shiftName}</span> <span class="font-mono text-slate-500">${fmtDutyClock(m.scheduledStart)}–${fmtDutyClock(m.scheduledEnd)}</span>`
+      : '<span class="text-slate-600">—</span>';
     const nameAttr = m.name.replace(/'/g, "\\'");
+    // Break is fully automatic now (derived from the configured Break
+    // Windows overlapping on-duty time — see computeDutySpans), so there's
+    // no personnel-facing Start Break/End Break action anymore; both "on"
+    // and "break" status just get Report Off Duty.
     let actions = '';
     if (m.status === 'off') {
       actions = `<button class="duty-action-btn in" onclick="reportForDuty('${nameAttr}')">Report for Duty</button>`;
-    } else if (m.status === 'on') {
-      actions = `<button class="duty-action-btn break-start" onclick="startDutyBreak('${nameAttr}')">Start Break</button>
-                 <button class="duty-action-btn out" onclick="reportOffDuty('${nameAttr}')">Report Off Duty</button>`;
     } else {
-      actions = `<button class="duty-action-btn break-end" onclick="endDutyBreak('${nameAttr}')">End Break</button>
-                 <button class="duty-action-btn out" onclick="reportOffDuty('${nameAttr}')">Report Off Duty</button>`;
+      actions = `<button class="duty-action-btn out" onclick="reportOffDuty('${nameAttr}')">Report Off Duty</button>`;
     }
     if (canEdit) actions += `<button class="duty-action-btn edit" title="Correct recorded duty times" onclick="openDutyEditModal('${nameAttr}')">✎ Edit</button>`;
     return `<tr>
       <td class="p-2 font-semibold text-slate-200">${m.name}</td>
       <td class="p-2">${roleBadges}</td>
       <td class="p-2 text-center">${pill}</td>
+      <td class="p-2 text-center whitespace-nowrap">${scheduleCell}</td>
       <td class="p-2 text-center font-mono text-slate-400">${fmtDutyClock(m.since)}</td>
       <td class="p-2 text-right font-mono text-slate-300">${fmtDutyMin(m.onDutyMinutes)}</td>
       <td class="p-2 text-right font-mono text-amber-400">${fmtDutyMin(m.breakMinutes)}</td>
