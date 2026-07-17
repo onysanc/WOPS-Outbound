@@ -4542,6 +4542,29 @@ function applyAnalyticsPeriodLabels(periodType, dateStr) {
   set('role-leaderboards-period-label', `(grouped rankings, ${tag})`);
 }
 
+// Pages through activity_logs past Supabase/PostgREST's default max-rows cap
+// (commonly 1000). A single Activity Day rarely has 1000+ Completed logs, but
+// Weekly/MTD/YTD periods across the whole roster easily do — without this,
+// a plain .select('*') silently truncates and whichever rows happen to
+// survive the cutoff undercounts Shipments/Qty/etc. for anyone whose
+// activity landed past the cutoff (this is what was happening above).
+// .order('id') makes each page's boundary stable/deterministic.
+async function fetchActivityLogsPaginated(applyFilters) {
+  const pageSize = 1000;
+  let from = 0;
+  const all = [];
+  while (true) {
+    let q = supabaseClient.from('activity_logs').select('*');
+    q = applyFilters(q);
+    const { data, error } = await q.order('id', { ascending: true }).range(from, from + pageSize - 1);
+    if (error) throw error;
+    all.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function refreshAnalyticsView() {
   const dateInput = document.getElementById('analytics-date');
   if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
@@ -4555,11 +4578,14 @@ async function refreshAnalyticsView() {
 
   // Completed logs for the selected Report Period (Daily / Weekly / MTD / YTD)
   // — backs Cycle Time, Discrepancy Report, Leaderboard, and Backlog
-  // Forecast's throughput rate.
-  const { data: dayLogs, error: dayErr } = await supabaseClient.from('activity_logs').select('*')
-    .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
-    .eq('status', 'Completed');
-  if (dayErr) { console.error(dayErr); return; }
+  // Forecast's throughput rate. Paginated (see fetchActivityLogsPaginated) so
+  // Weekly/MTD/YTD periods aren't silently capped at 1000 rows.
+  let dayLogs;
+  try {
+    dayLogs = await fetchActivityLogsPaginated(q => q
+      .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
+      .eq('status', 'Completed'));
+  } catch (dayErr) { console.error(dayErr); return; }
   const filteredDayLogs = (dayLogs || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
   // Role Leaderboards need the full personnel roster (so zero-activity people
@@ -4943,8 +4969,12 @@ async function refreshThroughputTrend(endDateStr) {
 async function refreshTruckRouteBreakdown() {
   const truckBody = document.getElementById('truck-breakdown-rows');
   const routeBody = document.getElementById('route-breakdown-rows');
-  const { data, error } = await supabaseClient.from('shipments').select('truck_type,route_description,quantity');
-  if (error) { console.error(error); return; }
+  // Reuses the same paginated fetch as Master Records' "Export All Data" —
+  // this table has no date filter at all (always all-time), so on a large
+  // shipments table it hit the exact same silent 1000-row cap.
+  let data;
+  try { data = await fetchAllShipmentsRowsPaginated(); }
+  catch (error) { console.error(error); return; }
 
   const byTruck = {}, byRoute = {};
   (data || []).forEach(row => {
