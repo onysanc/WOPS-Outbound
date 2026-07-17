@@ -2145,7 +2145,8 @@ const ALL_TABS = [
 const EXTRA_PERMISSIONS = [
   { key: 'idle_dismiss', label: 'Dismiss Idle Alerts (Workbench)', hint: 'Lets this user click an idle-personnel chip and mark them out / already finished for the day.' },
   { key: 'duty_edit', label: 'Edit Duty Log Times (Workbench)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
-  { key: 'duty_roster_view', label: 'View Duty Roster (Workbench)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' }
+  { key: 'duty_roster_view', label: 'View Duty Roster (Workbench)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
+  { key: 'aging_edit', label: 'Edit Master Records (Master Records)', hint: 'Lets this user Add/Edit/Delete Master Records rows and correct any per-stage log — Picker, Staging Checker, Puller, Outbound Checker — from the Master Records tab, without granting full User Management access.' }
 ];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
@@ -5453,11 +5454,18 @@ function fmtRenderedMinutes(mins) {
 }
 
 // --- MASTER RECORDS: ADMIN-ONLY ROW CONTROLS ---
-// "Admin" here means the logged-in user has access to the User Management
-// tab — the same privilege gate the rest of the app already uses for
-// sensitive actions, so no separate admin flag is needed.
+// "Admin" here means: the literal "admin" account, any user granted the
+// User Management tab, OR any user explicitly granted the 'aging_edit'
+// special permission from User Management. That third case is what lets
+// an admin hand Master Records editing (all stages — Picker, Staging
+// Checker, Puller, Outbound Checker, via the same modal) to a specific
+// account without opening up full User Management to them. Same
+// convention as userCanDismissIdle()/userCanEditDuty() above.
 function isAgingAdmin() {
-  return !!currentUser && userCanAccess('usermgmt');
+  if (!currentUser) return false;
+  if (isAdminAccount()) return true;
+  if (userCanAccess('usermgmt')) return true;
+  return (currentUser.allowed_tabs || []).includes('aging_edit');
 }
 
 function applyAgingAdminUI() {
