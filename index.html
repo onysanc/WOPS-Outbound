@@ -4003,6 +4003,18 @@ function defaultOperationalDateStr() {
   return `${y}-${m}-${day}`;
 }
 
+// Buckets an arbitrary timestamp into its Activity Day (same 05:00 local
+// cutover as operationalDayWindowForDate), returned as "YYYY-MM-DD". Used to
+// tell whether two timestamps fall on the SAME operational day — needed so
+// idle-time gap calculations don't count overnight/off-duty time as "idle"
+// once a report spans more than one day (Weekly/MTD/YTD).
+function operationalDayBucketStr(dateLike) {
+  const t = new Date(dateLike);
+  const bucket = new Date(t);
+  if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+  return `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+}
+
 // Operational day window (05:00 local -> 04:59:59.999 the next day) for an
 // arbitrary "YYYY-MM-DD" date string, rather than always "today" like
 // calculateOperationalDayWindow().
@@ -4243,11 +4255,17 @@ function computeBulletinEntries(groupKey) {
     // Idle time, task-to-task: sort ALL of this personnel's logs for the day by
     // start_time, then measure the gap between each Completed task's end_time
     // and the next task's start_time. Overlapping/adjacent tasks contribute 0.
+    // A gap is only counted if both tasks fall on the SAME Activity Day —
+    // otherwise the "gap" is really overnight/off-duty time between shifts
+    // (e.g. last task Tuesday to first task Thursday), which would otherwise
+    // balloon Idle Time once the report period covers more than a single day
+    // (Weekly/MTD/YTD).
     const sorted = [...logs].sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
     const gaps = [];
     for (let i = 0; i < sorted.length - 1; i++) {
       const prev = sorted[i], next = sorted[i + 1];
       if (!prev.end_time) continue; // still ongoing — no gap to measure yet
+      if (operationalDayBucketStr(prev.end_time) !== operationalDayBucketStr(next.start_time)) continue;
       const gapMinutes = (new Date(next.start_time) - new Date(prev.end_time)) / 60000;
       if (gapMinutes > 0.5) { // ignore sub-30-second noise
         gaps.push({ afterShipment: prev.shipment_no, beforeShipment: next.shipment_no, minutes: gapMinutes });
@@ -4759,6 +4777,10 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
 
     // Idle time: gaps between this GROUP's own back-to-back batches for this person,
     // same methodology as the Performance Summary's idle calc but group-scoped.
+    // Only counted when both batches fall on the SAME Activity Day — a gap that
+    // crosses into a different day is off-duty/overnight time, not idle time on
+    // shift, and would otherwise inflate Idle Time once the report period spans
+    // more than one day (Weekly/MTD/YTD).
     const seenStarts = new Set();
     const personRoleLogsSorted = roleLogs.filter(l => l.personnel_name === p.name && !seenStarts.has(`${l.role}||${l.start_time}`) && seenStarts.add(`${l.role}||${l.start_time}`))
       .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -4766,6 +4788,7 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
     for (let i = 0; i < personRoleLogsSorted.length - 1; i++) {
       const prev = personRoleLogsSorted[i], next = personRoleLogsSorted[i + 1];
       if (!prev.end_time) continue;
+      if (operationalDayBucketStr(prev.end_time) !== operationalDayBucketStr(next.start_time)) continue;
       const gap = (new Date(next.start_time) - new Date(prev.end_time)) / 60000;
       if (gap > 0.5) idleMin += gap;
     }
