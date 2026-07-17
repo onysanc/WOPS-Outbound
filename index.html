@@ -795,19 +795,6 @@
     </div>
   </div>
 
-  <!-- Personnel Status sidebar: every personnel bucketed into exactly one of
-       Ongoing / Idle / On Duty / No On Duty, based on the Duty Roster report
-       (duty_logs clock status) crossed with whether they have an active task
-       right now. Replaces the old flat alert-chip row. -->
-  <aside id="alerts-panel" class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
-    <div class="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-rose-400 font-bold pb-1.5 border-b border-slate-800/60">
-      <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>PERSONNEL STATUS
-    </div>
-    <div id="ops-alert-row" class="flex flex-col gap-2.5">
-      <span class="text-[11px] text-slate-600 italic">Loading personnel status...</span>
-    </div>
-  </aside>
-
 </div>
 
 <main class="flex-1 min-w-0">
@@ -929,7 +916,7 @@
             </tr>
           </thead>
           <tbody id="duty-roster-body">
-            <tr><td colspan="6" class="p-4 text-center text-slate-500 italic">Loading duty roster…</td></tr>
+            <tr><td colspan="6" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
           </tbody>
         </table>
       </div>
@@ -2148,7 +2135,6 @@ const ALL_TABS = [
 // keys just don't correspond to any ALL_TABS entry, so they never render a
 // nav button, and userCanAccess()/the tab-rendering loop ignore them.
 const EXTRA_PERMISSIONS = [
-  { key: 'idle_dismiss', label: 'Dismiss Idle Alerts (Workbench)', hint: 'Lets this user click an idle-personnel chip and mark them out / already finished for the day.' },
   { key: 'duty_edit', label: 'Edit Duty Log Times (Workbench)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
   { key: 'duty_roster_view', label: 'View Duty Roster (Workbench)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
   { key: 'duty_backup_manage', label: 'Mark Personnel as Duty Backup (Personnel & Breaks)', hint: 'Lets this user flag a personnel record as "Backup" — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since backups never formally clock in.' },
@@ -2251,18 +2237,9 @@ function userCanAccess(tabKey) {
   return !!currentUser && (currentUser.allowed_tabs || []).includes(tabKey);
 }
 
-// The literal "admin" account always has every special permission implicitly
-// (matches isAdminAccount's existing "one account is always fully trusted"
-// convention below); everyone else needs the idle_dismiss permission
-// explicitly granted from User Management.
-function userCanDismissIdle() {
-  if (!currentUser) return false;
-  if (isAdminAccount()) return true;
-  return (currentUser.allowed_tabs || []).includes('idle_dismiss');
-}
-
-// Same convention as userCanDismissIdle() above — the literal "admin" account
-// always has it implicitly, everyone else needs the 'duty_edit' special
+// Same convention as isAdminAccount's existing "one account is always fully
+// trusted" convention below — the literal "admin" account always has it
+// implicitly, everyone else needs the 'duty_edit' special
 // permission explicitly granted from User Management. Gates the ability to
 // correct/backfill/delete recorded duty_logs timestamps.
 function userCanEditDuty() {
@@ -2271,7 +2248,7 @@ function userCanEditDuty() {
   return (currentUser.allowed_tabs || []).includes('duty_edit');
 }
 
-// Same convention as userCanDismissIdle()/userCanEditDuty() above — the
+// Same convention as userCanEditDuty() above — the
 // literal "admin" account always sees it implicitly, everyone else needs the
 // 'duty_roster_view' special permission explicitly granted from User
 // Management. Gates whether the whole Duty Roster panel renders at all,
@@ -2354,9 +2331,6 @@ function activateView(name) {
   const leftRail = document.getElementById('left-rail');
   if (leftRail) leftRail.classList.toggle('lg:block', showRails);
   if (leftRail) leftRail.classList.toggle('hidden', !showRails);
-  const alertsPanel = document.getElementById('alerts-panel');
-  if (alertsPanel) alertsPanel.classList.toggle('lg:block', showRails);
-  if (alertsPanel) alertsPanel.classList.toggle('hidden', !showRails);
   const pipelinePanel = document.getElementById('pipeline-summary-panel');
   if (pipelinePanel) pipelinePanel.classList.toggle('lg:block', showRails);
   if (pipelinePanel) pipelinePanel.classList.toggle('hidden', !showRails);
@@ -5666,7 +5640,7 @@ function fmtRenderedMinutes(mins) {
 // an admin hand Master Records editing (all stages — Picker, Staging
 // Checker, Puller, Outbound Checker, via the same modal) to a specific
 // account without opening up full User Management to them. Same
-// convention as userCanDismissIdle()/userCanEditDuty() above.
+// convention as userCanEditDuty() above.
 function isAgingAdmin() {
   if (!currentUser) return false;
   if (isAdminAccount()) return true;
@@ -7638,195 +7612,6 @@ function closeScannerModal() {
 }
 
 // --- LIVE OPS ALERTS: Overdue & At-Risk tasks + idle personnel ---
-// A task counted "at risk" once it's within this many minutes of its target
-// completion but not yet overdue. Personnel flagged idle once this many
-// minutes have passed since their last completed task with nothing new
-// started — mirrors the 15-minute convention used across the app's idle-time
-// metrics.
-const AT_RISK_MINUTES_BEFORE_TARGET = 15;
-const IDLE_ALERT_MINUTES = 15;
-const IDLE_ALERT_MAX_MINUTES = 180; // beyond this, they're most likely already out/off the clock, not actually idle — stop flagging them
-
-async function refreshOpsAlertBar() {
-  const row = document.getElementById('ops-alert-row');
-  if (!row) return;
-  const now = new Date();
-
-  // --- Who's currently executing a task right now (Ongoing/Paused) ---
-  // Grouped the same way Active Lines groups them (personnel+role+start_time
-  // = one dispatch action) so overdue/at-risk labelling on the Ongoing chip
-  // matches what Active Lines shows.
-  const { data: activeLogs, error: activeErr } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,target_hours').in('status', ['Ongoing', 'Paused']);
-  const activeInfoByName = {}; // name -> { role, label, sortVal } — worst (most overdue) batch wins if someone somehow has more than one
-  if (!activeErr && activeLogs) {
-    const batches = {};
-    activeLogs.filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim())).forEach(log => {
-      const key = `${log.personnel_name}||${log.role}||${log.start_time}`;
-      (batches[key] = batches[key] || []).push(log);
-    });
-    Object.values(batches).forEach(members => {
-      const rep = members[0];
-      const target = projectedTargetCompletion(new Date(rep.start_time), rep.target_hours || 0);
-      const overdueMin = (now - target) / 60000;
-      let label;
-      if (overdueMin > 0) label = `${fmtMin(overdueMin)} overdue`;
-      else if (overdueMin > -AT_RISK_MINUTES_BEFORE_TARGET) label = `${fmtMin(-overdueMin)} to target`;
-      else label = 'on track';
-      const name = rep.personnel_name;
-      if (!activeInfoByName[name] || overdueMin > activeInfoByName[name].sortVal) {
-        activeInfoByName[name] = { role: rep.role, label, sortVal: overdueMin };
-      }
-    });
-  }
-  const activeNames = new Set(Object.keys(activeInfoByName));
-
-  // --- Idle gap per person: logged activity today, nothing active right now,
-  // 15+ min since their last completion (any configured break window
-  // overlapping that gap is subtracted first) ---
-  const { startOfOpDay } = operationalDayWindowForDate(defaultOperationalDateStr());
-  const { data: todayLogs, error: todayErr } = await supabaseClient.from('activity_logs')
-    .select('personnel_name,role,status,start_time,end_time').gte('start_time', startOfOpDay.toISOString()).limit(10000);
-
-  // Idle entries can be dismissed ("mark as out / already finished for the
-  // day"). A dismissal is tied to the exact last-completed-task end_time it
-  // was raised for, so it only silences THAT gap — a later dispatch+completion
-  // naturally re-arms idle tracking.
-  const dismissedKeys = new Set();
-  try {
-    const { data: dismissals, error: dismissErr } = await supabaseClient.from('idle_dismissals')
-      .select('personnel_name,last_end_at').gte('dismissed_at', startOfOpDay.toISOString());
-    if (!dismissErr && dismissals) {
-      dismissals.forEach(d => dismissedKeys.add(`${d.personnel_name}||${new Date(d.last_end_at).toISOString()}`));
-    }
-  } catch (e) { /* idle_dismissals table not set up yet — treat as no dismissals */ }
-
-  const idleInfoByName = {}; // name -> { role, label, sortVal, lastEndISO }
-  if (!todayErr && todayLogs) {
-    const byPersonnel = {};
-    todayLogs.filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim())).forEach(l => {
-      const key = l.personnel_name || '—';
-      (byPersonnel[key] = byPersonnel[key] || []).push(l);
-    });
-    Object.entries(byPersonnel).forEach(([name, logs]) => {
-      if (activeNames.has(name.trim())) return; // currently working — not idle
-      const completed = logs.filter(l => l.status === 'Completed' && l.end_time).sort((a, b) => new Date(b.end_time) - new Date(a.end_time));
-      if (!completed.length) return; // nothing completed yet today — no idle gap to measure
-      const lastEnd = new Date(completed[0].end_time);
-      if (dismissedKeys.has(`${name}||${lastEnd.toISOString()}`)) return;
-      const breakOverlap = computeBreakOverlapMinutes(lastEnd, now);
-      const idleMin = Math.max(0, (now - lastEnd) / 60000 - breakOverlap);
-      if (idleMin >= IDLE_ALERT_MINUTES && idleMin < IDLE_ALERT_MAX_MINUTES) {
-        idleInfoByName[name] = { role: completed[0].role, label: `idle ${fmtMin(idleMin)}`, sortVal: idleMin, lastEndISO: lastEnd.toISOString() };
-      }
-    });
-  }
-
-  // --- Duty status per person, from the Duty Roster report (duty_logs) ---
-  // Every personnel on file lands in exactly one bucket:
-  //   Ongoing     — clocked in AND actively executing a task right now
-  //   Idle        — clocked in, nothing active, 15+ min since last completion
-  //   On Duty     — clocked in (or on break), but neither of the above yet
-  //                 (just reported in, between tasks under the idle threshold,
-  //                 or currently on a scheduled break)
-  //   No On Duty  — hasn't reported for duty at all today (or reported off)
-  const ongoingList = [], idleList = [], onDutyList = [], offDutyList = [];
-  let dutyDataAvailable = true;
-  try {
-    await fetchAllPersonnelRoster();
-    await fetchDutyLogsToday();
-  } catch (e) { dutyDataAvailable = false; }
-  if (dutyTableMissing) dutyDataAvailable = false;
-
-  const roster = dutyRosterPeople.filter(p => !excludedPersonnelNames.has(p.name) && !dutyBackupNames.has(p.name));
-  roster.forEach(p => {
-    const name = p.name;
-    const rolesLabel = p.roles.join(', ');
-    const dutyStatus = dutyDataAvailable ? computeDutySpans(dutyEventsForName(name)).status : 'on'; // no duty table → assume everyone "on" so Ongoing/Idle still work
-    if (dutyStatus === 'off') {
-      offDutyList.push({ name, role: rolesLabel, label: 'not reported' });
-      return;
-    }
-    if (activeNames.has(name)) {
-      const info = activeInfoByName[name];
-      ongoingList.push({ name, role: info.role, label: info.label, sortVal: info.sortVal });
-      return;
-    }
-    if (idleInfoByName[name]) {
-      const info = idleInfoByName[name];
-      idleList.push({ name, role: info.role, label: info.label, sortVal: info.sortVal, lastEndISO: info.lastEndISO });
-      return;
-    }
-    onDutyList.push({ name, role: rolesLabel, label: dutyStatus === 'break' ? 'on break' : 'on duty' });
-  });
-  ongoingList.sort((a, b) => b.sortVal - a.sortVal);
-  idleList.sort((a, b) => b.sortVal - a.sortVal);
-
-  const overdueCls = c => c.label.includes('overdue') ? 'overdue' : c.label.includes('to target') ? 'at-risk' : 'ongoing-ok';
-  const chip = (c, cls) => `<span class="alert-chip ${cls}"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label}</span>`;
-  const canDismiss = userCanDismissIdle();
-  const idleChip = c => canDismiss
-    ? `<span class="alert-chip idle clickable" title="Click to mark ${c.name} as out / already finished for the day — stops the idle alert unless they start a new task" onclick="dismissIdlePersonnel('${c.name.replace(/'/g, "\\'")}','${c.role.replace(/'/g, "\\'")}','${c.lastEndISO}', this)"><b>${c.name}</b> <span class="${roleTextClass(c.role)}">${c.role}</span> · ${c.label} <span class="opacity-60">✕</span></span>`
-    : chip(c, 'idle');
-
-  const section = (title, dotCls, list, chipFn, emptyNote) => `
-    <div>
-      <div class="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-400 font-bold">
-        <span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full ${dotCls}"></span>${title}</span>
-        <span class="text-slate-600 font-mono">${list.length}</span>
-      </div>
-      <div class="flex flex-wrap gap-1 mt-1">
-        ${list.length ? list.map(chipFn).join('') : `<span class="text-[10px] text-slate-600 italic">${emptyNote}</span>`}
-      </div>
-    </div>`;
-
-  row.innerHTML = [
-    section('Ongoing', 'bg-amber-400', ongoingList, c => chip(c, overdueCls(c)), 'nobody currently working'),
-    section('Idle', 'bg-rose-400', idleList, idleChip, 'nobody idle 🎉'),
-    section('On Duty', 'bg-emerald-400', onDutyList, c => chip(c, 'on-duty-ok'), 'nobody just standing by'),
-    section('No On Duty', 'bg-slate-600', offDutyList, c => chip(c, 'off-duty'), dutyDataAvailable ? 'everyone has reported in' : 'Duty Roster not set up — enable duty_logs to track this')
-  ].join('');
-}
-
-// Marks an idle-alert personnel as "out" / already finished for the day —
-// stops them re-popping as idle for THIS gap (their current last-completed
-// task) without needing a new task logged against their name. Scoped to the
-// exact last_end_at so a later dispatch+completion naturally re-arms idle
-// tracking (see refreshOpsAlertBar for the matching lookup). Gated behind the
-// idle_dismiss special permission (or the admin account) — see
-// userCanDismissIdle() and User Management → Special Permissions.
-async function dismissIdlePersonnel(name, role, lastEndISO, chipEl) {
-  if (!userCanDismissIdle()) return showToast("You don't have permission to dismiss idle alerts. Ask an admin to grant it in User Management.", "error");
-  const ok = await showConfirm(`Mark ${name} (${role}) as out / already finished for the day? They won't be flagged idle again unless they start a new task.`);
-  if (!ok) return;
-  if (chipEl) chipEl.style.opacity = '0.5';
-  const { error } = await supabaseClient.from('idle_dismissals').insert([{
-    personnel_name: name, role, last_end_at: lastEndISO, dismissed_by: (currentUser && currentUser.username) || null
-  }]);
-  if (error) {
-    showToast("Could not dismiss idle alert: " + error.message, "error");
-    if (chipEl) chipEl.style.opacity = '1';
-    return;
-  }
-  showToast(`${name} marked as out — idle alert cleared.`, "success");
-  refreshOpsAlertBar();
-}
-let _opsAlertInterval = null;
-// Egress guard (see makeEgressGuardedRefresh near subscribeRealtime): a batch
-// of activity_log writes used to trigger this full multi-table refresh once
-// PER ROW, for every open tab. Now it coalesces bursts and caps how often we
-// actually hit the DB.
-const guardedOpsAlertRefresh = makeEgressGuardedRefresh(refreshOpsAlertBar, { debounceMs: 1000, minGapMs: 8000 });
-function subscribeOpsAlertRealtime() {
-  supabaseClient.channel('ops-alert-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, guardedOpsAlertRefresh)
-    .subscribe();
-  // Overdue/idle minutes keep climbing even with no new DB writes, so also poll
-  // on a timer — dropped from every 30s to every 60s since realtime now covers
-  // actual changes instantly; this poll is only for the clock ticking forward.
-  if (_opsAlertInterval) clearInterval(_opsAlertInterval);
-  _opsAlertInterval = setInterval(refreshOpsAlertBar, 60000);
-}
-
 // --- PIPELINE KANBAN BOARD (alt view of Pipeline Summary) ---
 let pipelineViewMode = 'numbers';
 function setPipelineViewMode(mode) {
@@ -8727,23 +8512,10 @@ function renderDutyRosterRows() {
   }).join('');
 }
 
-let _dutyRosterInterval = null;
-// Egress guard (see makeEgressGuardedRefresh near subscribeRealtime): batch
-// edits to duty_logs (e.g. backfilling several people's times) used to
-// trigger this full roster refresh once PER ROW, for every open tab.
-const guardedDutyRosterRefresh = makeEgressGuardedRefresh(refreshDutyRoster, { debounceMs: 1000, minGapMs: 8000 });
-function subscribeDutyRealtime() {
-  try {
-    supabaseClient.channel('duty-roster-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'duty_logs' }, guardedDutyRosterRefresh)
-      .subscribe();
-  } catch (e) { /* realtime not available — polling below still covers it */ }
-  if (_dutyRosterInterval) clearInterval(_dutyRosterInterval);
-  // On-duty/break/idle minutes keep climbing with no new DB writes, so poll
-  // too — dropped from every 30s to every 60s since realtime now covers
-  // actual changes instantly; this poll is only for the clock ticking forward.
-  _dutyRosterInterval = setInterval(refreshDutyRoster, 60000);
-}
+// Duty Roster intentionally has no realtime subscription or polling timer —
+// it only fetches data when the ⟳ refresh button is clicked, or right after
+// a user's own action inside the panel (report for duty, edit a duty time,
+// etc.) so they see the result of what they just did.
 
 // --- ADMIN: correct or backfill recorded duty_logs timestamps ---
 // Gated behind userCanEditDuty() (the literal "admin" account, or anyone
@@ -8830,15 +8602,10 @@ async function addDutyEventFromModal() {
   showToast("Duty event added.", "success");
 }
 
-// --- Wire the Duty Roster into role switching + enforce "must be on duty"
-// before a task can be dispatched, exactly the same wrap-the-original
-// pattern this file already uses for refreshAnalyticsView/refreshBulletinBoard.
-const _origSetRoleForDuty = setRole;
-setRole = async function (...args) {
-  await _origSetRoleForDuty.apply(this, args);
-  await refreshDutyRoster();
-};
-
+// --- Wire the Duty Roster's "must be on duty" dispatch guard into role
+// switching and task-start actions. (Refreshing the panel's own data on
+// role switch was removed — the Duty Roster now only fetches on its ⟳
+// refresh button, not automatically.)
 const _origStartRowForDuty = startRow;
 startRow = async function (...args) {
   const operator = document.getElementById('operator-input').value.trim();
@@ -8868,15 +8635,7 @@ resumeRow = async function (...args) {
   return _origResumeRowForDuty.apply(this, args);
 };
 
-// --- BOOT: start the ticker once the app is up ---
-const _origStartApp = startApp;
-startApp = async function (...args) {
-  await _origStartApp.apply(this, args);
-  refreshOpsAlertBar();
-  subscribeOpsAlertRealtime();
-  refreshDutyRoster();
-  subscribeDutyRealtime();
-};
+
 </script>
 </body>
 </html>
