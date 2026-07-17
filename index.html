@@ -76,7 +76,6 @@
   /* Tab / role navigation */
   .tab-btn{transition:background .15s ease, color .15s ease, transform .1s ease}
   .tab-btn.active{background:var(--accent);color:#04231d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(45,212,191,.3), 0 4px 14px -4px rgba(45,212,191,.5); font-weight:700}
-  #more-tabs-btn.active{background:rgba(45,212,191,.14);color:#2dd4bf}
   .role-btn.active{color:#fff}
   .role-btn{transition:background .15s ease, border-color .15s ease, transform .1s ease}
   .role-btn.active{transform:translateY(-1px)}
@@ -207,9 +206,6 @@
   body.kiosk-active header,
   body.kiosk-active #left-rail{display:none !important}
 
-  /* --- Scan mode: bigger, thumb-friendly controls for floor/handheld use --- */
-  body.scan-mode #view-workbench input, body.scan-mode #view-workbench select{font-size:1.05rem !important;padding:.9rem !important}
-
   /* --- PDF Export: isolate the flagged section, suppress all other chrome --- */
   @media print{
     body *{visibility:hidden !important}
@@ -220,16 +216,6 @@
     .print-target button, .print-target input, .print-target select, .print-target textarea{display:none !important}
     #sidebar, #app-header, .hdr-icon-btn, nav{display:none !important}
   }
-  body.scan-mode #view-workbench .role-btn{padding:1rem 1.1rem !important;font-size:.95rem !important}
-  body.scan-mode #view-workbench button{min-height:44px}
-  body.scan-mode table{font-size:.85rem}
-
-  /* --- Command palette --- */
-  #cmdk-overlay{backdrop-filter:blur(3px)}
-  #cmdk-panel{box-shadow:0 30px 70px -20px rgba(0,0,0,.7)}
-  .cmdk-item{display:flex;align-items:center;justify-content:space-between;padding:.55rem .8rem;border-radius:.5rem;cursor:pointer;font-size:.8rem}
-  .cmdk-item:hover, .cmdk-item.selected{background:rgba(45,212,191,.12);color:#fff}
-  .cmdk-kbd{font-size:.6rem;color:#647089;border:1px solid #263349;border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono',monospace}
 
 
   .view{display:none}
@@ -260,20 +246,6 @@
 <!-- ================= TOASTS ================= -->
 <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 items-end"></div>
 
-
-<!-- ================= COMMAND PALETTE (Ctrl/Cmd+K) ================= -->
-<div id="cmdk-overlay" class="hidden fixed inset-0 bg-black/60 z-[90] flex items-start justify-center pt-24 p-4">
-  <div id="cmdk-panel" class="bg-slate-950 border border-slate-800 rounded-xl w-full max-w-lg overflow-hidden">
-    <input id="cmdk-input" type="text" placeholder="Jump to a tab, set your role, or type a shipment no..."
-      class="w-full bg-slate-900 border-b border-slate-800 px-4 py-3 text-sm focus:outline-none" autocomplete="off">
-    <div id="cmdk-results" class="max-h-80 overflow-y-auto p-2 space-y-0.5"></div>
-    <div class="px-4 py-2 border-t border-slate-800 flex items-center gap-3 text-[10px] text-slate-600">
-      <span><span class="cmdk-kbd">↑↓</span> navigate</span>
-      <span><span class="cmdk-kbd">↵</span> select</span>
-      <span><span class="cmdk-kbd">esc</span> close</span>
-    </div>
-  </div>
-</div>
 
 <!-- ================= BARCODE / QR SCANNER MODAL ================= -->
 <div id="scanner-modal" class="hidden fixed inset-0 bg-black/80 z-[90] flex items-center justify-center p-4">
@@ -757,24 +729,13 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="slideshow" onclick="setView('slideshow')">📺 Slideshow</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
-
-        <!-- Admin-only / permission-gated tabs, grouped so the daily-use tabs
-             above stay reachable instead of getting scroll-clipped. -->
-        <div class="relative shrink-0" id="more-tabs-wrapper">
-          <button id="more-tabs-btn" onclick="toggleMoreTabsMenu()" class="px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition whitespace-nowrap flex items-center gap-1">More <span id="more-tabs-chevron" class="text-[10px]">▾</span></button>
-          <div id="more-tabs-menu" class="hidden absolute right-0 top-full mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl p-1 flex flex-col gap-0.5 z-50">
-            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="export" onclick="setView('export'); closeMoreTabsMenu();">Data Export</button>
-            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="pending" onclick="setView('pending'); closeMoreTabsMenu();">Pending Queue</button>
-            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="aging" onclick="setView('aging'); closeMoreTabsMenu();">Master Records</button>
-            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt'); closeMoreTabsMenu();">User Management</button>
-          </div>
-        </div>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="pending" onclick="setView('pending')">Pending Queue</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
     </div>
     <div class="flex items-center gap-2">
-      <button onclick="openCommandPalette()" class="hdr-icon-btn" title="Command palette (Ctrl/Cmd+K)">⌘</button>
-      <button onclick="toggleFocusMode()" id="focus-mode-btn" class="hdr-icon-btn" title="Focus Mode: hide the Pipeline Summary / Personnel Status and All Active Lines rails to widen the manifest table">🎯</button>
-      <button onclick="toggleScanMode()" id="scan-mode-btn" class="hdr-icon-btn" title="Toggle Scan Mode (bigger controls for handheld use)">📱</button>
       <button onclick="toggleLightMode()" id="theme-toggle-btn" class="hdr-icon-btn" title="Toggle light / dark mode">🌙</button>
       <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -2346,13 +2307,10 @@ function isAdminAccount() {
 }
 
 // Hides nav buttons for any tab the logged-in user isn't permitted to open.
-const MORE_TABS_KEYS = ['export', 'pending', 'aging', 'usermgmt'];
 function applyUserPermissions() {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('hidden', !userCanAccess(b.dataset.view));
   });
-  const moreWrapper = document.getElementById('more-tabs-wrapper');
-  if (moreWrapper) moreWrapper.classList.toggle('hidden', !MORE_TABS_KEYS.some(k => userCanAccess(k)));
   const breakCard = document.getElementById('break-scheduler-card');
   if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
   const dutyShiftCard = document.getElementById('duty-shift-window-card');
@@ -2360,26 +2318,6 @@ function applyUserPermissions() {
   const dutyRosterCard = document.getElementById('duty-roster-card');
   if (dutyRosterCard) dutyRosterCard.classList.toggle('hidden', !userCanViewDutyRoster());
 }
-
-// --- "MORE" TABS DROPDOWN (Data Export / Pending Queue / Master Records / User Management) ---
-function toggleMoreTabsMenu() {
-  const menu = document.getElementById('more-tabs-menu');
-  const chev = document.getElementById('more-tabs-chevron');
-  if (!menu) return;
-  const willShow = menu.classList.contains('hidden');
-  menu.classList.toggle('hidden', !willShow);
-  if (chev) chev.innerText = willShow ? '▴' : '▾';
-}
-function closeMoreTabsMenu() {
-  const menu = document.getElementById('more-tabs-menu');
-  const chev = document.getElementById('more-tabs-chevron');
-  if (menu) menu.classList.add('hidden');
-  if (chev) chev.innerText = '▾';
-}
-document.addEventListener('click', (e) => {
-  const wrapper = document.getElementById('more-tabs-wrapper');
-  if (wrapper && !wrapper.contains(e.target)) closeMoreTabsMenu();
-});
 
 // --- TAB NAVIGATION ---
 // Access is controlled entirely by the logged-in user's allowed_tabs (set
@@ -2406,14 +2344,10 @@ function activateView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  const moreBtn = document.getElementById('more-tabs-btn');
-  if (moreBtn) moreBtn.classList.toggle('active', MORE_TABS_KEYS.includes(name));
-  closeMoreTabsMenu();
   // "All Active Lines" side panel and the Alerts panel are only relevant to
   // the Workbench — hide them everywhere else so they don't take up space on
-  // unrelated tabs. Focus Mode hides them on the Workbench too, so someone
-  // working through a big batch can reclaim that width on demand.
-  const showRails = (name === 'workbench') && !focusModeOn;
+  // unrelated tabs.
+  const showRails = (name === 'workbench');
   const sidePanel = document.getElementById('side-panel');
   if (sidePanel) sidePanel.classList.toggle('lg:block', showRails);
   if (sidePanel) sidePanel.classList.toggle('hidden', !showRails);
@@ -2426,8 +2360,6 @@ function activateView(name) {
   const pipelinePanel = document.getElementById('pipeline-summary-panel');
   if (pipelinePanel) pipelinePanel.classList.toggle('lg:block', showRails);
   if (pipelinePanel) pipelinePanel.classList.toggle('hidden', !showRails);
-  const focusBtn = document.getElementById('focus-mode-btn');
-  if (focusBtn) focusBtn.classList.toggle('hidden', name !== 'workbench');
   // Slim pending-count strip: gives every other tab a persistent read on
   // floor backlog without needing to jump back to the Workbench. Hidden on
   // the Workbench itself since the full Pipeline Summary rail already covers it.
@@ -7570,30 +7502,12 @@ async function refreshConfiguredBreaks() {
    their internals, to keep this safe to merge/re-run.
    =================================================================== */
 
-// --- FOCUS MODE: hide both side rails at once to widen the manifest table ---
-let focusModeOn = false;
-function toggleFocusMode() {
-  focusModeOn = !focusModeOn;
-  const btn = document.getElementById('focus-mode-btn');
-  if (btn) { btn.style.color = focusModeOn ? 'var(--accent)' : ''; btn.style.borderColor = focusModeOn ? 'var(--accent)' : ''; }
-  try { localStorage.setItem('wh_focus_mode', focusModeOn ? '1' : '0'); } catch (e) {}
-  if (typeof currentViewName !== 'undefined' && currentViewName) activateView(currentViewName);
-  showToast(focusModeOn ? "Focus Mode on — side rails hidden." : "Focus Mode off.", "info");
-}
-
-// --- THEME + SCAN MODE (persisted via localStorage) ---
+// --- THEME (persisted via localStorage) ---
 function toggleLightMode() {
   const isLight = document.documentElement.classList.toggle('light-mode');
   const btn = document.getElementById('theme-toggle-btn');
   if (btn) btn.innerText = isLight ? '☀️' : '🌙';
   try { localStorage.setItem('wh_theme', isLight ? 'light' : 'dark'); } catch (e) {}
-}
-function toggleScanMode() {
-  const on = document.body.classList.toggle('scan-mode');
-  const btn = document.getElementById('scan-mode-btn');
-  if (btn) { btn.style.color = on ? 'var(--accent)' : ''; btn.style.borderColor = on ? 'var(--accent)' : ''; }
-  try { localStorage.setItem('wh_scan_mode', on ? '1' : '0'); } catch (e) {}
-  showToast(on ? "Scan Mode on — bigger controls for handheld use." : "Scan Mode off.", "info");
 }
 (function initPersistedUI() {
   try {
@@ -7601,20 +7515,11 @@ function toggleScanMode() {
       document.documentElement.classList.add('light-mode');
       const b = document.getElementById('theme-toggle-btn'); if (b) b.innerText = '☀️';
     }
-    if (localStorage.getItem('wh_scan_mode') === '1') {
-      document.body.classList.add('scan-mode');
-      const b = document.getElementById('scan-mode-btn'); if (b) { b.style.color = 'var(--accent)'; b.style.borderColor = 'var(--accent)'; }
-    }
     if (localStorage.getItem('wh_pipeline_summary_collapsed') === '1') {
       const body = document.getElementById('pipeline-summary-body');
       const btn = document.getElementById('pipeline-summary-collapse-btn');
       if (body) body.classList.add('hidden');
       if (btn) btn.innerText = '▸';
-    }
-    if (localStorage.getItem('wh_focus_mode') === '1') {
-      focusModeOn = true;
-      const b = document.getElementById('focus-mode-btn');
-      if (b) { b.style.color = 'var(--accent)'; b.style.borderColor = 'var(--accent)'; }
     }
     if (localStorage.getItem('wh_side_panel_collapsed') === '1') {
       const body = document.getElementById('side-panel-body');
@@ -7668,81 +7573,8 @@ function toggleSidePanelCollapse() {
   try { localStorage.setItem('wh_side_panel_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }
 
-// --- COMMAND PALETTE (Ctrl/Cmd+K) ---
-let cmdkItems = [];
-let cmdkSelectedIndex = 0;
-function buildCommandList(query) {
-  const q = query.trim().toLowerCase();
-  const items = [];
-  ALL_TABS.forEach(t => {
-    if (!userCanAccess(t.key)) return;
-    if (!q || t.label.toLowerCase().includes(q)) items.push({ label: `Go to ${t.label}`, hint: 'tab', action: () => setView(t.key) });
-  });
-  ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'].forEach(r => {
-    if (!q || r.toLowerCase().includes(q)) items.push({ label: `Set role: ${r}`, hint: 'role', action: () => { setView('workbench'); setRole(r); } });
-  });
-  if (q) {
-    const dl = document.getElementById('shipment-datalist');
-    const opts = dl ? Array.from(dl.options).map(o => o.value) : [];
-    opts.filter(v => v.toLowerCase().includes(q)).slice(0, 8).forEach(v => {
-      items.push({ label: `Jump to shipment ${v}`, hint: 'shipment', action: () => {
-        setView('workbench');
-        const inp = document.getElementById('target-shipment-no');
-        inp.value = v; onShipmentInputChange();
-      }});
-    });
-  }
-  items.push({ label: 'Toggle Scan Mode', hint: 'ui', action: toggleScanMode });
-  items.push({ label: 'Toggle Light / Dark Mode', hint: 'ui', action: toggleLightMode });
-  items.push({ label: 'Scan a barcode / QR code', hint: 'ui', action: openScannerModal });
-  return items.slice(0, 30);
-}
-function renderCmdkResults() {
-  const box = document.getElementById('cmdk-results');
-  if (!cmdkItems.length) { box.innerHTML = '<p class="text-[11px] text-slate-600 italic px-3 py-2">No matches.</p>'; return; }
-  box.innerHTML = cmdkItems.map((it, i) => `
-    <div class="cmdk-item ${i === cmdkSelectedIndex ? 'selected' : ''}" data-i="${i}" onclick="runCmdkItem(${i})">
-      <span>${it.label}</span><span class="cmdk-kbd">${it.hint}</span>
-    </div>`).join('');
-}
-function runCmdkItem(i) {
-  const it = cmdkItems[i];
-  if (it) { closeCommandPalette(); it.action(); }
-}
-function openCommandPalette() {
-  document.getElementById('cmdk-overlay').classList.remove('hidden');
-  const input = document.getElementById('cmdk-input');
-  input.value = '';
-  cmdkItems = buildCommandList('');
-  cmdkSelectedIndex = 0;
-  renderCmdkResults();
-  setTimeout(() => input.focus(), 10);
-}
-function closeCommandPalette() {
-  document.getElementById('cmdk-overlay').classList.add('hidden');
-}
-document.getElementById('cmdk-overlay').addEventListener('click', (e) => {
-  if (e.target.id === 'cmdk-overlay') closeCommandPalette();
-});
 document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
-    document.getElementById('cmdk-overlay').classList.contains('hidden') ? openCommandPalette() : closeCommandPalette();
-    return;
-  }
-  if (e.key === 'Escape') { closeCommandPalette(); closeScannerModal(); }
-  if (e.target && e.target.id === 'cmdk-input') {
-    if (e.key === 'ArrowDown') { e.preventDefault(); cmdkSelectedIndex = Math.min(cmdkSelectedIndex + 1, cmdkItems.length - 1); renderCmdkResults(); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); cmdkSelectedIndex = Math.max(cmdkSelectedIndex - 1, 0); renderCmdkResults(); }
-    if (e.key === 'Enter') { e.preventDefault(); runCmdkItem(cmdkSelectedIndex); }
-  }
-});
-document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'cmdk-input') {
-    cmdkItems = buildCommandList(e.target.value);
-    cmdkSelectedIndex = 0;
-    renderCmdkResults();
-  }
+  if (e.key === 'Escape') { closeScannerModal(); }
 });
 
 // --- BARCODE / QR SCANNER (html5-qrcode) ---
