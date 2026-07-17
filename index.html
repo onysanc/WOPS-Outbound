@@ -1064,7 +1064,14 @@
         <p class="text-xs text-slate-400">Bottlenecks, discrepancies, throughput, and forecasts — Activity Day sections use 05:00–04:59</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <label class="text-[11px] text-slate-400 font-semibold">Activity Day</label>
+        <label class="text-[11px] text-slate-400 font-semibold">Report Period</label>
+        <select id="analytics-period" onchange="refreshAnalyticsView()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          <option value="daily">Daily (Activity Day)</option>
+          <option value="weekly">Weekly (This Week)</option>
+          <option value="mtd">MTD (Month-to-Date)</option>
+          <option value="ytd">YTD (Year-to-Date)</option>
+        </select>
+        <label class="text-[11px] text-slate-400 font-semibold">As of</label>
         <input type="date" id="analytics-date" onchange="refreshAnalyticsView()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
         <button onclick="refreshAnalyticsView()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold px-2 py-1.5">⟳ Refresh</button>
       </div>
@@ -1072,7 +1079,7 @@
 
     <!-- Cycle Time by Stage -->
     <div id="report-cycletime-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
-      <h3 class="text-sm font-semibold text-slate-200">⏱ Avg. Active Minutes per Stage <span class="text-slate-500 font-normal">(Completed tasks, selected Activity Day)</span></h3>
+      <h3 class="text-sm font-semibold text-slate-200">⏱ Avg. Active Minutes per Stage <span class="text-slate-500 font-normal" id="cycletime-period-label">(Completed tasks, selected Activity Day)</span></h3>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="cycle-time-grid"></div>
     </div>
 
@@ -1094,7 +1101,7 @@
 
     <!-- Discrepancy Report -->
     <div id="report-discrepancy-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
-      <h3 class="text-sm font-semibold text-slate-200">🔍 Discrepancy Report <span class="text-slate-500 font-normal">(Staging + Outbound Check, selected Activity Day)</span></h3>
+      <h3 class="text-sm font-semibold text-slate-200">🔍 Discrepancy Report <span class="text-slate-500 font-normal" id="discrepancy-period-label">(Staging + Outbound Check, selected Activity Day)</span></h3>
       <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
         <table class="w-full text-left text-xs border-collapse">
           <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
@@ -1145,7 +1152,7 @@
 
     <!-- Personnel Leaderboard -->
     <div id="report-personnel-leaderboard-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
-      <h3 class="text-sm font-semibold text-slate-200">🏆 Personnel Leaderboard <span class="text-slate-500 font-normal">(ranked by Productivity %, selected Activity Day)</span></h3>
+      <h3 class="text-sm font-semibold text-slate-200">🏆 Personnel Leaderboard <span class="text-slate-500 font-normal" id="leaderboard-period-label">(ranked by Productivity %, selected Activity Day)</span></h3>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
           <table class="w-full text-left text-xs border-collapse">
@@ -1167,7 +1174,7 @@
     <!-- Role Leaderboards: grouped into Picking Operations (Picker + Puller) and Checking Operations (Staging Checker + Outbound Checker) -->
     <div id="report-role-leaderboards-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-5">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h3 class="text-sm font-semibold text-slate-200">🏆 Role Leaderboards <span class="text-slate-500 font-normal">(grouped rankings, selected Activity Day)</span></h3>
+        <h3 class="text-sm font-semibold text-slate-200">🏆 Role Leaderboards <span class="text-slate-500 font-normal" id="role-leaderboards-period-label">(grouped rankings, selected Activity Day)</span></h3>
         <div class="flex flex-wrap gap-2">
           <button onclick="exportTableToCSVGeneric('lb-pickgroup-table', 'picking-operations-leaderboard.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
           <button onclick="exportTableToXLSXGeneric('lb-pickgroup-table', 'role-leaderboards.xlsx', 'Picking Operations')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
@@ -4464,16 +4471,73 @@ function fmtMin(mins) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// Window for the Analytics & Reports "Report Period" selector. Extends
+// operationalDayWindowForDate() to cover Weekly / MTD / YTD as well as the
+// original single Activity Day — all still anchored to the same 05:00
+// operational-day boundary so a shift that starts at 4am doesn't get split
+// across two periods. The end of the window is always the end of the
+// selected "As of" Activity Day; the start moves back depending on period:
+//   daily  -> start of the "As of" Activity Day (unchanged behavior)
+//   weekly -> start of the Monday Activity Day of that week
+//   mtd    -> start of the 1st Activity Day of that month
+//   ytd    -> start of the 1st Activity Day of that year (Jan 1)
+function operationalPeriodWindow(periodType, dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const asOfStart = new Date(y, m - 1, d, 5, 0, 0, 0);
+  const endOfOpDay = new Date(asOfStart);
+  endOfOpDay.setDate(endOfOpDay.getDate() + 1);
+  endOfOpDay.setMilliseconds(endOfOpDay.getMilliseconds() - 1);
+
+  let startOfOpDay;
+  if (periodType === 'weekly') {
+    const dow = asOfStart.getDay(); // 0=Sun..6=Sat
+    const diffToMonday = (dow === 0 ? 6 : dow - 1);
+    startOfOpDay = new Date(asOfStart);
+    startOfOpDay.setDate(startOfOpDay.getDate() - diffToMonday);
+  } else if (periodType === 'mtd') {
+    startOfOpDay = new Date(y, m - 1, 1, 5, 0, 0, 0);
+  } else if (periodType === 'ytd') {
+    startOfOpDay = new Date(y, 0, 1, 5, 0, 0, 0);
+  } else {
+    startOfOpDay = asOfStart; // daily
+  }
+  return { startOfOpDay, endOfOpDay };
+}
+
+// Human-readable tag appended to each report card's subtitle so it's obvious
+// which period the numbers on screen represent.
+function analyticsPeriodLabel(periodType, dateStr) {
+  switch (periodType) {
+    case 'weekly': return `Week of ${fmtAgingDate(operationalPeriodWindow('weekly', dateStr).startOfOpDay)} – ${fmtAgingDate(dateStr)}`;
+    case 'mtd': return `MTD through ${fmtAgingDate(dateStr)}`;
+    case 'ytd': return `YTD through ${fmtAgingDate(dateStr)}`;
+    default: return `Activity Day ${fmtAgingDate(dateStr)}`;
+  }
+}
+
+function applyAnalyticsPeriodLabels(periodType, dateStr) {
+  const tag = analyticsPeriodLabel(periodType, dateStr);
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set('cycletime-period-label', `(Completed tasks, ${tag})`);
+  set('discrepancy-period-label', `(Staging + Outbound Check, ${tag})`);
+  set('leaderboard-period-label', `(ranked by Productivity %, ${tag})`);
+  set('role-leaderboards-period-label', `(grouped rankings, ${tag})`);
+}
+
 async function refreshAnalyticsView() {
   const dateInput = document.getElementById('analytics-date');
   if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
   const dateStr = dateInput ? dateInput.value : defaultOperationalDateStr();
-  const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
+  const periodSelect = document.getElementById('analytics-period');
+  const periodType = periodSelect ? periodSelect.value : 'daily';
+  const { startOfOpDay, endOfOpDay } = operationalPeriodWindow(periodType, dateStr);
+  applyAnalyticsPeriodLabels(periodType, dateStr);
 
   await refreshPipelineSummary(); // keep backlog forecast's pending counts current
 
-  // Completed logs for the selected Activity Day — backs Cycle Time, Discrepancy
-  // Report, Leaderboard, and Backlog Forecast's throughput rate.
+  // Completed logs for the selected Report Period (Daily / Weekly / MTD / YTD)
+  // — backs Cycle Time, Discrepancy Report, Leaderboard, and Backlog
+  // Forecast's throughput rate.
   const { data: dayLogs, error: dayErr } = await supabaseClient.from('activity_logs').select('*')
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
     .eq('status', 'Completed');
