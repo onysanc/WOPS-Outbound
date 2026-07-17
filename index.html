@@ -5760,7 +5760,8 @@ async function openAgingRecordModal(so_number) {
   const lineDetails = document.getElementById('ar-line-details');
 
   // Always start clean — hide all per-line panels and clear their fields —
-  // then reveal/fill only the ones that actually have a log for this SO.
+  // then reveal every stage's panel again below (blank if this SO has no log
+  // for that stage yet, so it stays fillable rather than hidden).
   Object.values(AGING_LINE_ROLE_PREFIX).forEach(prefix => {
     document.getElementById(`ar-${prefix}-panel`).classList.add('hidden');
     ['id', 'name', 'start', 'end', 'remarks'].forEach(f => {
@@ -5801,10 +5802,15 @@ async function openAgingRecordModal(so_number) {
         const existing = latestByRole[l.role];
         if (!existing || new Date(l.end_time || l.start_time) > new Date(existing.end_time || existing.start_time)) latestByRole[l.role] = l;
       });
+      // Show every stage's panel regardless of whether a log exists yet — a
+      // blank panel (no id) means that stage hasn't happened, and an admin /
+      // aging_edit-permitted user can fill it in directly (e.g. backfill a
+      // missing Picker entry). saveAgingRecordModal() below inserts a new
+      // activity_logs row for any panel that got filled in without an id.
       Object.entries(AGING_LINE_ROLE_PREFIX).forEach(([role, prefix]) => {
         const log = latestByRole[role];
-        if (!log) return; // no log yet for this stage — leave its panel hidden
         document.getElementById(`ar-${prefix}-panel`).classList.remove('hidden');
+        if (!log) return; // no log yet for this stage — leave its fields blank for filling in
         document.getElementById(`ar-${prefix}-id`).value = log.id;
         document.getElementById(`ar-${prefix}-name`).value = log.personnel_name || '';
         document.getElementById(`ar-${prefix}-start`).value = toDatetimeLocalValue(log.start_time);
@@ -5917,38 +5923,54 @@ async function saveAgingRecordModal() {
     if (dateSyncErr) console.error('Could not sync date field(s) to sibling shipment lines:', dateSyncErr.message);
   }
 
-  // Per-line activity log edits — only stages whose panel is visible (i.e. a
-  // log actually exists for this SO) carry an id, so this only ever updates
-  // logs that already exist; it never creates new ones.
+  // Per-line activity log edits. A stage whose panel already carried an id
+  // (a log already existed) gets updated in place. A stage with no id but
+  // that the admin/aging_edit user actually filled in (name and/or start
+  // and/or end) gets a brand-new activity_logs row inserted — this is what
+  // lets a missing stage (e.g. no Picker record yet) be backfilled directly
+  // from Master Records instead of staying stuck blank/hidden. A panel left
+  // completely untouched (no id, nothing filled in) is skipped entirely.
   for (const [role, prefix] of Object.entries(AGING_LINE_ROLE_PREFIX)) {
     const logId = document.getElementById(`ar-${prefix}-id`).value;
-    if (!logId) continue;
+    const nameVal = document.getElementById(`ar-${prefix}-name`).value.trim();
     const startIso = fromDatetimeLocalValue(document.getElementById(`ar-${prefix}-start`).value);
     const endIso = fromDatetimeLocalValue(document.getElementById(`ar-${prefix}-end`).value);
-    const update = {
-      personnel_name: document.getElementById(`ar-${prefix}-name`).value.trim() || null,
+    const remarksVal = document.getElementById(`ar-${prefix}-remarks`).value.trim();
+
+    if (!logId && !nameVal && !startIso && !endIso) continue; // untouched — nothing to save for this stage
+
+    const shared = {
+      personnel_name: nameVal || (logId ? null : 'ADVANCE'),
       start_time: startIso,
       end_time: endIso,
-      remarks: document.getElementById(`ar-${prefix}-remarks`).value.trim() || null
+      remarks: remarksVal || null
     };
-    // Admin is directly correcting the record here, so rendered_minutes is
-    // recomputed straight from the edited start/end (no pause/break math —
-    // there's no reliable way to reconstruct historical pauses/breaks for a
-    // manual edit like this).
-    if (startIso && endIso) update.rendered_minutes = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
+    // Admin is directly correcting/backfilling the record here, so
+    // rendered_minutes is recomputed straight from the edited start/end (no
+    // pause/break math — there's no reliable way to reconstruct historical
+    // pauses/breaks for a manual edit like this).
+    if (startIso && endIso) shared.rendered_minutes = Math.max(0, Math.round((new Date(endIso) - new Date(startIso)) / 60000));
     if (role === 'Staging Checker') {
-      update.staging_areas = csvToArray(document.getElementById('ar-stage-area').value);
-      update.discrepancy_type = csvToArray(document.getElementById('ar-stage-disc-type').value);
+      shared.staging_areas = csvToArray(document.getElementById('ar-stage-area').value);
+      shared.discrepancy_type = csvToArray(document.getElementById('ar-stage-disc-type').value);
       const q = document.getElementById('ar-stage-disc-qty').value;
-      update.discrepancy_qty = q === '' ? null : parseFloat(q) || 0;
+      shared.discrepancy_qty = q === '' ? null : parseFloat(q) || 0;
     }
     if (role === 'Outbound Checker') {
-      update.discrepancy_type = csvToArray(document.getElementById('ar-check-disc-type').value);
+      shared.discrepancy_type = csvToArray(document.getElementById('ar-check-disc-type').value);
       const q = document.getElementById('ar-check-disc-qty').value;
-      update.discrepancy_qty = q === '' ? null : parseFloat(q) || 0;
+      shared.discrepancy_qty = q === '' ? null : parseFloat(q) || 0;
     }
-    const { error: logErr } = await supabaseClient.from('activity_logs').update(update).eq('id', logId);
-    if (logErr) showToast(`Saved shipment, but couldn't update ${role} log: ${logErr.message}`, "error");
+
+    if (logId) {
+      const { error: logErr } = await supabaseClient.from('activity_logs').update(shared).eq('id', logId);
+      if (logErr) showToast(`Saved shipment, but couldn't update ${role} log: ${logErr.message}`, "error");
+    } else {
+      const { error: insErr } = await supabaseClient.from('activity_logs').insert([{
+        shipment_no: row.shipment_no, so_number: soNumber, role, status: 'Completed', ...shared
+      }]);
+      if (insErr) showToast(`Saved shipment, but couldn't add ${role} log: ${insErr.message}`, "error");
+    }
   }
 
   showToast(`Record "${soNumber}" saved.`, "success");
