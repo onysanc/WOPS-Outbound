@@ -5967,7 +5967,7 @@ async function saveAgingRecordModal() {
       if (logErr) showToast(`Saved shipment, but couldn't update ${role} log: ${logErr.message}`, "error");
     } else {
       const { error: insErr } = await supabaseClient.from('activity_logs').insert([{
-        shipment_no: row.shipment_no, so_number: soNumber, role, status: 'Completed', ...shared
+        shipment_no: row.shipment_no, so_number: soNumber, role, status: 'Completed', total_qty: row.quantity, ...shared
       }]);
       if (insErr) showToast(`Saved shipment, but couldn't add ${role} log: ${insErr.message}`, "error");
     }
