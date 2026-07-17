@@ -8517,6 +8517,19 @@ commitJobTransaction = async function (...args) {
   return _origCommitJobTransactionForDuty.apply(this, args);
 };
 
+// Resuming a paused task is also "starting work" for duty-guard purposes —
+// without this, someone could report off duty (or never report in at all)
+// and still resume a task that was left Paused from an earlier session.
+const _origResumeRowForDuty = resumeRow;
+resumeRow = async function (...args) {
+  const i = args[0];
+  const log = currentManifestData[i] && currentManifestData[i]._log;
+  const operator = log ? log.personnel_name : '';
+  const guard = await dutyGuardMessage(operator);
+  if (guard) return showToast(guard, "error");
+  return _origResumeRowForDuty.apply(this, args);
+};
+
 // --- BOOT: start the ticker once the app is up ---
 const _origStartApp = startApp;
 startApp = async function (...args) {
