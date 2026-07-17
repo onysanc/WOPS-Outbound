@@ -4956,7 +4956,19 @@ async function loadExportData() {
 
   tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
-  const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select('*').order('so_number', { ascending: false }).limit(20000);
+  const exportSearchText = (document.getElementById('export-search').value || '').trim();
+  let exportShipQuery = supabaseClient.from('shipments').select('*');
+  if (exportSearchText) {
+    // Same fix as Master Records: a typed search goes straight to the DB
+    // instead of only being visible if it happened to fall inside the
+    // 20,000-row cap below.
+    const q = escapeForIlikeOr(exportSearchText);
+    exportShipQuery = exportShipQuery.or(`so_number.ilike.%${q}%,shipment_no.ilike.%${q}%,obd_number.ilike.%${q}%,sold_to_party_name.ilike.%${q}%`)
+      .order('so_number', { ascending: false }).limit(5000);
+  } else {
+    exportShipQuery = exportShipQuery.order('so_number', { ascending: false }).limit(20000);
+  }
+  const { data: shipRows, error: shipErr } = await exportShipQuery;
   if (shipErr) {
     console.error(shipErr);
     tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-rose-400">Failed to load: ${shipErr.message}</td></tr>`;
@@ -5356,6 +5368,13 @@ function agingHasActiveFilter() {
   return !!(searchText || fromVal || toVal);
 }
 
+// Escapes ILIKE wildcard/special characters so a search term is matched
+// literally (a raw "%" or "_" in someone's search would otherwise act as a
+// SQL wildcard, and a raw "," would break out of the .or() clause list).
+function escapeForIlikeOr(text) {
+  return String(text).replace(/[%_,]/g, ch => '\\' + ch);
+}
+
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
   applyAgingAdminUI();
@@ -5371,14 +5390,32 @@ async function loadAgingData() {
 
   tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
-  // Newest-first: with the 20,000-row cap, an ascending fetch drops the most
-  // recently uploaded shipments off the end once the table grows past the
-  // cap, so brand-new dispatches silently never appear here even though
-  // they're in the DB (they still show in Data Export, which sorts by
-  // so_number instead). Descending order guarantees the newest rows are
-  // always inside the 20k window; final display order is re-sorted by
-  // aging_days anyway, so fetch order here doesn't affect what's shown.
-  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: false }).limit(20000);
+  const searchText = (document.getElementById('aging-search').value || '').trim();
+
+  let shipQuery = supabaseClient.from('shipments').select('*');
+  if (searchText) {
+    // A typed search goes straight to the DB matched against every
+    // searchable reference/customer column, uncapped — so a record is
+    // always found regardless of how large the shipments table is, instead
+    // of only being visible if it happened to fall inside the 20,000-row
+    // "browse recent records" window below. (This is the fix for records
+    // that show up in Data Export — which searches its own already-loaded
+    // batch differently — but were missing here.)
+    const q = escapeForIlikeOr(searchText);
+    shipQuery = shipQuery.or(`so_number.ilike.%${q}%,shipment_no.ilike.%${q}%,obd_number.ilike.%${q}%,sold_to_party_name.ilike.%${q}%`)
+      .order('uploaded_at', { ascending: false }).limit(5000);
+  } else {
+    // Browsing by date range only (no search term) — newest-first: with the
+    // 20,000-row cap, an ascending fetch drops the most recently uploaded
+    // shipments off the end once the table grows past the cap, so brand-new
+    // dispatches silently never appear here even though they're in the DB.
+    // Descending order guarantees the newest rows are always inside the 20k
+    // window; final display order is re-sorted by aging_days anyway, so
+    // fetch order here doesn't affect what's shown.
+    shipQuery = shipQuery.order('uploaded_at', { ascending: false }).limit(20000);
+  }
+
+  const { data, error } = await shipQuery;
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
