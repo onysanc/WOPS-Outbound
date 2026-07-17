@@ -5023,24 +5023,49 @@ function renderBacklogForecast(logs) {
   }).join('');
 }
 
+// --- EGRESS GUARD ---------------------------------------------------------
+// `postgres_changes` with event:'*' fires once PER ROW touched. A single
+// bulk action (uploading 200 shipments, batch-completing a group, editing a
+// duty log) used to trigger that many separate re-fetches — each one
+// downloading a full manifest/pipeline/roster payload — for EVERY connected
+// tab. This coalesces any burst of events within `debounceMs` into a single
+// trailing refresh, and guarantees at least `minGapMs` between real DB hits
+// even under continuous activity, without changing what gets refreshed or
+// how fresh the final result is (just how often we re-fetch to get there).
+function makeEgressGuardedRefresh(fn, { debounceMs = 800, minGapMs = 4000 } = {}) {
+  let timer = null;
+  let lastRun = 0;
+  const runNow = () => { lastRun = Date.now(); timer = null; fn(); };
+  return function guarded(...args) {
+    if (timer) clearTimeout(timer);
+    const wait = Math.max(debounceMs, minGapMs - (Date.now() - lastRun));
+    timer = setTimeout(runNow, wait);
+  };
+}
+
+const guardedActivityLogsRefresh = makeEgressGuardedRefresh(() => {
+  refreshBulletinBoard();
+  refreshSidePanel();
+  // Keep the on-screen manifest itself realtime too — without this, a status
+  // change made by another role/user (or in another tab) only appeared after
+  // manually re-typing the shipment number.
+  if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+});
+const guardedShipmentsRefresh = makeEgressGuardedRefresh(() => {
+  refreshPipelineSummary();
+  if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+});
+
 function subscribeRealtime() {
   supabaseClient.channel('activity_logs-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => {
-      refreshBulletinBoard();
-      refreshSidePanel();
-      // Keep the on-screen manifest itself realtime too — without this, a status
-      // change made by another role/user (or in another tab) only appeared after
-      // manually re-typing the shipment number.
-      if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
-    }).subscribe();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, guardedActivityLogsRefresh)
+    .subscribe();
 
   // shipments.status (PICKED / STAGED / PULLED / CHECKED) drives row eligibility
   // for the NEXT role in the chain, so it must be realtime too, not just activity_logs.
   supabaseClient.channel('shipments-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, () => {
-      refreshPipelineSummary();
-      if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
-    }).subscribe();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, guardedShipmentsRefresh)
+    .subscribe();
 }
 
 // --- DATA EXPORT ---
@@ -7631,7 +7656,7 @@ async function refreshOpsAlertBar() {
   // Grouped the same way Active Lines groups them (personnel+role+start_time
   // = one dispatch action) so overdue/at-risk labelling on the Ongoing chip
   // matches what Active Lines shows.
-  const { data: activeLogs, error: activeErr } = await supabaseClient.from('activity_logs').select('*').in('status', ['Ongoing', 'Paused']);
+  const { data: activeLogs, error: activeErr } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,target_hours').in('status', ['Ongoing', 'Paused']);
   const activeInfoByName = {}; // name -> { role, label, sortVal } — worst (most overdue) batch wins if someone somehow has more than one
   if (!activeErr && activeLogs) {
     const batches = {};
@@ -7786,13 +7811,20 @@ async function dismissIdlePersonnel(name, role, lastEndISO, chipEl) {
   refreshOpsAlertBar();
 }
 let _opsAlertInterval = null;
+// Egress guard (see makeEgressGuardedRefresh near subscribeRealtime): a batch
+// of activity_log writes used to trigger this full multi-table refresh once
+// PER ROW, for every open tab. Now it coalesces bursts and caps how often we
+// actually hit the DB.
+const guardedOpsAlertRefresh = makeEgressGuardedRefresh(refreshOpsAlertBar, { debounceMs: 1000, minGapMs: 8000 });
 function subscribeOpsAlertRealtime() {
   supabaseClient.channel('ops-alert-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, () => refreshOpsAlertBar())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, guardedOpsAlertRefresh)
     .subscribe();
-  // Overdue/idle minutes keep climbing even with no new DB writes, so also poll on a timer.
+  // Overdue/idle minutes keep climbing even with no new DB writes, so also poll
+  // on a timer — dropped from every 30s to every 60s since realtime now covers
+  // actual changes instantly; this poll is only for the clock ticking forward.
   if (_opsAlertInterval) clearInterval(_opsAlertInterval);
-  _opsAlertInterval = setInterval(refreshOpsAlertBar, 30000);
+  _opsAlertInterval = setInterval(refreshOpsAlertBar, 60000);
 }
 
 // --- PIPELINE KANBAN BOARD (alt view of Pipeline Summary) ---
@@ -8182,7 +8214,13 @@ let dutyShiftTableMissing = false; // same "missing table = feature quietly off"
 // both need to report for duty. Pulls the full `personnel` table directly
 // (same source as populatePersonnelDatalist) rather than reusing the
 // role-scoped `allPersonnel` global.
+let _personnelRosterFetchedAt = 0;
 async function fetchAllPersonnelRoster() {
+  // Personnel almost never changes minute-to-minute, but this was being
+  // re-fetched in full on every ops-alert AND duty-roster tick (every 30s
+  // each, previously). A short cache avoids that — worst case a newly added
+  // person takes up to a minute to appear in these two panels.
+  if (dutyRosterPeople.length && (Date.now() - _personnelRosterFetchedAt) < 60000) return dutyRosterPeople;
   const { data, error } = await supabaseClient.from('personnel').select('name, role, role_rank, excluded, duty_backup');
   if (error) { console.error('personnel roster fetch failed:', error.message); return dutyRosterPeople; }
   const byName = {};
@@ -8200,6 +8238,7 @@ async function fetchAllPersonnelRoster() {
   dutyRosterPeople = Object.entries(byName)
     .map(([name, v]) => ({ name, roles: [...v.roles], primaryRole: v.primaryRole }))
     .sort((a, b) => a.name.localeCompare(b.name));
+  _personnelRosterFetchedAt = Date.now();
   return dutyRosterPeople;
 }
 
@@ -8323,7 +8362,7 @@ function todayOpDayWindow() {
 async function fetchDutyLogsToday() {
   if (dutyTableMissing) return dutyLogsToday;
   const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
-  const { data, error } = await supabaseClient.from('duty_logs').select('*')
+  const { data, error } = await supabaseClient.from('duty_logs').select('id,personnel_name,event_type,event_time')
     .gte('event_time', startOfOpDay.toISOString()).lte('event_time', endOfOpDay.toISOString())
     .order('event_time');
   if (error) {
@@ -8689,15 +8728,21 @@ function renderDutyRosterRows() {
 }
 
 let _dutyRosterInterval = null;
+// Egress guard (see makeEgressGuardedRefresh near subscribeRealtime): batch
+// edits to duty_logs (e.g. backfilling several people's times) used to
+// trigger this full roster refresh once PER ROW, for every open tab.
+const guardedDutyRosterRefresh = makeEgressGuardedRefresh(refreshDutyRoster, { debounceMs: 1000, minGapMs: 8000 });
 function subscribeDutyRealtime() {
   try {
     supabaseClient.channel('duty-roster-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'duty_logs' }, () => refreshDutyRoster())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'duty_logs' }, guardedDutyRosterRefresh)
       .subscribe();
   } catch (e) { /* realtime not available — polling below still covers it */ }
   if (_dutyRosterInterval) clearInterval(_dutyRosterInterval);
-  // On-duty/break/idle minutes keep climbing with no new DB writes, so poll too.
-  _dutyRosterInterval = setInterval(refreshDutyRoster, 30000);
+  // On-duty/break/idle minutes keep climbing with no new DB writes, so poll
+  // too — dropped from every 30s to every 60s since realtime now covers
+  // actual changes instantly; this poll is only for the clock ticking forward.
+  _dutyRosterInterval = setInterval(refreshDutyRoster, 60000);
 }
 
 // --- ADMIN: correct or backfill recorded duty_logs timestamps ---
