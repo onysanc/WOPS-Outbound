@@ -76,6 +76,7 @@
   /* Tab / role navigation */
   .tab-btn{transition:background .15s ease, color .15s ease, transform .1s ease}
   .tab-btn.active{background:var(--accent);color:#04231d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(45,212,191,.3), 0 4px 14px -4px rgba(45,212,191,.5); font-weight:700}
+  #more-tabs-btn.active{background:rgba(45,212,191,.14);color:#2dd4bf}
   .role-btn.active{color:#fff}
   .role-btn{transition:background .15s ease, border-color .15s ease, transform .1s ease}
   .role-btn.active{transform:translateY(-1px)}
@@ -749,21 +750,30 @@
           <p class="text-[10px] uppercase tracking-wider text-slate-500 -mt-0.5">Outbound Section</p>
         </div>
       </div>
-      <nav class="flex flex-1 gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold overflow-x-auto">
+      <nav class="flex flex-1 items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold overflow-x-auto">
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="workbench" onclick="setView('workbench')">Workbench</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="slideshow" onclick="setView('slideshow')">📺 Slideshow</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="pending" onclick="setView('pending')">Pending Queue</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
+
+        <!-- Admin-only / permission-gated tabs, grouped so the daily-use tabs
+             above stay reachable instead of getting scroll-clipped. -->
+        <div class="relative shrink-0" id="more-tabs-wrapper">
+          <button id="more-tabs-btn" onclick="toggleMoreTabsMenu()" class="px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition whitespace-nowrap flex items-center gap-1">More <span id="more-tabs-chevron" class="text-[10px]">▾</span></button>
+          <div id="more-tabs-menu" class="hidden absolute right-0 top-full mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl p-1 flex flex-col gap-0.5 z-50">
+            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="export" onclick="setView('export'); closeMoreTabsMenu();">Data Export</button>
+            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="pending" onclick="setView('pending'); closeMoreTabsMenu();">Pending Queue</button>
+            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="aging" onclick="setView('aging'); closeMoreTabsMenu();">Master Records</button>
+            <button class="tab-btn px-3 py-2 rounded-md text-slate-300 hover:bg-slate-800 transition text-left whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt'); closeMoreTabsMenu();">User Management</button>
+          </div>
+        </div>
       </nav>
     </div>
     <div class="flex items-center gap-2">
       <button onclick="openCommandPalette()" class="hdr-icon-btn" title="Command palette (Ctrl/Cmd+K)">⌘</button>
+      <button onclick="toggleFocusMode()" id="focus-mode-btn" class="hdr-icon-btn" title="Focus Mode: hide the Pipeline Summary / Personnel Status and All Active Lines rails to widen the manifest table">🎯</button>
       <button onclick="toggleScanMode()" id="scan-mode-btn" class="hdr-icon-btn" title="Toggle Scan Mode (bigger controls for handheld use)">📱</button>
       <button onclick="toggleLightMode()" id="theme-toggle-btn" class="hdr-icon-btn" title="Toggle light / dark mode">🌙</button>
       <div class="text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 flex items-center gap-2">
@@ -772,6 +782,13 @@
         <button onclick="logoutUser()" class="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-800 hover:bg-rose-700 text-slate-300 hover:text-white transition ml-1">Log Out</button>
       </div>
     </div>
+  </div>
+  <div id="ops-strip" class="hidden items-center gap-3 px-4 py-1.5 border-t border-slate-800/60 bg-slate-950/60 text-[10px] font-semibold overflow-x-auto">
+    <span class="text-slate-500 uppercase tracking-wider shrink-0">Floor Status</span>
+    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-green-500/30 bg-green-500/10 text-green-400 shrink-0">Pending Pick <b id="pending-pick-count-strip">–</b></span>
+    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-sky-400/30 bg-sky-400/10 text-sky-300 shrink-0">Pending Staged <b id="pending-staged-count-strip">–</b></span>
+    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-pink-500/30 bg-pink-500/10 text-pink-400 shrink-0">Pending Pull <b id="pending-pull-count-strip">–</b></span>
+    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-blue-500/30 bg-blue-500/10 text-blue-400 shrink-0">Pending Check <b id="pending-check-count-strip">–</b></span>
   </div>
 </header>
 
@@ -837,30 +854,25 @@
   <!-- ================= WORKBENCH VIEW ================= -->
   <section id="view-workbench" class="view space-y-6">
 
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">Active Deployment Role</h2>
-          <p class="text-xs text-slate-500">Select a stage before assigning or actioning rows</p>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+      <div class="flex flex-wrap lg:flex-nowrap items-center gap-3">
+        <div class="flex flex-nowrap items-center gap-2 flex-shrink-0" title="Active Deployment Role — select a stage before assigning or actioning rows">
+          <span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold hidden xl:inline">Role</span>
+          <button onclick="setRole('Picker')" id="btn-Picker" class="role-btn px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">1. Picker</button>
+          <button onclick="setRole('Staging Checker')" id="btn-Staging Checker" class="role-btn px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">2. STG Checker</button>
+          <button onclick="setRole('Puller')" id="btn-Puller" class="role-btn px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">3. Puller</button>
+          <button onclick="setRole('Outbound Checker')" id="btn-Outbound Checker" class="role-btn px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">4. OTB Checker</button>
         </div>
-        <div class="flex flex-nowrap gap-2">
-          <button onclick="setRole('Picker')" id="btn-Picker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">1. Picker</button>
-          <button onclick="setRole('Staging Checker')" id="btn-Staging Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">2. STG Checker</button>
-          <button onclick="setRole('Puller')" id="btn-Puller" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">3. Puller</button>
-          <button onclick="setRole('Outbound Checker')" id="btn-Outbound Checker" class="role-btn px-4 py-2 text-xs font-semibold rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 transition whitespace-nowrap">4. OTB Checker</button>
-        </div>
-      </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/60">
-        <div>
-          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Personnel Name</label>
-          <input type="text" id="operator-input" list="personnel-datalist" onchange="onOperatorChange()" placeholder="Type or pick a name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        <div class="hidden lg:block h-8 w-px bg-slate-800 flex-shrink-0"></div>
+
+        <div class="flex-1 min-w-[160px]">
+          <input type="text" id="operator-input" list="personnel-datalist" onchange="onOperatorChange()" placeholder="👤 Personnel name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-emerald-500">
           <datalist id="personnel-datalist"></datalist>
         </div>
-        <div>
-          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment ID Reference</label>
+        <div class="flex-1 min-w-[160px]">
           <div class="flex gap-1.5">
-            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="Type Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="📦 Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
             <button onclick="openScannerModal()" title="Scan barcode / QR" class="flex-shrink-0 px-3 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-emerald-500 hover:text-emerald-400 transition text-sm">▦</button>
           </div>
           <datalist id="shipment-datalist"></datalist>
@@ -870,7 +882,7 @@
 
     <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h2 class="text-lg font-bold text-slate-100"></h2>
+        <h2 class="text-lg font-bold text-slate-100">📋 Shipment Manifest</h2>
       </div>
 
       <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
@@ -912,10 +924,10 @@
       </div>
     </div>
 
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3" id="duty-roster-card">
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 collapsed" id="duty-roster-card">
       <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2 cursor-pointer" onclick="toggleDutyRosterCollapse()">
         <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▾</span>Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▸</span>Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
           <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Personnel flagged as Backup under Personnel &amp; Breaks don't formally clock in and are left off this table.</p>
         </div>
         <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0" onclick="event.stopPropagation()">
@@ -923,7 +935,7 @@
           <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
           <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
           <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
-          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">— minimize</button>
+          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">+ expand</button>
         </div>
       </div>
       <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
@@ -1821,11 +1833,16 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
 <aside id="side-panel" class="sticky top-24 w-[max(320px,25%)] shrink-0 self-start max-h-[calc(100vh-7rem)] overflow-y-auto bg-slate-950/95 backdrop-blur border border-slate-800 rounded-xl p-4 space-y-3 shadow-2xl z-30 hidden lg:block">
   <div class="flex items-center justify-between">
     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">All Active Lines</h3>
-    <button onclick="refreshSidePanel()" class="text-[10px] text-slate-500 hover:text-emerald-400">↻ refresh</button>
+    <div class="flex items-center gap-1 shrink-0">
+      <button onclick="refreshSidePanel()" class="text-[10px] text-slate-500 hover:text-emerald-400">↻ refresh</button>
+      <button id="side-panel-collapse-btn" onclick="toggleSidePanelCollapse()" title="Minimize / expand this panel" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold w-5 h-5 flex items-center justify-center rounded border border-slate-800 hover:border-emerald-500">▾</button>
+    </div>
   </div>
-  <input type="text" id="side-panel-search" oninput="debouncedSidePanelSearch()" placeholder="Search dispatch or personnel name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-emerald-500">
-  <div id="side-panel-list" class="grid grid-cols-2 gap-2">
-    <p class="text-[11px] text-slate-600 italic">Loading...</p>
+  <div id="side-panel-body" class="space-y-3">
+    <input type="text" id="side-panel-search" oninput="debouncedSidePanelSearch()" placeholder="Search dispatch or personnel name..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] focus:outline-none focus:border-emerald-500">
+    <div id="side-panel-list" class="grid grid-cols-2 gap-2">
+      <p class="text-[11px] text-slate-600 italic">Loading...</p>
+    </div>
   </div>
 </aside>
 </div>
@@ -2329,10 +2346,13 @@ function isAdminAccount() {
 }
 
 // Hides nav buttons for any tab the logged-in user isn't permitted to open.
+const MORE_TABS_KEYS = ['export', 'pending', 'aging', 'usermgmt'];
 function applyUserPermissions() {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('hidden', !userCanAccess(b.dataset.view));
   });
+  const moreWrapper = document.getElementById('more-tabs-wrapper');
+  if (moreWrapper) moreWrapper.classList.toggle('hidden', !MORE_TABS_KEYS.some(k => userCanAccess(k)));
   const breakCard = document.getElementById('break-scheduler-card');
   if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
   const dutyShiftCard = document.getElementById('duty-shift-window-card');
@@ -2340,6 +2360,26 @@ function applyUserPermissions() {
   const dutyRosterCard = document.getElementById('duty-roster-card');
   if (dutyRosterCard) dutyRosterCard.classList.toggle('hidden', !userCanViewDutyRoster());
 }
+
+// --- "MORE" TABS DROPDOWN (Data Export / Pending Queue / Master Records / User Management) ---
+function toggleMoreTabsMenu() {
+  const menu = document.getElementById('more-tabs-menu');
+  const chev = document.getElementById('more-tabs-chevron');
+  if (!menu) return;
+  const willShow = menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !willShow);
+  if (chev) chev.innerText = willShow ? '▴' : '▾';
+}
+function closeMoreTabsMenu() {
+  const menu = document.getElementById('more-tabs-menu');
+  const chev = document.getElementById('more-tabs-chevron');
+  if (menu) menu.classList.add('hidden');
+  if (chev) chev.innerText = '▾';
+}
+document.addEventListener('click', (e) => {
+  const wrapper = document.getElementById('more-tabs-wrapper');
+  if (wrapper && !wrapper.contains(e.target)) closeMoreTabsMenu();
+});
 
 // --- TAB NAVIGATION ---
 // Access is controlled entirely by the logged-in user's allowed_tabs (set
@@ -2366,21 +2406,33 @@ function activateView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  const moreBtn = document.getElementById('more-tabs-btn');
+  if (moreBtn) moreBtn.classList.toggle('active', MORE_TABS_KEYS.includes(name));
+  closeMoreTabsMenu();
   // "All Active Lines" side panel and the Alerts panel are only relevant to
   // the Workbench — hide them everywhere else so they don't take up space on
-  // unrelated tabs.
+  // unrelated tabs. Focus Mode hides them on the Workbench too, so someone
+  // working through a big batch can reclaim that width on demand.
+  const showRails = (name === 'workbench') && !focusModeOn;
   const sidePanel = document.getElementById('side-panel');
-  if (sidePanel) sidePanel.classList.toggle('lg:block', name === 'workbench');
-  if (sidePanel) sidePanel.classList.toggle('hidden', name !== 'workbench');
+  if (sidePanel) sidePanel.classList.toggle('lg:block', showRails);
+  if (sidePanel) sidePanel.classList.toggle('hidden', !showRails);
   const leftRail = document.getElementById('left-rail');
-  if (leftRail) leftRail.classList.toggle('lg:block', name === 'workbench');
-  if (leftRail) leftRail.classList.toggle('hidden', name !== 'workbench');
+  if (leftRail) leftRail.classList.toggle('lg:block', showRails);
+  if (leftRail) leftRail.classList.toggle('hidden', !showRails);
   const alertsPanel = document.getElementById('alerts-panel');
-  if (alertsPanel) alertsPanel.classList.toggle('lg:block', name === 'workbench');
-  if (alertsPanel) alertsPanel.classList.toggle('hidden', name !== 'workbench');
+  if (alertsPanel) alertsPanel.classList.toggle('lg:block', showRails);
+  if (alertsPanel) alertsPanel.classList.toggle('hidden', !showRails);
   const pipelinePanel = document.getElementById('pipeline-summary-panel');
-  if (pipelinePanel) pipelinePanel.classList.toggle('lg:block', name === 'workbench');
-  if (pipelinePanel) pipelinePanel.classList.toggle('hidden', name !== 'workbench');
+  if (pipelinePanel) pipelinePanel.classList.toggle('lg:block', showRails);
+  if (pipelinePanel) pipelinePanel.classList.toggle('hidden', !showRails);
+  const focusBtn = document.getElementById('focus-mode-btn');
+  if (focusBtn) focusBtn.classList.toggle('hidden', name !== 'workbench');
+  // Slim pending-count strip: gives every other tab a persistent read on
+  // floor backlog without needing to jump back to the Workbench. Hidden on
+  // the Workbench itself since the full Pipeline Summary rail already covers it.
+  const opsStrip = document.getElementById('ops-strip');
+  if (opsStrip) { opsStrip.classList.toggle('hidden', name === 'workbench'); opsStrip.classList.toggle('flex', name !== 'workbench'); }
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
@@ -2859,6 +2911,17 @@ async function refreshPipelineSummary() {
   document.getElementById('pending-staged-count').innerText = shipmentAllCounts.PICKED;
   document.getElementById('pending-pull-count').innerText = shipmentAllCounts.STAGED;
   document.getElementById('pending-check-count').innerText = shipmentAllCounts.PULLED;
+
+  // Mirror the same counts into the header's slim ops-strip, so tabs other
+  // than the Workbench still show floor backlog at a glance.
+  const stripPick = document.getElementById('pending-pick-count-strip');
+  const stripStaged = document.getElementById('pending-staged-count-strip');
+  const stripPull = document.getElementById('pending-pull-count-strip');
+  const stripCheck = document.getElementById('pending-check-count-strip');
+  if (stripPick) stripPick.innerText = shipmentAllCounts.PENDING;
+  if (stripStaged) stripStaged.innerText = shipmentAllCounts.PICKED;
+  if (stripPull) stripPull.innerText = shipmentAllCounts.STAGED;
+  if (stripCheck) stripCheck.innerText = shipmentAllCounts.PULLED;
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
@@ -7507,6 +7570,17 @@ async function refreshConfiguredBreaks() {
    their internals, to keep this safe to merge/re-run.
    =================================================================== */
 
+// --- FOCUS MODE: hide both side rails at once to widen the manifest table ---
+let focusModeOn = false;
+function toggleFocusMode() {
+  focusModeOn = !focusModeOn;
+  const btn = document.getElementById('focus-mode-btn');
+  if (btn) { btn.style.color = focusModeOn ? 'var(--accent)' : ''; btn.style.borderColor = focusModeOn ? 'var(--accent)' : ''; }
+  try { localStorage.setItem('wh_focus_mode', focusModeOn ? '1' : '0'); } catch (e) {}
+  if (typeof currentViewName !== 'undefined' && currentViewName) activateView(currentViewName);
+  showToast(focusModeOn ? "Focus Mode on — side rails hidden." : "Focus Mode off.", "info");
+}
+
 // --- THEME + SCAN MODE (persisted via localStorage) ---
 function toggleLightMode() {
   const isLight = document.documentElement.classList.toggle('light-mode');
@@ -7537,13 +7611,27 @@ function toggleScanMode() {
       if (body) body.classList.add('hidden');
       if (btn) btn.innerText = '▸';
     }
-    if (localStorage.getItem('wh_duty_roster_collapsed') === '1') {
+    if (localStorage.getItem('wh_focus_mode') === '1') {
+      focusModeOn = true;
+      const b = document.getElementById('focus-mode-btn');
+      if (b) { b.style.color = 'var(--accent)'; b.style.borderColor = 'var(--accent)'; }
+    }
+    if (localStorage.getItem('wh_side_panel_collapsed') === '1') {
+      const body = document.getElementById('side-panel-body');
+      const btn = document.getElementById('side-panel-collapse-btn');
+      if (body) body.classList.add('hidden');
+      if (btn) btn.innerText = '▸';
+    }
+    // Duty Roster defaults to collapsed (least time-critical panel on the
+    // Workbench) — the markup already starts collapsed, so only override it
+    // when the person has explicitly expanded it before (stored as '0').
+    if (localStorage.getItem('wh_duty_roster_collapsed') === '0') {
       const card = document.getElementById('duty-roster-card');
-      if (card) card.classList.add('collapsed');
+      if (card) card.classList.remove('collapsed');
       const chev = document.getElementById('duty-roster-chevron');
-      if (chev) chev.innerText = '▸';
+      if (chev) chev.innerText = '▾';
       const btn = document.getElementById('duty-roster-toggle-btn');
-      if (btn) btn.innerText = '+ expand';
+      if (btn) btn.innerText = '— minimize';
     }
   } catch (e) { /* storage unavailable — ignore */ }
 })();
@@ -7568,6 +7656,16 @@ function togglePipelineSummaryCollapse() {
   const collapsed = body.classList.toggle('hidden');
   if (btn) btn.innerText = collapsed ? '▸' : '▾';
   try { localStorage.setItem('wh_pipeline_summary_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
+// --- ALL ACTIVE LINES (side panel): minimize / expand toggle (persisted via localStorage) ---
+function toggleSidePanelCollapse() {
+  const body = document.getElementById('side-panel-body');
+  const btn = document.getElementById('side-panel-collapse-btn');
+  if (!body) return;
+  const collapsed = body.classList.toggle('hidden');
+  if (btn) btn.innerText = collapsed ? '▸' : '▾';
+  try { localStorage.setItem('wh_side_panel_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }
 
 // --- COMMAND PALETTE (Ctrl/Cmd+K) ---
