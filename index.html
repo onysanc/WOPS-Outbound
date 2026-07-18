@@ -910,13 +910,14 @@
               <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
               <th class="p-2">Primary Role</th>
               <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
+              <th class="p-2 text-center" title="Whatever this person is currently working on, live from Activity Logs. Blank/Idle means they're on duty with nothing Ongoing right now.">Ongoing Task</th>
               <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedIn" data-label="Time Reported In" onclick="dutyRosterSort('reportedIn')">Time Reported In</th>
               <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedOut" data-label="Time Reported Out" onclick="dutyRosterSort('reportedOut')">Time Reported Out</th>
               <th class="p-2 text-center">Actions</th>
             </tr>
           </thead>
           <tbody id="duty-roster-body">
-            <tr><td colspan="6" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
+            <tr><td colspan="7" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
           </tbody>
         </table>
       </div>
@@ -8367,7 +8368,7 @@ async function refreshDutyRoster() {
   if (!body) return;
 
   if (dutyTableMissing) {
-    body.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-amber-400 italic">Duty Roster isn't set up yet — create the <code>duty_logs</code> table in Supabase (see code comments near the DUTY ROSTER section) to enable report-for-duty tracking.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-amber-400 italic">Duty Roster isn't set up yet — create the <code>duty_logs</code> table in Supabase (see code comments near the DUTY ROSTER section) to enable report-for-duty tracking.</td></tr>`;
     return;
   }
 
@@ -8378,7 +8379,7 @@ async function refreshDutyRoster() {
   const rosterPeople = dutyRosterPeople.filter(p => !dutyBackupNames.has(p.name));
   const names = rosterPeople.map(p => p.name);
   if (!names.length) {
-    body.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No personnel on file yet — add them under Personnel &amp; Breaks first.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic">No personnel on file yet — add them under Personnel &amp; Breaks first.</td></tr>`;
     return;
   }
 
@@ -8386,6 +8387,7 @@ async function refreshDutyRoster() {
   if (dutyTableMissing) return refreshDutyRoster();
 
   const metrics = await computeDutyMetricsForRoster(names);
+  dutyRosterOngoingCache = await fetchOngoingTasksForRoster(names);
   const canEdit = userCanEditDuty();
 
   const roleLabel = document.getElementById('duty-roster-role-label');
@@ -8402,6 +8404,7 @@ async function refreshDutyRoster() {
 
 // --- Duty Roster: filter + sort state (client-side, no re-fetch needed) ---
 let dutyRosterMetricsCache = [];
+let dutyRosterOngoingCache = {}; // personnel_name -> [{role, so_number}] currently Ongoing, refreshed with the rest of the roster
 let dutyRosterFilterStatus = 'all';   // 'all' | 'on' | 'break' | 'off'
 let dutyRosterFilterRole = 'all';
 let dutyRosterSearchTerm = '';
@@ -8443,6 +8446,36 @@ function dutyRosterSort(key) {
   renderDutyRosterRows();
 }
 
+// Per-person "what are they doing right now" for the Duty Roster's Ongoing
+// Task column — pulled fresh each time the panel is refreshed (same
+// refresh-button-only cadence as the rest of the roster, no polling).
+// Groups multiple Ongoing rows for the same person (e.g. a multi-line
+// picking batch) into one summary instead of listing each SO separately.
+async function fetchOngoingTasksForRoster(names) {
+  const byName = {};
+  if (!names.length) return byName;
+  const { data, error } = await supabaseClient.from('activity_logs')
+    .select('personnel_name,role,so_number').eq('status', 'Ongoing').in('personnel_name', names);
+  if (error) { console.error('fetchOngoingTasksForRoster failed:', error.message); return byName; }
+  (data || []).forEach(row => {
+    const name = (row.personnel_name || '').trim();
+    if (!name) return;
+    (byName[name] = byName[name] || []).push(row);
+  });
+  return byName;
+}
+
+function dutyRosterTaskCell(name) {
+  const rows = dutyRosterOngoingCache[name];
+  if (!rows || !rows.length) return `<span class="text-slate-600 italic">Idle</span>`;
+  const roles = [...new Set(rows.map(r => r.role).filter(Boolean))];
+  const soList = rows.map(r => r.so_number).filter(Boolean);
+  const roleLabel = roles.length ? roles.join(' + ') : 'Task';
+  const countBit = soList.length > 1 ? ` · ${soList.length} SOs` : (soList[0] ? ` · ${soList[0]}` : '');
+  const titleAttr = soList.length ? ` title="${soList.join(', ')}"` : '';
+  return `<span class="${roleTextClass(roles[0])} font-semibold"${titleAttr}>${roleLabel}${countBit}</span>`;
+}
+
 function renderDutyRosterRows() {
   const body = document.getElementById('duty-roster-body');
   if (!body) return;
@@ -8481,7 +8514,7 @@ function renderDutyRosterRows() {
   });
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No personnel match the current filter.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic">No personnel match the current filter.</td></tr>`;
     return;
   }
 
@@ -8505,6 +8538,7 @@ function renderDutyRosterRows() {
       <td class="p-2 font-semibold text-slate-200">${m.name}</td>
       <td class="p-2">${primaryRoleCell}</td>
       <td class="p-2 text-center">${pill}</td>
+      <td class="p-2 text-center">${dutyRosterTaskCell(m.name)}</td>
       <td class="p-2 text-center font-mono text-slate-400">${fmtDutyClock(m.firstIn)}</td>
       <td class="p-2 text-center font-mono text-slate-400">${fmtDutyClock(m.lastOut)}</td>
       <td class="p-2"><div class="flex items-center justify-center gap-1.5 flex-wrap">${actions}</div></td>
