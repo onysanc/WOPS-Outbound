@@ -145,6 +145,9 @@
   .duty-action-btn.break-end{background:rgba(56,189,248,.16);color:#38bdf8;border-color:rgba(56,189,248,.4)}
   .duty-action-btn.out{background:rgba(244,63,94,.14);color:#fb7185;border-color:rgba(244,63,94,.4)}
   .duty-action-btn.edit{background:rgba(147,161,184,.14);color:#c1cbdc;border-color:rgba(147,161,184,.35)}
+  .duty-filter-pill{display:inline-flex;align-items:center;font-size:.65rem;font-weight:700;padding:.25rem .6rem;border-radius:9999px;white-space:nowrap;cursor:pointer;border:1px solid rgba(100,112,137,.35);color:#93a1b8;background:rgba(15,23,42,.4);transition:filter .12s ease,background .12s ease,color .12s ease}
+  .duty-filter-pill:hover{filter:brightness(1.25)}
+  .duty-filter-pill.active{background:rgba(16,185,129,.18);color:#34d399;border-color:rgba(16,185,129,.55)}
   #duty-roster-card.collapsed #duty-roster-content{display:none}
   #duty-roster-card.collapsed #duty-roster-chevron{transform:rotate(-90deg)}
   .duty-idle-warn{color:#fb7185;font-weight:700}
@@ -890,13 +893,19 @@
         <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-900/60 border-b border-slate-800" onclick="event.stopPropagation()">
           <input type="text" id="duty-roster-search" placeholder="🔎 Search personnel…" oninput="dutyRosterSetSearch(this.value)"
                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 w-40" />
-          <select id="duty-roster-status-filter" onchange="dutyRosterSetFilterStatus(this.value)"
-                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
-            <option value="all">All Status</option>
-            <option value="on">On Duty</option>
-            <option value="break">On Break</option>
-            <option value="off">Off Duty</option>
-          </select>
+          <div class="flex items-center gap-1" id="duty-roster-status-pills">
+            <span class="text-[10px] text-slate-500 mr-0.5">Status:</span>
+            <button type="button" class="duty-filter-pill active" data-status="all" onclick="dutyRosterSetFilterStatus('all')">All</button>
+            <button type="button" class="duty-filter-pill" data-status="on" onclick="dutyRosterSetFilterStatus('on')">On Duty</button>
+            <button type="button" class="duty-filter-pill" data-status="break" onclick="dutyRosterSetFilterStatus('break')">On Break</button>
+            <button type="button" class="duty-filter-pill" data-status="off" onclick="dutyRosterSetFilterStatus('off')">Off Duty</button>
+          </div>
+          <div class="flex items-center gap-1" id="duty-roster-task-pills">
+            <span class="text-[10px] text-slate-500 mr-0.5">Task:</span>
+            <button type="button" class="duty-filter-pill active" data-task="all" onclick="dutyRosterSetFilterTask('all')">All</button>
+            <button type="button" class="duty-filter-pill" data-task="idle" onclick="dutyRosterSetFilterTask('idle')">Idle</button>
+            <button type="button" class="duty-filter-pill" data-task="busy" onclick="dutyRosterSetFilterTask('busy')">Non-Idle</button>
+          </div>
           <select id="duty-roster-role-filter" onchange="dutyRosterSetFilterRole(this.value)"
                   class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
             <option value="all">All Roles</option>
@@ -8406,6 +8415,7 @@ async function refreshDutyRoster() {
 let dutyRosterMetricsCache = [];
 let dutyRosterOngoingCache = {}; // personnel_name -> [{role, so_number}] currently Ongoing, refreshed with the rest of the roster
 let dutyRosterFilterStatus = 'all';   // 'all' | 'on' | 'break' | 'off'
+let dutyRosterFilterTask = 'all';     // 'all' | 'idle' | 'busy'
 let dutyRosterFilterRole = 'all';
 let dutyRosterSearchTerm = '';
 let dutyRosterSortKey = 'name';       // name | status | reportedIn | reportedOut
@@ -8422,14 +8432,26 @@ function populateDutyRosterRoleFilterOptions() {
   if (roles.includes(current)) sel.value = current;
 }
 
-function dutyRosterSetFilterStatus(v) { dutyRosterFilterStatus = v; renderDutyRosterRows(); }
+// Keeps the clickable filter pills' "active" styling in sync with the
+// current filter state — called whenever a pill is clicked or filters are
+// cleared, since the pills (unlike a <select>) don't track their own state.
+function dutyRosterSyncFilterPills() {
+  document.querySelectorAll('#duty-roster-status-pills [data-status]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === dutyRosterFilterStatus);
+  });
+  document.querySelectorAll('#duty-roster-task-pills [data-task]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.task === dutyRosterFilterTask);
+  });
+}
+function dutyRosterSetFilterStatus(v) { dutyRosterFilterStatus = v; dutyRosterSyncFilterPills(); renderDutyRosterRows(); }
+function dutyRosterSetFilterTask(v) { dutyRosterFilterTask = v; dutyRosterSyncFilterPills(); renderDutyRosterRows(); }
 function dutyRosterSetFilterRole(v) { dutyRosterFilterRole = v; renderDutyRosterRows(); }
 function dutyRosterSetSearch(v) { dutyRosterSearchTerm = (v || '').trim().toLowerCase(); renderDutyRosterRows(); }
 function dutyRosterClearFilters() {
-  dutyRosterFilterStatus = 'all'; dutyRosterFilterRole = 'all'; dutyRosterSearchTerm = '';
+  dutyRosterFilterStatus = 'all'; dutyRosterFilterTask = 'all'; dutyRosterFilterRole = 'all'; dutyRosterSearchTerm = '';
   const s = document.getElementById('duty-roster-search'); if (s) s.value = '';
-  const st = document.getElementById('duty-roster-status-filter'); if (st) st.value = 'all';
   const rl = document.getElementById('duty-roster-role-filter'); if (rl) rl.value = 'all';
+  dutyRosterSyncFilterPills();
   renderDutyRosterRows();
 }
 // Clicking a sortable header toggles asc/desc if it's already the active
@@ -8483,6 +8505,11 @@ function renderDutyRosterRows() {
 
   let rows = dutyRosterMetricsCache.filter(m => {
     if (dutyRosterFilterStatus !== 'all' && m.status !== dutyRosterFilterStatus) return false;
+    if (dutyRosterFilterTask !== 'all') {
+      const isBusy = !!(dutyRosterOngoingCache[m.name] && dutyRosterOngoingCache[m.name].length);
+      if (dutyRosterFilterTask === 'idle' && isBusy) return false;
+      if (dutyRosterFilterTask === 'busy' && !isBusy) return false;
+    }
     if (dutyRosterSearchTerm && !m.name.toLowerCase().includes(dutyRosterSearchTerm)) return false;
     if (dutyRosterFilterRole !== 'all') {
       const person = dutyRosterPeople.find(p => p.name === m.name);
@@ -8504,7 +8531,7 @@ function renderDutyRosterRows() {
 
   const countEl = document.getElementById('duty-roster-filter-count');
   if (countEl) {
-    const filtered = dutyRosterFilterStatus !== 'all' || dutyRosterFilterRole !== 'all' || dutyRosterSearchTerm;
+    const filtered = dutyRosterFilterStatus !== 'all' || dutyRosterFilterTask !== 'all' || dutyRosterFilterRole !== 'all' || dutyRosterSearchTerm;
     countEl.innerText = filtered ? `Showing ${rows.length} of ${dutyRosterMetricsCache.length}` : '';
   }
 
