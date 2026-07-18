@@ -2458,13 +2458,16 @@ function slideshowShow(index) {
   // recalculate now that it's actually on screen.
   window.dispatchEvent(new Event('resize'));
 
-  // Looping back to the first slide means a full pass just completed — pull
-  // fresh data for both source tabs so a long-running kiosk display doesn't
-  // go stale.
-  if (slideshowIndex === 0) {
-    if (userCanAccess('bulletin')) refreshBulletinBoard();
-    if (userCanAccess('analytics')) refreshAnalyticsView();
-  }
+  // NOTE: previously re-fetched fresh data from Supabase here every time the
+  // slideshow looped back to slide 1 (refreshBulletinBoard/refreshAnalyticsView),
+  // so a long-running kiosk/TV board never went stale. Disabled on request —
+  // that auto-refetch was the one part of the Slideshow that actually generated
+  // Supabase egress (a real paginated activity_logs query), repeating every full
+  // loop (~2 min at 10s/slide) for as long as the display was left running. The
+  // slide auto-advance itself and the Performance Summary's metric auto-rotate
+  // are unaffected — both are pure client-side and never touched the network.
+  // To bring this back later, call refreshBulletinBoard()/refreshAnalyticsView()
+  // here again when slideshowIndex === 0.
 }
 
 function slideshowNext() { slideshowShow(slideshowIndex + 1); }
