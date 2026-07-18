@@ -200,15 +200,6 @@
   .lb-filter-btn:hover{background:#1a2436;color:#dde3ee}
   .lb-filter-btn.active{background:var(--accent);color:#04231d;border-color:var(--accent);box-shadow:0 0 0 1px rgba(45,212,191,.3), 0 4px 14px -4px rgba(45,212,191,.5);transform:translateY(-1px)}
 
-  /* --- Slideshow / kiosk mode --- */
-  .slideshow-dot{width:8px;height:8px;border-radius:9999px;background:#1a2436;border:1px solid #263349;cursor:pointer;transition:background .15s ease,transform .15s ease}
-  .slideshow-dot:hover{background:#334155}
-  .slideshow-dot.active{background:var(--accent);transform:scale(1.3)}
-  #view-slideshow.kiosk-mode{position:fixed;inset:0;z-index:60;background:#05070c;padding:1.25rem;overflow-y:auto;margin:0}
-  #view-slideshow.kiosk-mode #slideshow-stage{min-height:calc(100vh - 130px)}
-  body.kiosk-active header,
-  body.kiosk-active #left-rail{display:none !important}
-
   /* --- PDF Export: isolate the flagged section, suppress all other chrome --- */
   @media print{
     body *{visibility:hidden !important}
@@ -729,7 +720,6 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="workbench" onclick="setView('workbench')">Workbench</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="slideshow" onclick="setView('slideshow')">📺 Slideshow</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
@@ -957,7 +947,7 @@
     <!-- MVP badges: one per ranking criterion, split into the same two independent
          role pools as the leaderboards below (Picking vs. Checking), so a Picking
          MVP is never compared against a Checking MVP -->
-    <div id="slideshow-src-awards" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+    <div id="bulletin-awards" class="grid grid-cols-1 lg:grid-cols-2 gap-3">
       <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
         <p class="text-[10px] uppercase tracking-wider text-emerald-400 font-bold mb-1.5">🧺 Picking Operations MVPs</p>
         <div id="mvp-badge-row-PICK" class="flex flex-wrap gap-2"></div>
@@ -1247,43 +1237,6 @@
       <div class="grid grid-cols-1 sm:grid-cols-4 gap-3" id="backlog-forecast-grid"></div>
       <p class="text-[10px] text-slate-600">Rate is lines completed ÷ active minutes for that stage today. Resets to N/A early in the day before any lines are completed.</p>
     </div>
-  </section>
-
-  <!-- ================= SLIDESHOW VIEW ================= -->
-  <!-- Kiosk/TV-board mode: auto-rotates through the Performance Summary's Awards
-       (MVP badges) + both Leaderboards, and the Analytics & Reports cards, one
-       full-size at a time. It works by MOVING (not cloning) the real live cards
-       from #view-bulletin / #view-analytics into the stage below, so every chart,
-       table, and rank button keeps working exactly as it does on its home tab —
-       nothing is duplicated or re-rendered separately. Leaving this tab restores
-       every card to its original spot. -->
-  <section id="view-slideshow" class="view space-y-4">
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">📺 Slideshow</h2>
-        <p class="text-xs text-slate-400">Auto-rotating wallboard — Daily Awards, both Leaderboards, and every Analytics report, one at a time.</p>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <button id="slideshow-prev-btn" onclick="slideshowPrev()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">◀ Prev</button>
-        <button id="slideshow-play-btn" onclick="toggleSlideshowPlay()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⏸ Pause</button>
-        <button id="slideshow-next-btn" onclick="slideshowNext()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Next ▶</button>
-        <select id="slideshow-interval-select" onchange="setSlideshowInterval(this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-[10px] focus:outline-none focus:border-emerald-500">
-          <option value="8">8s / slide</option>
-          <option value="10" selected>10s / slide</option>
-          <option value="15">15s / slide</option>
-          <option value="20">20s / slide</option>
-          <option value="30">30s / slide</option>
-        </select>
-        <button onclick="toggleSlideshowFullscreen()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⛶ Fullscreen</button>
-      </div>
-    </div>
-
-    <div class="flex items-center justify-between gap-3">
-      <p id="slideshow-slide-label" class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">1 / 1 — Loading...</p>
-      <div id="slideshow-dots" class="flex flex-wrap gap-1.5 justify-end"></div>
-    </div>
-
-    <div id="slideshow-stage" class="bg-slate-950 border border-slate-800 rounded-xl p-4 min-h-[420px]"></div>
   </section>
 
   <!-- ================= INGESTION VIEW ================= -->
@@ -2131,7 +2084,6 @@ const ALL_TABS = [
   { key: 'workbench', label: 'Workbench' },
   { key: 'bulletin', label: 'Performance Summary' },
   { key: 'analytics', label: 'Analytics & Reports' },
-  { key: 'slideshow', label: 'Slideshow' },
   { key: 'ingestion', label: 'Data Ingestion' },
   { key: 'admin', label: 'Personnel & Breaks' },
   { key: 'export', label: 'Data Export' },
@@ -2317,17 +2269,8 @@ function setView(name) {
   activateView(name);
 }
 
-// Tracks whichever tab is currently open, so activateView() can tell when the
-// Slideshow tab is being entered vs. left (the Slideshow borrows real cards
-// from Performance Summary / Analytics & Reports and must hand them back the
-// moment the user navigates away — see the SLIDESHOW section further down).
-let currentViewName = null;
-
 // Actually performs the tab switch.
 function activateView(name) {
-  const previousViewName = currentViewName;
-  currentViewName = name;
-
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${name}`).classList.add('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
@@ -2356,201 +2299,6 @@ function activateView(name) {
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
   if (name === 'usermgmt') loadUsers();
-
-  if (name === 'slideshow') {
-    enterSlideshow();
-  } else if (previousViewName === 'slideshow') {
-    exitSlideshow();
-  }
-}
-
-// --- SLIDESHOW: kiosk/TV-board mode for Awards + Leaderboards + Analytics ---
-// Rather than re-rendering any of this content separately (which would mean
-// duplicate ids, duplicate Chart.js instances, and a second data source to
-// keep in sync), the Slideshow works by physically MOVING each card's real DOM
-// node — the exact same node its home tab renders into — into #slideshow-stage,
-// one at a time. Because every render function here (renderBulletinGroupBoard,
-// refreshAnalyticsView, the Chart.js instances, etc.) looks its target elements
-// up by id via document.getElementById/querySelector, none of them care which
-// parent element currently holds that id — they keep working untouched no
-// matter where in the page the node currently lives. Each slide's original
-// parent + next-sibling is remembered the first time it's moved, so leaving
-// the Slideshow tab (or the app being closed) always ends with every card back
-// in its rightful place on Performance Summary / Analytics & Reports.
-const SLIDESHOW_SLIDES = [
-  { label: '🏆 Daily Awards (MVP Badges)', selector: '#slideshow-src-awards', tab: 'bulletin' },
-  { label: '🧺 Picking Operations Leaderboard', selector: '#pick-leaderboard-card', tab: 'bulletin' },
-  { label: '🧾 Checking Operations Leaderboard', selector: '#check-leaderboard-card', tab: 'bulletin' },
-  { label: '⏱ Avg. Active Minutes per Stage', selector: '#report-cycletime-card', tab: 'analytics' },
-  { label: '📊 Throughput Trend', selector: '#report-throughput-card', tab: 'analytics' },
-  { label: '🔥 Throughput Heatmap', selector: '#report-heatmap-card', tab: 'analytics' },
-  { label: '🔍 Discrepancy Report', selector: '#report-discrepancy-card', tab: 'analytics' },
-  { label: '⚠ Overdue & At-Risk Tasks', selector: '#report-atrisk-card', tab: 'analytics' },
-  { label: '🏆 Personnel Leaderboard', selector: '#report-personnel-leaderboard-card', tab: 'analytics' },
-  { label: '🏆 Role Leaderboards', selector: '#report-role-leaderboards-card', tab: 'analytics' },
-  { label: '🔥 Zero-Discrepancy Streaks', selector: '#report-streaks-card', tab: 'analytics' },
-  { label: '🚚 Truck Type / Route Breakdown', selector: '#report-truckroute-card', tab: 'analytics' },
-  { label: '🔮 Backlog Forecast', selector: '#report-backlog-card', tab: 'analytics' }
-];
-
-let slideshowActiveSlides = [];  // subset of SLIDESHOW_SLIDES the current user can actually see
-let slideshowIndex = 0;
-let slideshowTimer = null;
-let slideshowPlaying = false;
-let slideshowIntervalMs = 10000;
-let slideshowCurrentEl = null;   // the DOM node currently parked inside the stage
-
-function slideshowGetEl(slide) {
-  if (!slide._el) slide._el = document.querySelector(slide.selector);
-  return slide._el;
-}
-
-// Puts the node currently on stage back where it came from (no-op if nothing
-// is on stage yet, e.g. on first entry).
-function slideshowRestoreCurrent() {
-  if (!slideshowCurrentEl) return;
-  const slide = slideshowActiveSlides.find(s => s._el === slideshowCurrentEl) ||
-                SLIDESHOW_SLIDES.find(s => s._el === slideshowCurrentEl);
-  if (slide && slide._origParent) {
-    if (slide._origNext && slide._origNext.parentNode === slide._origParent) {
-      slide._origParent.insertBefore(slideshowCurrentEl, slide._origNext);
-    } else {
-      slide._origParent.appendChild(slideshowCurrentEl);
-    }
-  }
-  slideshowCurrentEl = null;
-}
-
-function slideshowRenderDots() {
-  const dotsWrap = document.getElementById('slideshow-dots');
-  if (!dotsWrap) return;
-  dotsWrap.innerHTML = slideshowActiveSlides.map((s, i) =>
-    `<span class="slideshow-dot${i === slideshowIndex ? ' active' : ''}" title="${s.label}" onclick="slideshowGoTo(${i})"></span>`
-  ).join('');
-}
-
-function slideshowGoTo(i) { slideshowShow(i); }
-
-function slideshowShow(index) {
-  if (!slideshowActiveSlides.length) return;
-  slideshowRestoreCurrent();
-  const stage = document.getElementById('slideshow-stage');
-  if (!stage) return;
-
-  slideshowIndex = ((index % slideshowActiveSlides.length) + slideshowActiveSlides.length) % slideshowActiveSlides.length;
-  const slide = slideshowActiveSlides[slideshowIndex];
-  const el = slideshowGetEl(slide);
-  if (!el) return; // card not present in DOM for some reason — leave stage as-is
-
-  if (!slide._origParent) {
-    slide._origParent = el.parentNode;
-    slide._origNext = el.nextSibling;
-  }
-  stage.appendChild(el);
-  slideshowCurrentEl = el;
-
-  const label = document.getElementById('slideshow-slide-label');
-  if (label) label.textContent = `${slideshowIndex + 1} / ${slideshowActiveSlides.length} — ${slide.label}`;
-  slideshowRenderDots();
-
-  // A card that was hidden (display:none from a non-active tab) just became
-  // visible with a new width — nudge Chart.js/anything width-dependent to
-  // recalculate now that it's actually on screen.
-  window.dispatchEvent(new Event('resize'));
-
-  // NOTE: previously re-fetched fresh data from Supabase here every time the
-  // slideshow looped back to slide 1 (refreshBulletinBoard/refreshAnalyticsView),
-  // so a long-running kiosk/TV board never went stale. Disabled on request —
-  // that auto-refetch was the one part of the Slideshow that actually generated
-  // Supabase egress (a real paginated activity_logs query), repeating every full
-  // loop (~2 min at 10s/slide) for as long as the display was left running. The
-  // slide auto-advance itself and the Performance Summary's metric auto-rotate
-  // are unaffected — both are pure client-side and never touched the network.
-  // To bring this back later, call refreshBulletinBoard()/refreshAnalyticsView()
-  // here again when slideshowIndex === 0.
-}
-
-function slideshowNext() { slideshowShow(slideshowIndex + 1); }
-function slideshowPrev() { slideshowShow(slideshowIndex - 1); }
-
-function slideshowStartTimer() {
-  if (slideshowTimer) clearInterval(slideshowTimer);
-  slideshowTimer = setInterval(slideshowNext, slideshowIntervalMs);
-  slideshowPlaying = true;
-  slideshowUpdatePlayBtn();
-}
-function slideshowStopTimer() {
-  if (slideshowTimer) clearInterval(slideshowTimer);
-  slideshowTimer = null;
-  slideshowPlaying = false;
-  slideshowUpdatePlayBtn();
-}
-function toggleSlideshowPlay() {
-  if (slideshowPlaying) slideshowStopTimer(); else slideshowStartTimer();
-}
-function slideshowUpdatePlayBtn() {
-  const btn = document.getElementById('slideshow-play-btn');
-  if (btn) btn.textContent = slideshowPlaying ? '⏸ Pause' : '▶ Play';
-}
-function setSlideshowInterval(seconds) {
-  slideshowIntervalMs = Number(seconds) * 1000;
-  if (slideshowPlaying) slideshowStartTimer(); // restart on the new cadence
-}
-
-function toggleSlideshowFullscreen() {
-  const el = document.getElementById('view-slideshow');
-  if (!el) return;
-  if (!document.fullscreenElement) {
-    el.classList.add('kiosk-mode');
-    document.body.classList.add('kiosk-active');
-    (el.requestFullscreen ? el.requestFullscreen() : Promise.resolve()).catch(() => {});
-  } else {
-    document.exitFullscreen().catch(() => {});
-  }
-}
-document.addEventListener('fullscreenchange', () => {
-  if (!document.fullscreenElement) {
-    const el = document.getElementById('view-slideshow');
-    if (el) el.classList.remove('kiosk-mode');
-    document.body.classList.remove('kiosk-active');
-  }
-});
-
-// Called by activateView() every time the Slideshow tab is opened.
-function enterSlideshow() {
-  // Only include slides whose home tab this logged-in user is actually
-  // allowed to open — the Slideshow itself never grants extra visibility.
-  slideshowActiveSlides = SLIDESHOW_SLIDES.filter(s => userCanAccess(s.tab));
-  slideshowIndex = 0;
-  slideshowCurrentEl = null;
-
-  if (!slideshowActiveSlides.length) {
-    const stage = document.getElementById('slideshow-stage');
-    if (stage) stage.innerHTML = `<p class="text-sm text-slate-500 italic p-6 text-center">No slides available — ask an admin to grant access to Performance Summary and/or Analytics &amp; Reports.</p>`;
-    const label = document.getElementById('slideshow-slide-label');
-    if (label) label.textContent = '0 / 0';
-    slideshowRenderDots();
-    return;
-  }
-
-  // Make sure both source tabs have fresh data before their cards ever go on
-  // stage (they may not have been opened yet this session).
-  if (userCanAccess('bulletin')) refreshBulletinBoard();
-  if (userCanAccess('analytics')) refreshAnalyticsView();
-
-  slideshowShow(0);
-  slideshowStartTimer();
-}
-
-// Called by activateView() the moment the user navigates away from Slideshow
-// (to any other tab) — hands every borrowed card back to its home section.
-function exitSlideshow() {
-  slideshowStopTimer();
-  slideshowRestoreCurrent();
-  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  const el = document.getElementById('view-slideshow');
-  if (el) el.classList.remove('kiosk-mode');
-  document.body.classList.remove('kiosk-active');
 }
 
 // --- USER MANAGEMENT: CRUD against the `users` table ---
