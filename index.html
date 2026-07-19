@@ -722,6 +722,7 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="adminops" onclick="setView('adminops')">Admin</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="pending" onclick="setView('pending')">Pending Queue</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
@@ -747,48 +748,6 @@
 </header>
 
 <div class="w-full p-4 lg:p-6 flex items-start gap-4">
-
-<!-- Left column (Workbench-only, 20% width): Pipeline Summary stacked above
-     Live Ops Alerts, sticky together as one rail. -->
-<div id="left-rail" class="sticky top-24 w-[max(220px,20%)] shrink-0 self-start max-h-[calc(100vh-7rem)] overflow-y-auto space-y-4 hidden lg:block">
-
-  <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
-  <div id="pipeline-summary-panel" class="bg-slate-950 border border-slate-800 rounded-xl p-3">
-    <div class="flex items-center justify-between mb-2 gap-1">
-      <h2 class="text-[10px] font-semibold tracking-wide uppercase text-slate-400 leading-tight">Pipeline Summary</h2>
-      <div class="flex items-center gap-1 shrink-0">
-        <button onclick="refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard();" title="Refresh" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold">⟳</button>
-        <button id="pipeline-summary-collapse-btn" onclick="togglePipelineSummaryCollapse()" title="Minimize / expand this panel" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold w-5 h-5 flex items-center justify-center rounded border border-slate-800 hover:border-emerald-500">▾</button>
-      </div>
-    </div>
-    <div class="flex bg-slate-900 border border-slate-800 rounded-md p-0.5 text-[10px] font-semibold mb-2">
-      <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="flex-1 px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
-      <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="flex-1 px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
-    </div>
-    <div id="pipeline-summary-body">
-      <div class="grid grid-cols-1 gap-2" id="pipeline-summary-grid">
-        <div class="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 flex items-center justify-between gap-2">
-          <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold leading-tight">Pending to Pick</span>
-          <span id="pending-pick-count" class="text-xl font-black text-green-400 shrink-0">–</span>
-        </div>
-        <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 px-3 py-2 flex items-center justify-between gap-2">
-          <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold leading-tight">Pending to Staged</span>
-          <span id="pending-staged-count" class="text-xl font-black text-sky-300 shrink-0">–</span>
-        </div>
-        <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 px-3 py-2 flex items-center justify-between gap-2">
-          <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold leading-tight">Pending to Pull</span>
-          <span id="pending-pull-count" class="text-xl font-black text-pink-400 shrink-0">–</span>
-        </div>
-        <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 flex items-center justify-between gap-2">
-          <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold leading-tight">Pending to Check</span>
-          <span id="pending-check-count" class="text-xl font-black text-blue-400 shrink-0">–</span>
-        </div>
-      </div>
-      <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 gap-2 mt-1"></div>
-    </div>
-  </div>
-
-</div>
 
 <main class="flex-1 min-w-0">
 
@@ -865,62 +824,6 @@
       </div>
     </div>
 
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 collapsed" id="duty-roster-card">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2 cursor-pointer" onclick="toggleDutyRosterCollapse()">
-        <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▸</span>Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
-          <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Personnel flagged as Backup under Personnel &amp; Breaks don't formally clock in and are left off this table.</p>
-        </div>
-        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0" onclick="event.stopPropagation()">
-          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
-          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
-          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
-          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
-          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">+ expand</button>
-        </div>
-      </div>
-      <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
-        <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-900/60 border-b border-slate-800" onclick="event.stopPropagation()">
-          <input type="text" id="duty-roster-search" placeholder="🔎 Search personnel…" oninput="dutyRosterSetSearch(this.value)"
-                 class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 w-40" />
-          <div class="flex items-center gap-1" id="duty-roster-status-pills">
-            <span class="text-[10px] text-slate-500 mr-0.5">Status:</span>
-            <button type="button" class="duty-filter-pill active" data-status="all" onclick="dutyRosterSetFilterStatus('all')">All</button>
-            <button type="button" class="duty-filter-pill" data-status="on" onclick="dutyRosterSetFilterStatus('on')">On Duty</button>
-            <button type="button" class="duty-filter-pill" data-status="break" onclick="dutyRosterSetFilterStatus('break')">On Break</button>
-            <button type="button" class="duty-filter-pill" data-status="off" onclick="dutyRosterSetFilterStatus('off')">Off Duty</button>
-          </div>
-          <div class="flex items-center gap-1" id="duty-roster-task-pills">
-            <span class="text-[10px] text-slate-500 mr-0.5">Task:</span>
-            <button type="button" class="duty-filter-pill active" data-task="all" onclick="dutyRosterSetFilterTask('all')">All</button>
-            <button type="button" class="duty-filter-pill" data-task="idle" onclick="dutyRosterSetFilterTask('idle')">Idle</button>
-            <button type="button" class="duty-filter-pill" data-task="busy" onclick="dutyRosterSetFilterTask('busy')">Non-Idle</button>
-          </div>
-          <select id="duty-roster-role-filter" onchange="dutyRosterSetFilterRole(this.value)"
-                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
-            <option value="all">All Roles</option>
-          </select>
-          <button onclick="dutyRosterClearFilters()" class="text-[10px] text-slate-500 hover:text-emerald-400">Clear filters</button>
-          <span id="duty-roster-filter-count" class="text-[10px] text-slate-500 ml-auto"></span>
-        </div>
-        <table class="w-full text-left text-xs border-collapse">
-          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-            <tr>
-              <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
-              <th class="p-2">Primary Role</th>
-              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
-              <th class="p-2 text-center" title="Whatever this person is currently working on, live from Activity Logs. Blank/Idle means they're on duty with nothing Ongoing right now.">Ongoing Task</th>
-              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedIn" data-label="Time Reported In" onclick="dutyRosterSort('reportedIn')">Time Reported In</th>
-              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedOut" data-label="Time Reported Out" onclick="dutyRosterSort('reportedOut')">Time Reported Out</th>
-              <th class="p-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="duty-roster-body">
-            <tr><td colspan="7" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
   </section>
 
   <!-- ================= PERFORMANCE SUMMARY VIEW ================= -->
@@ -1473,6 +1376,106 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="space-y-1" id="duty-shift-list-container"></div>
     </div>
    </div>
+  </section>
+
+  <!-- ================= ADMIN VIEW ================= -->
+  <!-- Houses the Pipeline Summary (relocated here from the Workbench's left
+       rail, now full-width and always expanded — no minimize control) and
+       the Duty Roster (relocated here from the bottom of the Workbench). -->
+  <section id="view-adminops" class="view space-y-4">
+
+    <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
+    <div id="pipeline-summary-panel" class="bg-slate-950 border border-slate-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3 gap-1">
+        <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400 leading-tight">Pipeline Summary</h2>
+        <div class="flex items-center gap-1 shrink-0">
+          <button onclick="refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard();" title="Refresh" class="text-xs text-slate-500 hover:text-emerald-400 font-semibold">⟳ refresh</button>
+        </div>
+      </div>
+      <div class="flex bg-slate-900 border border-slate-800 rounded-md p-0.5 text-[10px] font-semibold mb-3 max-w-xs">
+        <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="flex-1 px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
+        <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="flex-1 px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
+      </div>
+      <div id="pipeline-summary-body">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="pipeline-summary-grid">
+          <div class="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold leading-tight">Pending to Pick</span>
+            <span id="pending-pick-count" class="text-2xl font-black text-green-400 shrink-0">–</span>
+          </div>
+          <div class="rounded-lg border border-sky-400/30 bg-sky-400/10 px-4 py-3 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wider text-sky-300 font-semibold leading-tight">Pending to Staged</span>
+            <span id="pending-staged-count" class="text-2xl font-black text-sky-300 shrink-0">–</span>
+          </div>
+          <div class="rounded-lg border border-pink-500/30 bg-pink-500/10 px-4 py-3 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wider text-pink-400 font-semibold leading-tight">Pending to Pull</span>
+            <span id="pending-pull-count" class="text-2xl font-black text-pink-400 shrink-0">–</span>
+          </div>
+          <div class="rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-3 flex items-center justify-between gap-2">
+            <span class="text-[10px] uppercase tracking-wider text-blue-400 font-semibold leading-tight">Pending to Check</span>
+            <span id="pending-check-count" class="text-2xl font-black text-blue-400 shrink-0">–</span>
+          </div>
+        </div>
+        <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-1"></div>
+      </div>
+    </div>
+
+    <!-- Duty Roster: report-for-duty / break / idle / productivity monitor for all personnel -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 collapsed" id="duty-roster-card">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2 cursor-pointer" onclick="toggleDutyRosterCollapse()">
+        <div>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▸</span>Duty Roster — All Personnel &amp; Pipeline Summary <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Personnel flagged as Backup under Personnel &amp; Breaks don't formally clock in and are left off this table.</p>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0" onclick="event.stopPropagation()">
+          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
+          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
+          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
+          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
+          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">+ expand</button>
+        </div>
+      </div>
+      <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
+        <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-900/60 border-b border-slate-800" onclick="event.stopPropagation()">
+          <input type="text" id="duty-roster-search" placeholder="🔎 Search personnel…" oninput="dutyRosterSetSearch(this.value)"
+                 class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 w-40" />
+          <div class="flex items-center gap-1" id="duty-roster-status-pills">
+            <span class="text-[10px] text-slate-500 mr-0.5">Status:</span>
+            <button type="button" class="duty-filter-pill active" data-status="all" onclick="dutyRosterSetFilterStatus('all')">All</button>
+            <button type="button" class="duty-filter-pill" data-status="on" onclick="dutyRosterSetFilterStatus('on')">On Duty</button>
+            <button type="button" class="duty-filter-pill" data-status="break" onclick="dutyRosterSetFilterStatus('break')">On Break</button>
+            <button type="button" class="duty-filter-pill" data-status="off" onclick="dutyRosterSetFilterStatus('off')">Off Duty</button>
+          </div>
+          <div class="flex items-center gap-1" id="duty-roster-task-pills">
+            <span class="text-[10px] text-slate-500 mr-0.5">Task:</span>
+            <button type="button" class="duty-filter-pill active" data-task="all" onclick="dutyRosterSetFilterTask('all')">All</button>
+            <button type="button" class="duty-filter-pill" data-task="idle" onclick="dutyRosterSetFilterTask('idle')">Idle</button>
+            <button type="button" class="duty-filter-pill" data-task="busy" onclick="dutyRosterSetFilterTask('busy')">Non-Idle</button>
+          </div>
+          <select id="duty-roster-role-filter" onchange="dutyRosterSetFilterRole(this.value)"
+                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
+            <option value="all">All Roles</option>
+          </select>
+          <button onclick="dutyRosterClearFilters()" class="text-[10px] text-slate-500 hover:text-emerald-400">Clear filters</button>
+          <span id="duty-roster-filter-count" class="text-[10px] text-slate-500 ml-auto"></span>
+        </div>
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
+              <th class="p-2">Primary Role</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
+              <th class="p-2 text-center" title="Whatever this person is currently working on, live from Activity Logs. Blank/Idle means they're on duty with nothing Ongoing right now.">Ongoing Task</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedIn" data-label="Time Reported In" onclick="dutyRosterSort('reportedIn')">Time Reported In</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedOut" data-label="Time Reported Out" onclick="dutyRosterSort('reportedOut')">Time Reported Out</th>
+              <th class="p-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="duty-roster-body">
+            <tr><td colspan="7" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <!-- ================= DATA EXPORT VIEW ================= -->
@@ -2086,6 +2089,7 @@ const ALL_TABS = [
   { key: 'analytics', label: 'Analytics & Reports' },
   { key: 'ingestion', label: 'Data Ingestion' },
   { key: 'admin', label: 'Personnel & Breaks' },
+  { key: 'adminops', label: 'Admin' },
   { key: 'export', label: 'Data Export' },
   { key: 'pending', label: 'Pending Queue' },
   { key: 'aging', label: 'Master Records' },
@@ -2097,8 +2101,8 @@ const ALL_TABS = [
 // keys just don't correspond to any ALL_TABS entry, so they never render a
 // nav button, and userCanAccess()/the tab-rendering loop ignore them.
 const EXTRA_PERMISSIONS = [
-  { key: 'duty_edit', label: 'Edit Duty Log Times (Workbench)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
-  { key: 'duty_roster_view', label: 'View Duty Roster (Workbench)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
+  { key: 'duty_edit', label: 'Edit Duty Log Times (Admin)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
+  { key: 'duty_roster_view', label: 'View Duty Roster (Admin)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
   { key: 'duty_backup_manage', label: 'Mark Personnel as Duty Backup (Personnel & Breaks)', hint: 'Lets this user flag a personnel record as "Backup" — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since backups never formally clock in.' },
   { key: 'aging_edit', label: 'Edit Master Records (Master Records)', hint: 'Lets this user Add/Edit/Delete Master Records rows and correct any per-stage log — Picker, Staging Checker, Puller, Outbound Checker — from the Master Records tab, without granting full User Management access.' }
 ];
@@ -2281,20 +2285,17 @@ function activateView(name) {
   const sidePanel = document.getElementById('side-panel');
   if (sidePanel) sidePanel.classList.toggle('lg:block', showRails);
   if (sidePanel) sidePanel.classList.toggle('hidden', !showRails);
-  const leftRail = document.getElementById('left-rail');
-  if (leftRail) leftRail.classList.toggle('lg:block', showRails);
-  if (leftRail) leftRail.classList.toggle('hidden', !showRails);
-  const pipelinePanel = document.getElementById('pipeline-summary-panel');
-  if (pipelinePanel) pipelinePanel.classList.toggle('lg:block', showRails);
-  if (pipelinePanel) pipelinePanel.classList.toggle('hidden', !showRails);
   // Slim pending-count strip: gives every other tab a persistent read on
   // floor backlog without needing to jump back to the Workbench. Hidden on
-  // the Workbench itself since the full Pipeline Summary rail already covers it.
+  // the Workbench itself, and on the Admin tab since the full Pipeline
+  // Summary there already covers it.
   const opsStrip = document.getElementById('ops-strip');
-  if (opsStrip) { opsStrip.classList.toggle('hidden', name === 'workbench'); opsStrip.classList.toggle('flex', name !== 'workbench'); }
+  const showOpsStrip = (name !== 'workbench' && name !== 'adminops');
+  if (opsStrip) { opsStrip.classList.toggle('hidden', !showOpsStrip); opsStrip.classList.toggle('flex', showOpsStrip); }
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
+  if (name === 'adminops') { refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard(); refreshDutyRoster(); }
   if (name === 'export') loadExportData();
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -7275,12 +7276,6 @@ function toggleLightMode() {
       document.documentElement.classList.add('light-mode');
       const b = document.getElementById('theme-toggle-btn'); if (b) b.innerText = '☀️';
     }
-    if (localStorage.getItem('wh_pipeline_summary_collapsed') === '1') {
-      const body = document.getElementById('pipeline-summary-body');
-      const btn = document.getElementById('pipeline-summary-collapse-btn');
-      if (body) body.classList.add('hidden');
-      if (btn) btn.innerText = '▸';
-    }
     if (localStorage.getItem('wh_side_panel_collapsed') === '1') {
       const body = document.getElementById('side-panel-body');
       const btn = document.getElementById('side-panel-collapse-btn');
@@ -7311,16 +7306,6 @@ function toggleDutyRosterCollapse() {
   const btn = document.getElementById('duty-roster-toggle-btn');
   if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
   try { localStorage.setItem('wh_duty_roster_collapsed', collapsed ? '1' : '0'); } catch (e) {}
-}
-
-// --- PIPELINE SUMMARY: minimize / expand toggle (persisted via localStorage) ---
-function togglePipelineSummaryCollapse() {
-  const body = document.getElementById('pipeline-summary-body');
-  const btn = document.getElementById('pipeline-summary-collapse-btn');
-  if (!body) return;
-  const collapsed = body.classList.toggle('hidden');
-  if (btn) btn.innerText = collapsed ? '▸' : '▾';
-  try { localStorage.setItem('wh_pipeline_summary_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }
 
 // --- ALL ACTIVE LINES (side panel): minimize / expand toggle (persisted via localStorage) ---
