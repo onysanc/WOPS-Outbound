@@ -2600,6 +2600,18 @@ function clearShipmentInput() {
 // stage among its lines: it isn't truly "Staged" etc. until every line on
 // it has caught up.
 const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHECKED: 4 };
+
+// --- EGRESS REDUCTION: explicit `shipments` column lists ---
+// Pending Queue, Data Export, and Master Records each list every column
+// they actually read out of the row objects they build below — used in
+// place of select('*') so the DB only sends over-the-wire what each screen
+// truly renders. Keep these in sync with their row-mapping code (and with
+// the admin edit modals, which read from the already-loaded in-memory rows
+// rather than re-fetching) if a new field gets displayed later.
+const PENDING_QUEUE_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,so_amount,status,uploaded_at,pgi_date';
+const EXPORT_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,sold_to_party_name,quantity,cv,bx,pac,try_qty,pc,kg,uploaded_at,record_date';
+const AGING_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,so_amount,status,uploaded_at,record_date,pgi_date';
+
 // Speed % (Target Minutes ÷ Rendered Minutes × 100) is capped at this ceiling
 // everywhere it's computed — a very short/small batch can otherwise produce an
 // unrealistic 300%+ reading that skews averages and rankings. 150% is treated
@@ -4911,7 +4923,7 @@ async function loadExportData() {
   tbody.innerHTML = `<tr><td colspan="45" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const exportSearchText = (document.getElementById('export-search').value || '').trim();
-  let exportShipQuery = supabaseClient.from('shipments').select('*');
+  let exportShipQuery = supabaseClient.from('shipments').select(EXPORT_SHIP_COLUMNS);
   if (exportSearchText) {
     // Same fix as Master Records: a typed search goes straight to the DB
     // instead of only being visible if it happened to fall inside the
@@ -5346,7 +5358,7 @@ async function loadAgingData() {
 
   const searchText = (document.getElementById('aging-search').value || '').trim();
 
-  let shipQuery = supabaseClient.from('shipments').select('*');
+  let shipQuery = supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS);
   if (searchText) {
     // A typed search goes straight to the DB matched against every
     // searchable reference/customer column, uncapped — so a record is
@@ -6014,7 +6026,15 @@ async function loadPendingQueue() {
   // table exceeds the cap, so brand-new pending dispatches can silently
   // never appear in the queue. Descending guarantees new rows always land
   // inside the window.
-  const { data, error } = await supabaseClient.from('shipments').select('*').order('uploaded_at', { ascending: false }).limit(20000);
+  // Excludes CHECKED at the DB level (equivalent to the old
+  // `.filter(r => r.status !== 'CHECKED')` below, since the "effective"
+  // status computed further down can only equal 'CHECKED' when the raw
+  // `status` column literally is 'CHECKED') — a blank/null status still
+  // needs to come through, since that's a fresh, not-yet-processed record,
+  // so it's explicitly included alongside the neq.
+  const { data, error } = await supabaseClient.from('shipments').select(PENDING_QUEUE_SHIP_COLUMNS)
+    .or('status.is.null,status.neq.CHECKED')
+    .order('uploaded_at', { ascending: false }).limit(20000);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
