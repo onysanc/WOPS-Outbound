@@ -1384,6 +1384,18 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
        the Duty Roster (relocated here from the bottom of the Workbench). -->
   <section id="view-adminops" class="view space-y-4">
 
+    <!-- Tab Order: lets the literal "admin" account rearrange the nav tab sequence -->
+    <div id="tab-order-card" class="hidden bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <div class="flex items-center justify-between gap-2">
+        <div>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">🧩 Tab Order</h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Rearrange the top navigation tabs using ↑ / ↓. Applies immediately to this browser.</p>
+        </div>
+        <button onclick="resetTabOrder()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">Reset to default</button>
+      </div>
+      <div id="tab-order-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5"></div>
+    </div>
+
     <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
     <div id="pipeline-summary-panel" class="bg-slate-950 border border-slate-800 rounded-xl p-4">
       <div class="flex items-center justify-between mb-3 gap-1">
@@ -2095,6 +2107,68 @@ const ALL_TABS = [
   { key: 'aging', label: 'Master Records' },
   { key: 'usermgmt', label: 'User Management' }
 ];
+
+// --- TAB ORDER: lets the "admin" account rearrange the nav sequence ---
+// Persisted client-side (localStorage) and applied via the CSS `order`
+// property on each .tab-btn flex item, so no markup reordering is needed.
+// Note: this is per-browser, not synced across devices/users — the admin
+// sets it once on the machine(s) they use to manage the app.
+const TAB_ORDER_STORAGE_KEY = 'wh_tab_order';
+function getDefaultTabOrder() { return ALL_TABS.map(t => t.key); }
+function getTabOrder() {
+  try {
+    const raw = localStorage.getItem(TAB_ORDER_STORAGE_KEY);
+    if (!raw) return getDefaultTabOrder();
+    const saved = JSON.parse(raw);
+    const validKeys = new Set(ALL_TABS.map(t => t.key));
+    const cleaned = Array.isArray(saved) ? saved.filter(k => validKeys.has(k)) : [];
+    // Any tab missing from a saved order (e.g. a new tab added later) is
+    // appended at the end, in its default position.
+    getDefaultTabOrder().forEach(k => { if (!cleaned.includes(k)) cleaned.push(k); });
+    return cleaned;
+  } catch (e) { return getDefaultTabOrder(); }
+}
+function saveTabOrder(order) {
+  try { localStorage.setItem(TAB_ORDER_STORAGE_KEY, JSON.stringify(order)); } catch (e) {}
+}
+function applyTabOrder() {
+  const order = getTabOrder();
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const idx = order.indexOf(btn.dataset.view);
+    btn.style.order = idx === -1 ? order.length : idx;
+  });
+}
+function renderTabOrderList() {
+  const container = document.getElementById('tab-order-list');
+  if (!container) return;
+  const order = getTabOrder();
+  const labelByKey = Object.fromEntries(ALL_TABS.map(t => [t.key, t.label]));
+  container.innerHTML = order.map((key, i) => `
+    <div class="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2">
+      <span class="text-xs font-semibold text-slate-200 truncate">${i + 1}. ${labelByKey[key] || key}</span>
+      <div class="flex items-center gap-1 shrink-0">
+        <button onclick="moveTabInOrder('${key}', -1)" ${i === 0 ? 'disabled' : ''} title="Move up" class="w-6 h-6 flex items-center justify-center rounded border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500 disabled:opacity-30 disabled:pointer-events-none text-xs">↑</button>
+        <button onclick="moveTabInOrder('${key}', 1)" ${i === order.length - 1 ? 'disabled' : ''} title="Move down" class="w-6 h-6 flex items-center justify-center rounded border border-slate-800 text-slate-400 hover:text-emerald-400 hover:border-emerald-500 disabled:opacity-30 disabled:pointer-events-none text-xs">↓</button>
+      </div>
+    </div>`).join('');
+}
+function moveTabInOrder(key, direction) {
+  const order = getTabOrder();
+  const i = order.indexOf(key);
+  const j = i + direction;
+  if (i === -1 || j < 0 || j >= order.length) return;
+  [order[i], order[j]] = [order[j], order[i]];
+  saveTabOrder(order);
+  applyTabOrder();
+  renderTabOrderList();
+}
+function resetTabOrder() {
+  try { localStorage.removeItem(TAB_ORDER_STORAGE_KEY); } catch (e) {}
+  applyTabOrder();
+  renderTabOrderList();
+  showToast('Tab order reset to default.', 'success');
+}
+
 // Special permissions: grant a specific capability without opening up a whole
 // tab. Stored in the same `allowed_tabs` array as the tab keys above (it's
 // just a plain text[] column) so no schema/RPC change was needed — these
@@ -2258,6 +2332,8 @@ function applyUserPermissions() {
   if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
   const dutyShiftCard = document.getElementById('duty-shift-window-card');
   if (dutyShiftCard) dutyShiftCard.classList.toggle('hidden', !isAdminAccount());
+  const tabOrderCard = document.getElementById('tab-order-card');
+  if (tabOrderCard) tabOrderCard.classList.toggle('hidden', !isAdminAccount());
   const dutyRosterCard = document.getElementById('duty-roster-card');
   if (dutyRosterCard) dutyRosterCard.classList.toggle('hidden', !userCanViewDutyRoster());
 }
@@ -2295,7 +2371,7 @@ function activateView(name) {
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
-  if (name === 'adminops') { refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard(); refreshDutyRoster(); }
+  if (name === 'adminops') { refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard(); refreshDutyRoster(); renderTabOrderList(); }
   if (name === 'export') loadExportData();
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -7272,6 +7348,7 @@ function toggleLightMode() {
 }
 (function initPersistedUI() {
   try {
+    applyTabOrder();
     if (localStorage.getItem('wh_theme') === 'light') {
       document.documentElement.classList.add('light-mode');
       const b = document.getElementById('theme-toggle-btn'); if (b) b.innerText = '☀️';
