@@ -1095,7 +1095,7 @@
           </table>
         </div>
       </div>
-      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person and capped at 150% (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. Productivity % and Idle % are both computed from the person's FULL COMBINED ACTIVITY across every role/pool they work, not just this board's role group — so a Picker who also Checks has both counted together. Productivity % is computed per Activity Day (that day's active minutes across all roles ÷ 6.5 standard working hours, capped at 100%) then averaged across every day they had recorded activity over the selected Report Period — a single overloaded day can't push the figure past 100%. Idle % = total idle minutes (gaps between back-to-back tasks in ANY role, same-day only) ÷ (6.5hrs × number of days with recorded activity) — e.g. 10 active days = idle minutes ÷ (6.5×60×10). A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—). Every personnel on file who holds a role in a board's pool always appears on that board, even with zero logged activity for the selected Activity Day — zero-activity personnel show dashes and always sink to the bottom regardless of sort.</p>
+      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person and capped at 150% (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. Productivity % and Idle % are both computed from the person's FULL COMBINED ACTIVITY across every role/pool they work, not just this board's role group — so a Picker who also Checks has both counted together. Productivity % is computed per Activity Day (that day's active minutes across all roles ÷ 6.5 standard working hours — uncapped, so an overtime day can push it past 100%) then averaged across every day they had recorded activity over the selected Report Period. Idle % = total idle minutes (gaps between back-to-back tasks in ANY role, same-day only) ÷ (6.5hrs × number of days with recorded activity) — e.g. 10 active days = idle minutes ÷ (6.5×60×10). A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—). Every personnel on file who holds a role in a board's pool always appears on that board, even with zero logged activity for the selected Activity Day — zero-activity personnel show dashes and always sink to the bottom regardless of sort.</p>
     </div>
 
     <!-- Zero-Discrepancy Streaks -->
@@ -4564,14 +4564,14 @@ function renderLeaderboard(logs) {
     const roles = [...new Set(entries.map(l => l.role))];
     const volume = entries.reduce((s, l) => s + (parseFloat(l.total_qty) || 0), 0);
     const activeMinutes = sumGroupMinutes(entries);
-    // Productivity is computed per Activity Day (capped at 100%) then averaged
-    // across every day with recorded activity — same methodology as the Role
-    // Leaderboards, so a single overloaded day can't push this past 100% and
-    // multi-day Report Periods (Weekly/MTD/YTD) stay meaningful.
+    // Productivity is computed per Activity Day (uncapped, so an overtime day
+    // can push it past 100%) then averaged across every day with recorded
+    // activity — same methodology as the Role Leaderboards, so multi-day
+    // Report Periods (Weekly/MTD/YTD) stay meaningful.
     const entriesByDay = {};
     entries.forEach(l => { const d = operationalDayBucketStr(l.start_time); (entriesByDay[d] = entriesByDay[d] || []).push(l); });
     const dayKeys = Object.keys(entriesByDay);
-    const dailyProdPcts = dayKeys.map(d => Math.min(100, (sumGroupMinutes(entriesByDay[d]) / 60 / STANDARD_DAILY_HOURS) * 100));
+    const dailyProdPcts = dayKeys.map(d => (sumGroupMinutes(entriesByDay[d]) / 60 / STANDARD_DAILY_HOURS) * 100);
     const productivityPct = dayKeys.length ? dailyProdPcts.reduce((s, v) => s + v, 0) / dayKeys.length : 0;
     return { name, roles, volume, activeMinutes, productivityPct };
   }).filter(r => r.activeMinutes > 0).sort((a, b) => b.productivityPct - a.productivityPct).slice(0, 10);
@@ -4685,17 +4685,17 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
     const incidentMissPct = p.batches.length ? (misses / p.batches.length) * 100 : 0;
     // Productivity is computed PER OPERATIONAL DAY, from the person's FULL
     // combined activity across every role/pool they work (not just this
-    // board's role group) — active minutes that day ÷ standard 6.5hr day,
-    // capped at 100% so overtime on one day can't inflate the figure past
-    // what "fully productive" means — then AVERAGED across every day they
-    // had recorded activity (in any pool). This keeps the number meaningful
-    // whether the report period is a single Activity Day or a Weekly/MTD/YTD
-    // range spanning many days, and correct for personnel who split time
-    // across both Picking and Checking roles.
+    // board's role group) — active minutes that day ÷ standard 6.5hr day ×
+    // 100 (uncapped, so overtime days can push it past 100%) — then
+    // AVERAGED across every day they had recorded activity (in any pool).
+    // This keeps the number meaningful whether the report period is a
+    // single Activity Day or a Weekly/MTD/YTD range spanning many days, and
+    // correct for personnel who split time across both Picking and Checking
+    // roles.
     const minutesByDay = fullMinutesByPersonDay[p.name] || {};
     const activeDayKeys = Object.keys(minutesByDay);
     const daysActive = activeDayKeys.length;
-    const dailyProdPcts = activeDayKeys.map(d => Math.min(100, (minutesByDay[d] / 60 / STANDARD_DAILY_HOURS) * 100));
+    const dailyProdPcts = activeDayKeys.map(d => (minutesByDay[d] / 60 / STANDARD_DAILY_HOURS) * 100);
     const productivityPct = daysActive > 0 ? dailyProdPcts.reduce((s, v) => s + v, 0) / daysActive : 0;
     // Speed % is the plain average of each batch's own Target ÷ Rendered × 100 —
     // one task at 100% and a second at 80% averages to 90%, per-role target
