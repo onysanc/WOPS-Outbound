@@ -2012,11 +2012,8 @@ function gatedSearchHandler(inputId, fn, delay = 250) {
 // function declarations are hoisted, so these already point at the real
 // functions by the time any of this actually runs.
 const debouncedPendingSearch = gatedSearchHandler('pending-search', () => renderPendingTable());
-// aging/export searches hit the DB (unlike pending/side-panel, which just
-// re-render already-loaded data) — a longer debounce means fewer full
-// round trips from someone typing at normal speed.
-const debouncedAgingSearch = gatedSearchHandler('aging-search', () => loadAgingData(), 450);
-const debouncedExportSearch = gatedSearchHandler('export-search', () => loadExportData(), 450);
+const debouncedAgingSearch = gatedSearchHandler('aging-search', () => loadAgingData());
+const debouncedExportSearch = gatedSearchHandler('export-search', () => loadExportData());
 const debouncedSidePanelSearch = gatedSearchHandler('side-panel-search', () => renderSidePanelList());
 
 // Names an admin has flagged "Exclude from computations" on the Personnel Roster
@@ -2614,12 +2611,6 @@ const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHEC
 const PENDING_QUEUE_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,so_amount,status,uploaded_at,pgi_date';
 const EXPORT_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,sold_to_party_name,quantity,cv,bx,pac,try_qty,pc,kg,uploaded_at,record_date';
 const AGING_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,so_amount,status,uploaded_at,record_date,pgi_date';
-// Same idea as the SHIP_COLUMNS constants above, for activity_logs: the
-// columns actually consumed by Cycle Time, Discrepancy Report, Leaderboards,
-// Backlog Forecast, At-Risk Board, and Bulletin Board — used in place of
-// select('*') on the three heaviest, most-frequently-repeated activity_logs
-// reads (see ACTIVITY_LOGS_SUMMARY_COLUMNS usages below).
-const ACTIVITY_LOGS_SUMMARY_COLUMNS = 'id,so_number,role,personnel_name,status,start_time,end_time,rendered_minutes,target_hours,discrepancy_type,discrepancy_qty,staging_areas,total_qty,remarks';
 
 // Speed % (Target Minutes ÷ Rendered Minutes × 100) is capped at this ceiling
 // everywhere it's computed — a very short/small batch can otherwise produce an
@@ -2628,22 +2619,48 @@ const ACTIVITY_LOGS_SUMMARY_COLUMNS = 'id,so_number,role,personnel_name,status,s
 const SPEED_PCT_CAP = 150;
 let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // line-level — feeds Backlog Forecast, which measures throughput per completed line
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
-// Pulls its counts from the pipeline_summary() Postgres function (see
-// pipeline_summary_rpc.sql) instead of downloading up to 20,000 raw
-// shipments rows and grouping them client-side. Same grouping logic, just
-// computed in the DB — the wire payload goes from potentially megabytes to
-// a couple hundred bytes, and this function runs on effectively every
-// refresh cycle (Workbench load, every debounced realtime shipments change,
-// Analytics view), so that adds up fast.
 async function refreshPipelineSummary() {
-  const { data, error } = await supabaseClient.rpc('pipeline_summary');
+  // Explicit newest-first order (same reasoning as loadAgingData()/loadPendingQueue()):
+  // without an explicit order, a capped fetch has no guarantee it favors
+  // recent rows once the table exceeds the limit.
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) return console.error(error);
+  const rows = data || [];
 
-  const zeroCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  const allCounts = { ...zeroCounts, ...((data && data.line) || {}) };
+  // No date filter here anymore — every pending shipment on file counts,
+  // regardless of which upload batch it came in on.
+  const effectiveStatusOf = row => {
+    let effective = row.status;
+    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
+      effective = 'PICKED';
+    }
+    if (!effective || PIPELINE_STAGE_ORDER[effective] === undefined) effective = 'PENDING';
+    return effective;
+  };
+
+  // --- Line-level counts (unchanged) — still what Backlog Forecast needs.
+  const allCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  rows.forEach(row => { allCounts[effectiveStatusOf(row)]++; });
   lastPipelineCounts = allCounts;
 
-  const shipmentAllCounts = { ...zeroCounts, ...((data && data.shipment) || {}) };
+  // --- Shipment-level counts — one entry per Shipment No., taking the
+  // least-advanced line's stage and the earliest upload date on file for it.
+  const byShipment = new Map();
+  rows.forEach(row => {
+    const shipmentNo = (row.shipment_no || '').trim();
+    if (!shipmentNo) return; // no shipment assigned yet — not a shipment to count here
+    const effective = effectiveStatusOf(row);
+    const existing = byShipment.get(shipmentNo);
+    if (!existing) {
+      byShipment.set(shipmentNo, { effective });
+    } else {
+      if (PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing.effective]) existing.effective = effective;
+    }
+  });
+
+  // Every pending shipment on file, across every upload batch — no date filter.
+  const shipmentAllCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  byShipment.forEach(({ effective }) => { shipmentAllCounts[effective]++; });
   lastPipelineShipmentCounts = shipmentAllCounts;
 
   document.getElementById('pending-pick-count').innerText = shipmentAllCounts.PENDING;
@@ -3876,7 +3893,7 @@ async function refreshBulletinBoard() {
   const dateStr = dateInput ? dateInput.value : defaultOperationalDateStr();
   const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
 
-  const { data, error } = await supabaseClient.from('activity_logs').select(ACTIVITY_LOGS_SUMMARY_COLUMNS)
+  const { data, error } = await supabaseClient.from('activity_logs').select('*')
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
     .order('personnel_name').order('start_time');
   if (error) return console.error(error);
@@ -4356,7 +4373,7 @@ async function fetchActivityLogsPaginated(applyFilters) {
   let from = 0;
   const all = [];
   while (true) {
-    let q = supabaseClient.from('activity_logs').select(ACTIVITY_LOGS_SUMMARY_COLUMNS);
+    let q = supabaseClient.from('activity_logs').select('*');
     q = applyFilters(q);
     const { data, error } = await q.order('id', { ascending: true }).range(from, from + pageSize - 1);
     if (error) throw error;
@@ -4428,7 +4445,7 @@ function renderCycleTime(logs) {
 // action), sorted worst-overdue first.
 async function refreshAtRiskBoard() {
   const tbody = document.getElementById('atrisk-rows');
-  const { data, error } = await supabaseClient.from('activity_logs').select(ACTIVITY_LOGS_SUMMARY_COLUMNS).in('status', ['Ongoing', 'Paused']);
+  const { data, error } = await supabaseClient.from('activity_logs').select('*').in('status', ['Ongoing', 'Paused']);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-400">Failed to load.</td></tr>`;
@@ -5324,133 +5341,12 @@ function escapeForIlikeOr(text) {
   return String(text).replace(/[%_,]/g, ch => '\\' + ch);
 }
 
-// Builds an .or() clause that pushes the Record Date range filter down to the
-// DB instead of downloading everything and filtering in JS. Matches on
-// record_date when it's set, falling back to uploaded_at when record_date is
-// null — the exact same fallback loadAgingData() has always used client-side
-// (agingRawRows.record_date = row.record_date || row.uploaded_at), just now
-// applied server-side so rows outside the range are never sent over the wire.
-function agingDateRangeOrClause(fromVal, toVal) {
-  if (!fromVal && !toVal) return null;
-  const fromIso = fromVal ? new Date(fromVal + 'T00:00:00').toISOString() : null;
-  const toIso = toVal ? new Date(toVal + 'T23:59:59.999').toISOString() : null;
-  const rangeFor = col => {
-    const parts = [];
-    if (fromIso) parts.push(`${col}.gte.${fromIso}`);
-    if (toIso) parts.push(`${col}.lte.${toIso}`);
-    return parts.join(',');
-  };
-  return `and(${rangeFor('record_date')}),and(record_date.is.null,${rangeFor('uploaded_at')})`;
-}
-
-// Chunked fetch of Completed activity_logs for a set of SO numbers — shared
-// by the full load (loadAgingData) and the targeted refresh (refreshAgingRowsFor)
-// so both stay byte-for-byte identical in what they pull.
-async function fetchAgingActivityLogs(soNumbers) {
-  const logs = [];
-  const chunkSize = 300;
-  for (let i = 0; i < soNumbers.length; i += chunkSize) {
-    const chunk = soNumbers.slice(i, i + chunkSize);
-    const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
-      .select('id,so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
-      .in('so_number', chunk).eq('status', 'Completed');
-    if (!logErr) logs.push(...(logChunk || []));
-    else console.error(logErr);
-  }
-  return logs;
-}
-
-// Builds one Master Records row from a raw shipments row plus the shared
-// logMap/idleLookup built from whatever log set is currently cached
-// (agingLogsBySo) — pulled out of loadAgingData so refreshAgingRowsFor() can
-// reuse it exactly instead of duplicating the mapping logic.
-function mapAgingRow(row, logMap, idleLookup) {
-  let effective = row.status;
-  if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
-    effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
-  }
-  const pick = logMap[`${row.so_number}||Picker`];
-  const stage = logMap[`${row.so_number}||Staging Checker`];
-  const pull = logMap[`${row.so_number}||Puller`];
-  const check = logMap[`${row.so_number}||Outbound Checker`];
-  return {
-    so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
-    billing_number: row.billing_number, route_description: row.route_description,
-    customer: row.sold_to_party_name, truck_type: row.truck_type,
-    quantity: row.quantity, so_amount: row.so_amount,
-    qty: rowQtySum(row), status: effective,
-    upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.record_date || row.uploaded_at),
-    // *_id below is the activity_logs.id for that stage's Completed record —
-    // kept on the row so the Master Records drag-and-drop (move a personnel
-    // record to a different S.O.) can target the exact log row instead of
-    // guessing by so_number+role (which could match a stale/duplicate log).
-    pick_id: pick?.id || null,
-    pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
-    pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
-    // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
-    // recorded for this SAME shipment line, not anything the Picker self-reports.
-    // Accuracy% = (Volume Handled - Discrepancy Qty) / Volume Handled × 100.
-    pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
-    pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
-    pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
-    stage_id: stage?.id || null,
-    stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
-    stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
-    stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
-    stage_accuracy: stage ? calcCheckerAccuracy(stage) : null,
-    stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
-    stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
-    staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
-    pull_id: pull?.id || null,
-    pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
-    pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
-    pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
-    pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
-    check_id: check?.id || null,
-    check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
-    check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
-    check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
-    check_accuracy: check ? calcCheckerAccuracy(check) : null,
-    check_hitmiss: calcHitMiss(check), check_speedpct: calcSpeedPct(check),
-    check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
-  };
-}
-
-// In-memory cache backing Master Records: shipments row + Completed logs per
-// SO Number, keyed by so_number. loadAgingData() replaces this wholesale on a
-// full load; refreshAgingRowsFor()/removeAgingRowsLocally() patch just the
-// touched SO(s) after an edit, instead of re-fetching everything. Rebuilding
-// agingRawRows from this cache is pure in-memory work — zero extra egress.
-let agingShipRowsBySo = {};
-let agingLogsBySo = {};
-
-function remapAgingRowsFromCache() {
-  const allLogs = Object.values(agingLogsBySo).flat();
-  const logMap = {}; // `${so_number}||${role}` -> most recently completed log
-  allLogs.forEach(l => {
-    const key = `${l.so_number}||${l.role}`;
-    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
-  });
-  // Idle-before lookup, scoped to this loaded log set (see buildIdleLookup doc comment).
-  const idleLookup = buildIdleLookup(allLogs);
-  agingRawRows = Object.values(agingShipRowsBySo).map(row => mapAgingRow(row, logMap, idleLookup));
-
-  // Drop any selections that no longer correspond to a loaded row.
-  const liveKeys = new Set(agingRawRows.map(r => r.so_number));
-  agingSelectedSoNumbers.forEach(k => { if (!liveKeys.has(k)) agingSelectedSoNumbers.delete(k); });
-
-  populateAgingFilterOptions();
-  renderAgingTable();
-}
-
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
   applyAgingAdminUI();
 
   if (!agingHasActiveFilter()) {
     agingRawRows = [];
-    agingShipRowsBySo = {};
-    agingLogsBySo = {};
     agingSelectedSoNumbers.clear();
     tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Select a date range or enter a search term to load records.</td></tr>`;
     populateAgingFilterOptions();
@@ -5461,36 +5357,28 @@ async function loadAgingData() {
   tbody.innerHTML = `<tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
 
   const searchText = (document.getElementById('aging-search').value || '').trim();
-  const fromVal = document.getElementById('aging-date-from').value;
-  const toVal = document.getElementById('aging-date-to').value;
 
   let shipQuery = supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS);
-
-  // Push the Record Date range to the DB (was previously only applied
-  // client-side after downloading up to 20,000 full rows — see
-  // agingDateRangeOrClause() doc comment above).
-  const dateOr = agingDateRangeOrClause(fromVal, toVal);
-  if (dateOr) shipQuery = shipQuery.or(dateOr);
-
   if (searchText) {
     // A typed search goes straight to the DB matched against every
     // searchable reference/customer column, uncapped — so a record is
     // always found regardless of how large the shipments table is, instead
-    // of only being visible if it happened to fall inside the "browse
-    // recent records" window below. (This is the fix for records that show
-    // up in Data Export — which searches its own already-loaded batch
-    // differently — but were missing here.)
+    // of only being visible if it happened to fall inside the 20,000-row
+    // "browse recent records" window below. (This is the fix for records
+    // that show up in Data Export — which searches its own already-loaded
+    // batch differently — but were missing here.)
     const q = escapeForIlikeOr(searchText);
     shipQuery = shipQuery.or(`so_number.ilike.%${q}%,shipment_no.ilike.%${q}%,obd_number.ilike.%${q}%,sold_to_party_name.ilike.%${q}%`)
       .order('uploaded_at', { ascending: false }).limit(5000);
   } else {
-    // Browsing by date range only (no search term) — newest-first, same
-    // reasoning as before. Cap lowered from 20,000 now that the date range
-    // is actually enforced at the DB (previously this had to be huge because
-    // it was the ONLY thing standing between "narrow date range" and
-    // "silently missing rows"). Anyone needing more than 5,000 rows in one
-    // view should narrow the date range further.
-    shipQuery = shipQuery.order('uploaded_at', { ascending: false }).limit(5000);
+    // Browsing by date range only (no search term) — newest-first: with the
+    // 20,000-row cap, an ascending fetch drops the most recently uploaded
+    // shipments off the end once the table grows past the cap, so brand-new
+    // dispatches silently never appear here even though they're in the DB.
+    // Descending order guarantees the newest rows are always inside the 20k
+    // window; final display order is re-sorted by aging_days anyway, so
+    // fetch order here doesn't affect what's shown.
+    shipQuery = shipQuery.order('uploaded_at', { ascending: false }).limit(20000);
   }
 
   const { data, error } = await shipQuery;
@@ -5505,60 +5393,89 @@ async function loadAgingData() {
   // minutes, productivity), so Master Records shows the full timeline for
   // every record without needing to open the Data Export tab separately.
   const soNumbers = (data || []).map(r => r.so_number).filter(Boolean);
-  const logs = await fetchAgingActivityLogs(soNumbers);
-
-  // Replace the cache wholesale — this is a full load, so it's the new source of truth.
-  agingShipRowsBySo = {};
-  (data || []).forEach(r => { if (r.so_number) agingShipRowsBySo[r.so_number] = r; });
-  agingLogsBySo = {};
-  soNumbers.forEach(so => { agingLogsBySo[so] = []; });
-  logs.forEach(l => { (agingLogsBySo[l.so_number] = agingLogsBySo[l.so_number] || []).push(l); });
-
-  remapAgingRowsFromCache();
-}
-
-// Targeted refresh: re-fetches ONLY the given SO number(s) from shipments +
-// activity_logs and patches them into the cache, then remaps agingRawRows
-// from the (now-merged) cache in memory. Used after a single-record edit,
-// mass edit, or drag-move so those actions don't re-download the entire
-// Master Records result set (up to 5,000 shipment rows + their activity
-// logs) just to reflect a change to a handful of rows.
-async function refreshAgingRowsFor(soNumbers) {
-  soNumbers = [...new Set((soNumbers || []).filter(Boolean))];
-  if (!soNumbers.length) return;
-  // Nothing loaded and no active filter — Master Records isn't actively
-  // being viewed, so there's nothing to patch and no reason to hit the DB.
-  if (!Object.keys(agingShipRowsBySo).length && !agingHasActiveFilter()) return;
-
-  const { data: shipRows, error: shipErr } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS).in('so_number', soNumbers);
-  if (shipErr) return console.error(shipErr);
-
-  const foundSet = new Set((shipRows || []).map(r => r.so_number));
-  soNumbers.forEach(so => {
-    if (foundSet.has(so)) return;
-    // Not found (deleted, or renamed away) — drop it from the cache entirely.
-    delete agingShipRowsBySo[so];
-    delete agingLogsBySo[so];
-    agingSelectedSoNumbers.delete(so);
+  let logs = [];
+  if (soNumbers.length) {
+    const chunkSize = 300;
+    for (let i = 0; i < soNumbers.length; i += chunkSize) {
+      const chunk = soNumbers.slice(i, i + chunkSize);
+      const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
+        .select('id,so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
+        .in('so_number', chunk).eq('status', 'Completed');
+      if (!logErr) logs.push(...(logChunk || []));
+      else console.error(logErr);
+    }
+  }
+  const logMap = {}; // `${so_number}||${role}` -> most recently completed log
+  logs.forEach(l => {
+    const key = `${l.so_number}||${l.role}`;
+    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
   });
-  (shipRows || []).forEach(r => { agingShipRowsBySo[r.so_number] = r; });
+  // Idle-before lookup, scoped to this loaded log set (see buildIdleLookup doc comment).
+  const idleLookup = buildIdleLookup(logs);
 
-  const logs = await fetchAgingActivityLogs([...foundSet]);
-  foundSet.forEach(so => { agingLogsBySo[so] = []; });
-  logs.forEach(l => { (agingLogsBySo[l.so_number] = agingLogsBySo[l.so_number] || []).push(l); });
-
-  remapAgingRowsFromCache();
-}
-
-// Removes SO number(s) from the Master Records cache with no DB round trip
-// at all — used right after a delete, where we already know the rows are gone.
-function removeAgingRowsLocally(soNumbers) {
-  (soNumbers || []).filter(Boolean).forEach(so => {
-    delete agingShipRowsBySo[so];
-    delete agingLogsBySo[so];
-    agingSelectedSoNumbers.delete(so);
+  // Keep EVERY record, not just pending ones — the Status filter dropdown
+  // lets the user narrow down to Pending (or any other stage) on demand.
+  // Same effective-status logic as refreshPipelineSummary(): a PGI date
+  // (or an explicit STAGED/PULLED/CHECKED flag) means it's no longer
+  // truly pending, even if `status` itself was left blank.
+  agingRawRows = (data || []).map(row => {
+    let effective = row.status;
+    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
+      effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
+    }
+    const pick = logMap[`${row.so_number}||Picker`];
+    const stage = logMap[`${row.so_number}||Staging Checker`];
+    const pull = logMap[`${row.so_number}||Puller`];
+    const check = logMap[`${row.so_number}||Outbound Checker`];
+    return {
+      so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
+      billing_number: row.billing_number, route_description: row.route_description,
+      customer: row.sold_to_party_name, truck_type: row.truck_type,
+      quantity: row.quantity, so_amount: row.so_amount,
+      qty: rowQtySum(row), status: effective,
+      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.record_date || row.uploaded_at),
+      // *_id below is the activity_logs.id for that stage's Completed record —
+      // kept on the row so the Master Records drag-and-drop (move a personnel
+      // record to a different S.O.) can target the exact log row instead of
+      // guessing by so_number+role (which could match a stale/duplicate log).
+      pick_id: pick?.id || null,
+      pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+      pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
+      // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
+      // recorded for this SAME shipment line, not anything the Picker self-reports.
+      // Accuracy% = (Volume Handled - Discrepancy Qty) / Volume Handled × 100.
+      pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
+      pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
+      pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
+      stage_id: stage?.id || null,
+      stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+      stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
+      stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
+      stage_accuracy: stage ? calcCheckerAccuracy(stage) : null,
+      stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
+      stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
+      staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
+      pull_id: pull?.id || null,
+      pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+      pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
+      pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
+      pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
+      check_id: check?.id || null,
+      check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
+      check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
+      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
+      check_accuracy: check ? calcCheckerAccuracy(check) : null,
+      check_hitmiss: calcHitMiss(check), check_speedpct: calcSpeedPct(check),
+      check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
+    };
   });
-  remapAgingRowsFromCache();
+
+  // Drop any selections that no longer correspond to a loaded row.
+  const liveKeys = new Set(agingRawRows.map(r => r.so_number));
+  agingSelectedSoNumbers.forEach(k => { if (!liveKeys.has(k)) agingSelectedSoNumbers.delete(k); });
+
+  populateAgingFilterOptions();
+  renderAgingTable();
 }
 
 function fmtRenderedMinutes(mins) {
@@ -5743,7 +5660,7 @@ async function deleteSelectedAgingRecords() {
   if (error) return showToast("Could not delete selected records: " + error.message, "error");
   agingSelectedSoNumbers.clear();
   showToast(`${list.length} record(s) and all related activity logs deleted.`, "success");
-  removeAgingRowsLocally(list);
+  await loadAgingData();
   await refreshPipelineSummary();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -5764,7 +5681,7 @@ async function deleteAgingRecord(so_number) {
   if (error) return showToast("Could not delete record: " + error.message, "error");
   agingSelectedSoNumbers.delete(so_number);
   showToast(`Record "${so_number}" and all related activity logs deleted.`, "success");
-  removeAgingRowsLocally([so_number]);
+  await loadAgingData();
   await refreshPipelineSummary();
   await refreshSidePanel();
   await refreshBulletinBoard();
@@ -5830,7 +5747,7 @@ async function applyAgingMassEdit() {
 
   closeAgingMassEditModal();
   showToast(`Updated ${list.length} record(s).`, "success");
-  await refreshAgingRowsFor(list);
+  await loadAgingData();
   await refreshPipelineSummary();
 }
 
@@ -6088,16 +6005,7 @@ async function saveAgingRecordModal() {
 
   showToast(`Record "${soNumber}" saved.`, "success");
   closeAgingRecordModal();
-  // A rename moved the row to a new SO Number — drop the old key so it
-  // doesn't linger as a stale cache entry.
-  if (originalSo && originalSo !== soNumber) removeAgingRowsLocally([originalSo]);
-  // If Upload/Record Date was changed, it was also synced to every sibling
-  // line sharing this Shipment No. (see dateSyncErr block above) — refresh
-  // those too, not just this one line, so they don't show the old date.
-  const siblingSos = row.shipment_no
-    ? Object.values(agingShipRowsBySo).filter(r => r.shipment_no === row.shipment_no).map(r => r.so_number)
-    : [];
-  await refreshAgingRowsFor([soNumber, ...siblingSos]);
+  await loadAgingData();
   await refreshPipelineSummary();
 }
 
@@ -6599,7 +6507,7 @@ async function moveAgingPersonnelRecord(sourceSo, targetSo, role, logId) {
   if (error) return showToast("Move failed: " + error.message, "error");
 
   showToast(`Moved ${role} record from "${sourceSo}" to "${targetSo}". Related records for both S.O.s have been refreshed.`, "success");
-  await refreshAgingRowsFor([sourceSo, targetSo]);
+  await loadAgingData();
   await refreshPipelineSummary();
   await refreshSidePanel();
   await refreshBulletinBoard();
