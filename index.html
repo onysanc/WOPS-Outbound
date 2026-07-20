@@ -7874,7 +7874,7 @@ async function refreshKanbanBoard() {
   const grid = document.getElementById('pipeline-kanban-grid');
   if (!grid) return;
   grid.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-4">Loading board...</p>';
-  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date').order('shipment_no', { ascending: false }).limit(2000);
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('shipment_no', { ascending: false }).limit(2000);
   if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-4">Failed to load board: ${error.message}</p>`; return; }
   const cols = [
     { key: 'PENDING', label: 'Pending to Pick', color: 'text-amber-300' },
@@ -7884,7 +7884,11 @@ async function refreshKanbanBoard() {
   ];
   // Group by Shipment No. (same rule as refreshPipelineSummary): lines with
   // no shipment_no aren't a shipment yet, and a shipment's stage is the
-  // least-advanced stage among its lines.
+  // least-advanced stage among its lines. Age is days-on-file, taken from the
+  // EARLIEST uploaded_at across a shipment's lines (uploaded_at is the true
+  // master-data upload timestamp — see refreshPipelineSummary comments above),
+  // so a shipment's age reflects when it first landed, not its most recent line.
+  const now = Date.now();
   const byShipment = new Map();
   (data || []).forEach(row => {
     const shipmentNo = (row.shipment_no || '').trim();
@@ -7892,20 +7896,37 @@ async function refreshKanbanBoard() {
     let effective = row.status;
     if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) effective = 'PICKED';
     if (!effective || PIPELINE_STAGE_ORDER[effective] === undefined) effective = 'PENDING';
+    const uploadedAt = row.uploaded_at ? new Date(row.uploaded_at).getTime() : null;
     const existing = byShipment.get(shipmentNo);
-    if (!existing || PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing]) byShipment.set(shipmentNo, effective);
+    if (!existing) {
+      byShipment.set(shipmentNo, { effective, uploadedAt });
+    } else {
+      if (PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing.effective]) existing.effective = effective;
+      if (uploadedAt !== null && (existing.uploadedAt === null || uploadedAt < existing.uploadedAt)) existing.uploadedAt = uploadedAt;
+    }
   });
   const buckets = { PENDING: [], PICKED: [], STAGED: [], PULLED: [] };
-  byShipment.forEach((status, shipmentNo) => {
-    if (buckets[status]) buckets[status].push(shipmentNo);
+  byShipment.forEach(({ effective, uploadedAt }, shipmentNo) => {
+    const ageDays = uploadedAt !== null ? Math.floor((now - uploadedAt) / 86400000) : null;
+    if (buckets[effective]) buckets[effective].push({ shipmentNo, ageDays });
   });
+  // Oldest first within each column, so the aged pending shipments needing
+  // attention surface at the top instead of being buried behind the default
+  // shipment-number ordering. Unknown age (no uploaded_at) sinks to the bottom.
+  Object.values(buckets).forEach(list => list.sort((a, b) => (b.ageDays ?? -1) - (a.ageDays ?? -1)));
+  const ageBadgeClass = ageDays => {
+    if (ageDays === null) return 'text-slate-600';
+    if (ageDays >= 3) return 'text-rose-400 font-bold';
+    if (ageDays >= 1) return 'text-amber-400 font-semibold';
+    return 'text-slate-500';
+  };
   grid.innerHTML = cols.map(c => {
     const list = buckets[c.key];
     const shown = list.slice(0, 20);
     return `<div class="kanban-col">
       <div class="kanban-col-head ${c.color}"><span>${c.label}</span><span>${list.length}</span></div>
       <div class="kanban-body">
-        ${shown.length ? shown.map(sn => `<div class="kanban-chip cursor-pointer hover:border-emerald-500 hover:text-emerald-300 transition" title="Open in Edit Shipment" onclick="goToEditShipmentForShipment('${sn.replace(/'/g, "\\'")}')">${sn}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
+        ${shown.length ? shown.map(({ shipmentNo: sn, ageDays }) => `<div class="kanban-chip cursor-pointer hover:border-emerald-500 hover:text-emerald-300 transition flex items-center justify-between gap-2" title="Open in Edit Shipment${ageDays !== null ? ' — ' + ageDays + ' day' + (ageDays === 1 ? '' : 's') + ' since upload' : ''}" onclick="goToEditShipmentForShipment('${sn.replace(/'/g, "\\'")}')"><span>${sn}</span><span class="text-[10px] shrink-0 ${ageBadgeClass(ageDays)}">${ageDays !== null ? ageDays + 'd' : '—'}</span></div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
         ${list.length > shown.length ? `<p class="text-[10px] text-slate-500 px-1">+${list.length - shown.length} more</p>` : ''}
       </div>
     </div>`;
