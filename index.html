@@ -150,6 +150,8 @@
   .duty-filter-pill.active{background:rgba(16,185,129,.18);color:#34d399;border-color:rgba(16,185,129,.55)}
   #duty-roster-card.collapsed #duty-roster-content{display:none}
   #duty-roster-card.collapsed #duty-roster-chevron{transform:rotate(-90deg)}
+  #tab-order-card.collapsed #tab-order-list-wrap{display:none}
+  #tab-order-card.collapsed #tab-order-chevron{transform:rotate(-90deg)}
   .duty-idle-warn{color:#fb7185;font-weight:700}
 
   /* --- Master Records: drag-and-drop personnel record move (admin only) --- */
@@ -1388,15 +1390,20 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
   <section id="view-adminops" class="view space-y-4">
 
     <!-- Tab Order: lets the literal "admin" account rearrange the nav tab sequence -->
-    <div id="tab-order-card" class="hidden bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
-      <div class="flex items-center justify-between gap-2">
+    <div id="tab-order-card" class="hidden collapsed bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <div class="flex items-center justify-between gap-2 cursor-pointer" onclick="toggleTabOrderCollapse()">
         <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">🧩 Tab Order</h2>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="tab-order-chevron" class="inline-block transition-transform text-slate-500">▸</span>🧩 Tab Order</h2>
           <p class="text-[11px] text-slate-500 mt-0.5">Rearrange the top navigation tabs using ↑ / ↓. Applies immediately to this browser.</p>
         </div>
-        <button onclick="resetTabOrder()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">Reset to default</button>
+        <div class="flex items-center gap-3 shrink-0" onclick="event.stopPropagation()">
+          <button onclick="resetTabOrder()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">Reset to default</button>
+          <button onclick="toggleTabOrderCollapse()" id="tab-order-toggle-btn" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">+ expand</button>
+        </div>
       </div>
-      <div id="tab-order-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5"></div>
+      <div id="tab-order-list-wrap">
+        <div id="tab-order-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5"></div>
+      </div>
     </div>
 
     <!-- Pipeline Summary: live pending-count per stage across all loaded shipments -->
@@ -1404,14 +1411,11 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="flex items-center justify-between mb-3 gap-1">
         <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400 leading-tight">Pipeline Summary</h2>
         <div class="flex items-center gap-1 shrink-0">
-          <button onclick="refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard();" title="Refresh" class="text-xs text-slate-500 hover:text-emerald-400 font-semibold">⟳ refresh</button>
+          <button onclick="refreshPipelineSummary(); refreshKanbanBoard();" title="Refresh" class="text-xs text-slate-500 hover:text-emerald-400 font-semibold">⟳ refresh</button>
         </div>
       </div>
-      <div class="flex bg-slate-900 border border-slate-800 rounded-md p-0.5 text-[10px] font-semibold mb-3 max-w-xs">
-        <button id="pipeline-view-numbers-btn" onclick="setPipelineViewMode('numbers')" class="flex-1 px-2 py-1 rounded bg-emerald-500 text-slate-950">Numbers</button>
-        <button id="pipeline-view-board-btn" onclick="setPipelineViewMode('board')" class="flex-1 px-2 py-1 rounded text-slate-400 hover:text-slate-200">Board</button>
-      </div>
       <div id="pipeline-summary-body">
+        <h3 class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Numbers</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3" id="pipeline-summary-grid">
           <div class="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 flex items-center justify-between gap-2">
             <span class="text-[10px] uppercase tracking-wider text-green-400 font-semibold leading-tight">Pending to Pick</span>
@@ -1430,7 +1434,9 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
             <span id="pending-check-count" class="text-2xl font-black text-blue-400 shrink-0">–</span>
           </div>
         </div>
-        <div id="pipeline-kanban-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-1"></div>
+        <div class="border-t border-slate-800 my-4"></div>
+        <h3 class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Board</h3>
+        <div id="pipeline-kanban-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
       </div>
     </div>
 
@@ -2407,7 +2413,7 @@ function activateView(name) {
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
-  if (name === 'adminops') { refreshPipelineSummary(); if (pipelineViewMode === 'board') refreshKanbanBoard(); refreshDutyRoster(); renderTabOrderList(); }
+  if (name === 'adminops') { refreshPipelineSummary(); refreshKanbanBoard(); refreshDutyRoster(); renderTabOrderList(); }
   if (name === 'export') loadExportData();
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -7773,6 +7779,17 @@ function toggleLightMode() {
       const btn = document.getElementById('duty-roster-toggle-btn');
       if (btn) btn.innerText = '— minimize';
     }
+    // Tab Order also defaults to collapsed/minimized — the markup already
+    // starts collapsed, so only override it when the person has explicitly
+    // expanded it before (stored as '0').
+    if (localStorage.getItem('wh_tab_order_collapsed') === '0') {
+      const card = document.getElementById('tab-order-card');
+      if (card) card.classList.remove('collapsed');
+      const chev = document.getElementById('tab-order-chevron');
+      if (chev) chev.innerText = '▾';
+      const btn = document.getElementById('tab-order-toggle-btn');
+      if (btn) btn.innerText = '— minimize';
+    }
   } catch (e) { /* storage unavailable — ignore */ }
 })();
 
@@ -7786,6 +7803,18 @@ function toggleDutyRosterCollapse() {
   const btn = document.getElementById('duty-roster-toggle-btn');
   if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
   try { localStorage.setItem('wh_duty_roster_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
+// --- TAB ORDER: minimize / expand toggle (persisted via localStorage) ---
+function toggleTabOrderCollapse() {
+  const card = document.getElementById('tab-order-card');
+  if (!card) return;
+  const collapsed = card.classList.toggle('collapsed');
+  const chev = document.getElementById('tab-order-chevron');
+  if (chev) chev.innerText = collapsed ? '▸' : '▾';
+  const btn = document.getElementById('tab-order-toggle-btn');
+  if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
+  try { localStorage.setItem('wh_tab_order_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }
 
 // --- ALL ACTIVE LINES (side panel): minimize / expand toggle (persisted via localStorage) ---
@@ -7838,16 +7867,9 @@ function closeScannerModal() {
 }
 
 // --- LIVE OPS ALERTS: Overdue & At-Risk tasks + idle personnel ---
-// --- PIPELINE KANBAN BOARD (alt view of Pipeline Summary) ---
-let pipelineViewMode = 'numbers';
-function setPipelineViewMode(mode) {
-  pipelineViewMode = mode;
-  document.getElementById('pipeline-summary-grid').classList.toggle('hidden', mode === 'board');
-  document.getElementById('pipeline-kanban-grid').classList.toggle('hidden', mode !== 'board');
-  document.getElementById('pipeline-view-numbers-btn').className = 'px-2 py-1 rounded ' + (mode === 'numbers' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200');
-  document.getElementById('pipeline-view-board-btn').className = 'px-2 py-1 rounded ' + (mode === 'board' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400 hover:text-slate-200');
-  if (mode === 'board') refreshKanbanBoard();
-}
+// --- PIPELINE KANBAN BOARD (shown together with the Numbers grid in
+//     Pipeline Summary — both stay visible at once, separated by a divider,
+//     instead of being switched between via a Numbers/Board toggle) ---
 async function refreshKanbanBoard() {
   const grid = document.getElementById('pipeline-kanban-grid');
   if (!grid) return;
@@ -7883,25 +7905,25 @@ async function refreshKanbanBoard() {
     return `<div class="kanban-col">
       <div class="kanban-col-head ${c.color}"><span>${c.label}</span><span>${list.length}</span></div>
       <div class="kanban-body">
-        ${shown.length ? shown.map(sn => `<div class="kanban-chip cursor-pointer hover:border-emerald-500 hover:text-emerald-300 transition" title="Open in Pending Queue" onclick="goToPendingQueueForShipment('${sn.replace(/'/g, "\\'")}')">${sn}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
+        ${shown.length ? shown.map(sn => `<div class="kanban-chip cursor-pointer hover:border-emerald-500 hover:text-emerald-300 transition" title="Open in Edit Shipment" onclick="goToEditShipmentForShipment('${sn.replace(/'/g, "\\'")}')">${sn}</div>`).join('') : '<p class="text-[10px] text-slate-600 italic px-1">Empty</p>'}
         ${list.length > shown.length ? `<p class="text-[10px] text-slate-500 px-1">+${list.length - shown.length} more</p>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-// Clicking a shipment chip in the Pipeline Summary board jumps straight to
-// the Pending Queue, pre-filtered down to that one shipment. Routed through
-// setView() (not activateView()) so the existing per-user tab permission
-// system still applies: a user who hasn't been granted the "Pending Queue"
-// tab by an admin in User Management gets the normal access-denied toast
-// instead of the queue, exactly as if they'd clicked the nav tab directly.
-function goToPendingQueueForShipment(shipmentNo) {
-  const searchBox = document.getElementById('pending-search');
-  const stageFilter = document.getElementById('pending-stage-filter');
-  if (searchBox) searchBox.value = shipmentNo;
-  if (stageFilter) stageFilter.value = 'ALL';
-  setView('pending'); // loadPendingQueue() (triggered by activateView) re-renders using the filter values above
+// Clicking a shipment chip in the Pipeline Summary (Numbers or Board) jumps
+// straight to the Edit Shipment tab, pre-filled with that shipment number
+// and auto-searched. Routed through setView() (not activateView()) so the
+// existing per-user tab permission system still applies: a user who hasn't
+// been granted the "Edit Shipment" tab by an admin in User Management gets
+// the normal access-denied toast instead of the editor, exactly as if
+// they'd clicked the nav tab directly.
+function goToEditShipmentForShipment(shipmentNo) {
+  const searchInput = document.getElementById('shipedit-search-input');
+  if (searchInput) searchInput.value = shipmentNo;
+  setView('shipedit');
+  searchShipmentToEdit();
 }
 
 // --- COUNT-UP ANIMATION for Pipeline Summary KPI numbers ---
@@ -7926,7 +7948,7 @@ refreshPipelineSummary = async function (...args) {
     const to = parseInt(el.innerText) || 0;
     animateCountUp(el, before[id], to, 500);
   });
-  if (pipelineViewMode === 'board') refreshKanbanBoard();
+  refreshKanbanBoard();
 };
 
 // --- ANALYTICS: Chart.js charts + heatmap + streak leaderboard ---
