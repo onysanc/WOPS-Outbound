@@ -726,6 +726,7 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="export" onclick="setView('export')">Data Export</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="pending" onclick="setView('pending')">Pending Queue</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="shipedit" onclick="setView('shipedit')">Edit Shipment</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
     </div>
@@ -1723,6 +1724,32 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
     <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary. Hit/Miss and Speed % are based on each stage's Target Minutes (Speed % = Target ÷ Rendered × 100). Idle Time is the gap before that task started, task-to-task for the same person+role. Puller has no discrepancy field on file, so Puller Accuracy is untracked and shown as "—". Upload Date is when the record entered the system (drives Aging); Record Date is the record's own business date and can be edited per-record.</p>
   </section>
 
+  <!-- ================= EDIT SHIPMENT ================= -->
+  <section id="view-shipedit" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">✎ Edit Shipment</h2>
+        <p class="text-xs text-slate-400">Enter a Shipment Number to pull up its Sales Order line(s) and edit every stage — <span class="text-slate-300 font-semibold">Picker</span>, <span class="text-slate-300 font-semibold">Staging Checker</span>, <span class="text-slate-300 font-semibold">Puller</span>, and <span class="text-slate-300 font-semibold">Outbound Checker</span> — including names, staging area, and overall stage/status, straight from one place.</p>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <div class="flex flex-wrap items-end gap-2">
+        <div class="flex-1 min-w-[240px]">
+          <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment Number</label>
+          <input type="text" id="shipedit-search-input" placeholder="Enter Shipment No. e.g. 8001234567" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();searchShipmentToEdit();}" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+        </div>
+        <button onclick="searchShipmentToEdit()" class="text-xs font-bold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white whitespace-nowrap">🔍 Search</button>
+        <button onclick="clearShipmentEditSearch()" class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear</button>
+      </div>
+      <p id="shipedit-permission-note" class="hidden text-[11px] text-amber-400">You don't have permission to edit Master Records, so results here are view-only. Ask an admin to grant "Edit Master Records" access in User Management.</p>
+    </div>
+
+    <div id="shipedit-results" class="space-y-2">
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Enter a Shipment Number above and click Search.</div>
+    </div>
+  </section>
+
   <!-- ================= USER MANAGEMENT ================= -->
   <section id="view-usermgmt" class="view space-y-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -2105,6 +2132,7 @@ const ALL_TABS = [
   { key: 'export', label: 'Data Export' },
   { key: 'pending', label: 'Pending Queue' },
   { key: 'aging', label: 'Master Records' },
+  { key: 'shipedit', label: 'Edit Shipment' },
   { key: 'usermgmt', label: 'User Management' }
 ];
 
@@ -2368,6 +2396,12 @@ function activateView(name) {
   const opsStrip = document.getElementById('ops-strip');
   const showOpsStrip = (name !== 'workbench' && name !== 'adminops');
   if (opsStrip) { opsStrip.classList.toggle('hidden', !showOpsStrip); opsStrip.classList.toggle('flex', showOpsStrip); }
+  if (name === 'shipedit') {
+    const note = document.getElementById('shipedit-permission-note');
+    if (note) note.classList.toggle('hidden', isAgingAdmin());
+    const input = document.getElementById('shipedit-search-input');
+    if (input) setTimeout(() => input.focus(), 30);
+  }
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
@@ -6007,6 +6041,111 @@ async function saveAgingRecordModal() {
   closeAgingRecordModal();
   await loadAgingData();
   await refreshPipelineSummary();
+  // If the Edit Shipment tab has an active search, refresh its results too —
+  // otherwise a save made from there would still show the pre-edit values
+  // until the user re-searched manually.
+  const shipeditInput = document.getElementById('shipedit-search-input');
+  if (shipeditInput && shipeditInput.value.trim()) await searchShipmentToEdit();
+}
+
+// --- EDIT SHIPMENT: look up every Sales Order line under a Shipment No. and
+// edit it via the exact same Add/Edit Master Record modal (openAgingRecordModal
+// / saveAgingRecordModal) used by Master Records — so there's only one editor
+// to keep in sync, and edits made from either tab always agree. Gated behind
+// isAgingAdmin(), same permission as Master Records row editing.
+async function searchShipmentToEdit() {
+  const input = document.getElementById('shipedit-search-input');
+  const results = document.getElementById('shipedit-results');
+  const note = document.getElementById('shipedit-permission-note');
+  const val = (input.value || '').trim();
+
+  const admin = isAgingAdmin();
+  if (note) note.classList.toggle('hidden', admin);
+  if (!admin) {
+    results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">You don't have permission to edit shipments here.</div>`;
+    return;
+  }
+  if (!val) {
+    results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Enter a Shipment Number above and click Search.</div>`;
+    return;
+  }
+
+  results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Searching…</div>`;
+
+  // Drive Master Records' own loader with this Shipment Number as the search
+  // term (temporarily — its own search box is restored right after), so this
+  // tab always reads live shipments+activity_logs data instead of a second,
+  // possibly-stale copy.
+  const agingSearchInput = document.getElementById('aging-search');
+  const prevSearchVal = agingSearchInput ? agingSearchInput.value : '';
+  if (agingSearchInput) agingSearchInput.value = val;
+  await loadAgingData();
+  if (agingSearchInput) agingSearchInput.value = prevSearchVal;
+
+  const needle = val.toLowerCase();
+  const matches = agingRawRows.filter(r => (r.shipment_no || '').toLowerCase().includes(needle));
+  renderShipmentEditResults(matches, val);
+}
+
+function renderShipmentEditResults(matches, searchedVal) {
+  const results = document.getElementById('shipedit-results');
+  const safeVal = String(searchedVal).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+  if (!matches.length) {
+    results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">No records found for Shipment Number "${safeVal}".</div>`;
+    return;
+  }
+
+  results.innerHTML = `
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th class="p-3 text-center">Actions</th>
+            <th class="p-3 text-left">Sales Order</th>
+            <th class="p-3 text-left">Shipment</th>
+            <th class="p-3 text-left">OBD</th>
+            <th class="p-3 text-left">Customer</th>
+            <th class="p-3 text-center">Status</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-green-400">Picker</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-sky-300">Staging Checker</th>
+            <th class="p-3 text-center text-cyan-300">Staging Area</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-pink-400">Puller</th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-blue-400">Outbound Checker</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800/50">
+          ${matches.map(r => {
+            const so = String(r.so_number || '').replace(/'/g, "\\'");
+            return `<tr>
+              <td class="p-3 text-center"><button onclick="openAgingRecordModal('${so}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
+              <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
+              <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
+              <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
+              <td class="p-3 text-slate-300">${r.customer || 'N/A'}</td>
+              <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] border font-mono ${PENDING_STATUS_BADGE[r.status] || 'bg-slate-800 text-slate-300 border-slate-700'}">${r.status}</span></td>
+              <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
+              <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+              <td class="p-3 text-center text-[10px] text-cyan-300 font-mono">${r.staging_area || '—'}</td>
+              <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
+              <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p class="text-[10px] text-slate-600">${matches.length} record(s) found for Shipment Number "${safeVal}". Click ✎ Edit to open the full editor — stages, names, staging area, and status all update from there and save straight back to Master Records.</p>
+  `;
+}
+
+function clearShipmentEditSearch() {
+  const input = document.getElementById('shipedit-search-input');
+  if (input) input.value = '';
+  const results = document.getElementById('shipedit-results');
+  if (results) results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Enter a Shipment Number above and click Search.</div>`;
+  const note = document.getElementById('shipedit-permission-note');
+  if (note) note.classList.add('hidden');
+  if (input) input.focus();
 }
 
 // --- PENDING QUEUE: quick-edit list of every SO not yet fully Checked ---
