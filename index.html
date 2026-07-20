@@ -1069,6 +1069,7 @@
             <tbody id="lb-pickgroup-rows" class="divide-y divide-slate-800/50"></tbody>
           </table>
         </div>
+        <div id="lb-pickgroup-timeanalysis" class="text-[11px] leading-relaxed text-slate-400 bg-slate-900/40 border border-slate-800 rounded-lg px-3 py-2"></div>
       </div>
 
       <!-- Checking Operations Rankings (Staging Checker + Outbound Checker combined) -->
@@ -1094,6 +1095,7 @@
             <tbody id="lb-checkgroup-rows" class="divide-y divide-slate-800/50"></tbody>
           </table>
         </div>
+        <div id="lb-checkgroup-timeanalysis" class="text-[11px] leading-relaxed text-slate-400 bg-slate-900/40 border border-slate-800 rounded-lg px-3 py-2"></div>
       </div>
       <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person and capped at 150% (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. Productivity % and Idle % are both computed from the person's FULL COMBINED ACTIVITY across every role/pool they work, not just this board's role group — so a Picker who also Checks has both counted together. Productivity % is computed per Activity Day (that day's active minutes across all roles ÷ 6.5 standard working hours — uncapped, so an overtime day can push it past 100%) then averaged across every day they had recorded activity over the selected Report Period. Idle % = total idle minutes (gaps between back-to-back tasks in ANY role, same-day only) ÷ (6.5hrs × number of days with recorded activity) — e.g. 10 active days = idle minutes ÷ (6.5×60×10). A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—). Every personnel on file who holds a role in a board's pool always appears on that board, even with zero logged activity for the selected Activity Day — zero-activity personnel show dashes and always sink to the bottom regardless of sort.</p>
     </div>
@@ -3868,6 +3870,17 @@ function operationalDayBucketStr(dateLike) {
   return `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
 }
 
+// Coarse shift window a timestamp falls in, used only for the "Idle Time-of-Day
+// Pattern" mini-analysis under the Role Leaderboards — buckets the day into
+// Morning/Day (6AM–3PM), Evening (3PM–12AM), and Overnight (12AM–6AM).
+const TIME_OF_DAY_BUCKET_LABELS = { day: '6AM–3PM', evening: '3PM–12AM', overnight: '12AM–6AM' };
+function timeOfDayBucket(dateLike) {
+  const h = new Date(dateLike).getHours();
+  if (h >= 6 && h < 15) return 'day';
+  if (h >= 15) return 'evening';
+  return 'overnight';
+}
+
 // Operational day window (05:00 local -> 04:59:59.999 the next day) for an
 // arbitrary "YYYY-MM-DD" date string, rather than always "today" like
 // calculateOperationalDayWindow().
@@ -4607,6 +4620,7 @@ const ROLE_GROUPS = {
 };
 const ROLE_LEADERBOARD_SORT_STATE = { PICK_GROUP: 'speed', CHECK_GROUP: 'speed' };
 const ROLE_LEADERBOARD_TBODY_IDS = { PICK_GROUP: 'lb-pickgroup-rows', CHECK_GROUP: 'lb-checkgroup-rows' };
+const ROLE_LEADERBOARD_TIMEANALYSIS_IDS = { PICK_GROUP: 'lb-pickgroup-timeanalysis', CHECK_GROUP: 'lb-checkgroup-timeanalysis' };
 
 function computeRoleLeaderboardRows(dayLogs, groupKey) {
   const groupRoles = ROLE_GROUPS[groupKey].roles;
@@ -4674,7 +4688,17 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
     (fullLogsByPerson[name] = fullLogsByPerson[name] || []).push(l);
   });
 
-  return Object.values(byPersonnel).map(p => {
+  return (function buildRowsAndTimeOfDay() {
+  // Idle & Active minutes bucketed by time-of-day window, across every
+  // personnel actually shown on this board (hasActivity) — feeds the small
+  // "Idle Time-of-Day Pattern" analysis rendered under the table. Uses the
+  // same FULL COMBINED ACTIVITY basis as the Idle %/Productivity columns
+  // above (a gap is bucketed by when it started; active time is bucketed by
+  // each task's start time).
+  const idleByBucket = { day: 0, evening: 0, overnight: 0 };
+  const activeByBucket = { day: 0, evening: 0, overnight: 0 };
+
+  const rows = Object.values(byPersonnel).map(p => {
     const hasActivity = p.batches.length > 0;
     const totalQty = p.batches.reduce((s, b) => s + b.qty, 0);
     const totalMin = p.batches.reduce((s, b) => s + b.renderedMin, 0);
@@ -4719,7 +4743,13 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
       if (!prev.end_time) continue;
       if (operationalDayBucketStr(prev.end_time) !== operationalDayBucketStr(next.start_time)) continue;
       const gap = (new Date(next.start_time) - new Date(prev.end_time)) / 60000;
-      if (gap > 0.5) idleMin += gap;
+      if (gap > 0.5) {
+        idleMin += gap;
+        if (hasActivity) idleByBucket[timeOfDayBucket(prev.end_time)] += gap;
+      }
+    }
+    if (hasActivity) {
+      personAllLogsSorted.forEach(l => { activeByBucket[timeOfDayBucket(l.start_time)] += (l.rendered_minutes || 0); });
     }
     // Idle % = idle minutes ÷ total available time across every day this
     // person had recorded activity (in any pool) — 6.5 standard working
@@ -4753,6 +4783,9 @@ function computeRoleLeaderboardRows(dayLogs, groupKey) {
 
     return { name: p.name, roles: p._rosterRoles || [...new Set(p.batches.map(b => b.role))], shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedPct, incidentMissPct, productivityPct, idleMin, idlePct, daysActive, accuracyPct, hasActivity };
   });
+
+  return { rows, timeOfDay: { idleByBucket, activeByBucket } };
+  })();
 }
 
 function sortRoleLeaderboardRows(rows, sortKey) {
@@ -4769,11 +4802,73 @@ function sortRoleLeaderboardRows(rows, sortKey) {
   return arr;
 }
 
+// Small "Idle Time-of-Day Pattern" analysis shown under each Role
+// Leaderboard: buckets idle minutes and active minutes (both from every
+// hasActivity personnel on this board, full combined activity) into three
+// shift windows — 6AM–3PM, 3PM–12AM, 12AM–6AM — and calls out whichever
+// window carries the largest share of idle time as the less-productive one.
+function renderIdleTimeOfDayAnalysis(groupKey, timeOfDay) {
+  const el = document.getElementById(ROLE_LEADERBOARD_TIMEANALYSIS_IDS[groupKey]);
+  if (!el) return;
+  const { idleByBucket, activeByBucket } = timeOfDay;
+  const totalIdle = idleByBucket.day + idleByBucket.evening + idleByBucket.overnight;
+  const totalActive = activeByBucket.day + activeByBucket.evening + activeByBucket.overnight;
+  if (totalIdle < 1 && totalActive < 1) {
+    el.innerHTML = `<span class="text-slate-600 italic">📊 Not enough recorded activity yet to show an idle time-of-day pattern.</span>`;
+    return;
+  }
+  const buckets = ['day', 'evening', 'overnight'];
+  const idlePctOf = k => totalIdle > 0 ? (idleByBucket[k] / totalIdle) * 100 : 0;
+  const activePctOf = k => totalActive > 0 ? (activeByBucket[k] / totalActive) * 100 : 0;
+
+  // Only compare the two main shift windows (day/evening) for the headline
+  // callout — overnight is almost always negligible and would just add noise.
+  const idleLeader = idlePctOf('evening') >= idlePctOf('day') ? 'evening' : 'day';
+  const activeLeader = activePctOf('day') >= activePctOf('evening') ? 'day' : 'evening';
+  const idleLeaderPct = idlePctOf(idleLeader);
+  const oppositeOfIdleLeader = idleLeader === 'evening' ? 'day' : 'evening';
+
+  let headline;
+  if (Math.abs(idlePctOf('day') - idlePctOf('evening')) < 10) {
+    headline = `Idle time is fairly evenly split between ${TIME_OF_DAY_BUCKET_LABELS.day} and ${TIME_OF_DAY_BUCKET_LABELS.evening} this period — no strong time-of-day pattern yet.`;
+  } else {
+    headline = `Most idle time falls in the <strong class="text-rose-400">${TIME_OF_DAY_BUCKET_LABELS[idleLeader]}</strong> window (${idleLeaderPct.toFixed(0)}% of all idle minutes)`;
+    headline += idleLeader === activeLeader
+      ? `, even though that's also the busier window overall — worth a closer look.`
+      : `, while <strong class="text-emerald-400">${TIME_OF_DAY_BUCKET_LABELS[oppositeOfIdleLeader]}</strong> stays the more productive stretch (${activePctOf(oppositeOfIdleLeader).toFixed(0)}% of active minutes) — the ${TIME_OF_DAY_BUCKET_LABELS[idleLeader]} window trends less productive.`;
+  }
+
+  const bar = (label, pct, colorClass) => `
+    <div class="flex items-center gap-2">
+      <span class="w-20 shrink-0 text-slate-500">${label}</span>
+      <div class="flex-1 h-2 rounded bg-slate-800 overflow-hidden"><div class="h-full ${colorClass}" style="width:${Math.max(2, pct).toFixed(0)}%"></div></div>
+      <span class="w-9 shrink-0 text-right font-mono text-slate-400">${pct.toFixed(0)}%</span>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="font-semibold text-slate-300 mb-1.5">📊 Idle Time-of-Day Pattern</div>
+    <p class="mb-2">${headline}</p>
+    <div class="space-y-1 mb-1">
+      <div class="text-[10px] uppercase tracking-wide text-slate-600">Idle minutes by window</div>
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.day, idlePctOf('day'), 'bg-rose-500/70')}
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.evening, idlePctOf('evening'), 'bg-rose-500/70')}
+      ${idleByBucket.overnight > 0 ? bar(TIME_OF_DAY_BUCKET_LABELS.overnight, idlePctOf('overnight'), 'bg-rose-500/70') : ''}
+    </div>
+    <div class="space-y-1">
+      <div class="text-[10px] uppercase tracking-wide text-slate-600">Active minutes by window</div>
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.day, activePctOf('day'), 'bg-emerald-500/70')}
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.evening, activePctOf('evening'), 'bg-emerald-500/70')}
+      ${activeByBucket.overnight > 0 ? bar(TIME_OF_DAY_BUCKET_LABELS.overnight, activePctOf('overnight'), 'bg-emerald-500/70') : ''}
+    </div>`;
+}
+
 function renderRoleLeaderboard(groupKey, dayLogs) {
   const tbody = document.getElementById(ROLE_LEADERBOARD_TBODY_IDS[groupKey]);
   if (!tbody) return;
   const sortKey = ROLE_LEADERBOARD_SORT_STATE[groupKey] || 'speed';
-  const rows = sortRoleLeaderboardRows(computeRoleLeaderboardRows(dayLogs, groupKey), sortKey);
+  const { rows: baseRows, timeOfDay } = computeRoleLeaderboardRows(dayLogs, groupKey);
+  const rows = sortRoleLeaderboardRows(baseRows, sortKey);
+  renderIdleTimeOfDayAnalysis(groupKey, timeOfDay);
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-slate-500 italic">No personnel on file for this pool yet.</td></tr>`;
     return;
