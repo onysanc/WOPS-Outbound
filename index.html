@@ -5397,7 +5397,12 @@ async function loadAgingData() {
 
   const searchText = (document.getElementById('aging-search').value || '').trim();
 
-  let shipQuery = supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS);
+  // select('*') rather than the fixed AGING_SHIP_COLUMNS list — some
+  // deployments' `shipments` table doesn't have the legacy per-unit columns
+  // (cv/bx/pac/try_qty/pc/kg) that constant assumes, which made this whole
+  // query error out with "column shipments.cv does not exist". rowQtySum()
+  // already treats any of those fields as 0 when absent, so this is safe.
+  let shipQuery = supabaseClient.from('shipments').select('*');
   if (searchText) {
     // A typed search goes straight to the DB matched against every
     // searchable reference/customer column, uncapped — so a record is
@@ -6009,12 +6014,12 @@ async function searchShipmentToEdit() {
   // stored as a numeric column, which doesn't support ilike), fall back to
   // an exact eq() match automatically instead of just failing silently.
   const q = escapeForIlikeOr(val);
-  let { data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS)
+  let { data, error } = await supabaseClient.from('shipments').select('*')
     .ilike('shipment_no', `%${q}%`).order('uploaded_at', { ascending: false }).limit(500);
 
   if (error) {
     console.error('shipment_no ilike search failed, retrying with exact match:', error.message);
-    ({ data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS)
+    ({ data, error } = await supabaseClient.from('shipments').select('*')
       .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500));
   }
 
