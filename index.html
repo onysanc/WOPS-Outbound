@@ -5375,6 +5375,11 @@ function escapeForIlikeOr(text) {
   return String(text).replace(/[%_,]/g, ch => '\\' + ch);
 }
 
+// NOTE: row-building from `shipments` + `activity_logs` is done by
+// buildAgingRowsFromShipments() (defined further down, used by the Excel
+// export functions) — reused here and by the Edit Shipment tab's search so
+// all three always compute pick_name/stage_name/pull_name/check_name etc.
+// the exact same way and never drift apart.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
   applyAgingAdminUI();
@@ -5426,83 +5431,7 @@ async function loadAgingData() {
   // data used on the Data Export tab (name, start, end, remarks, rendered
   // minutes, productivity), so Master Records shows the full timeline for
   // every record without needing to open the Data Export tab separately.
-  const soNumbers = (data || []).map(r => r.so_number).filter(Boolean);
-  let logs = [];
-  if (soNumbers.length) {
-    const chunkSize = 300;
-    for (let i = 0; i < soNumbers.length; i += chunkSize) {
-      const chunk = soNumbers.slice(i, i + chunkSize);
-      const { data: logChunk, error: logErr } = await supabaseClient.from('activity_logs')
-        .select('id,so_number,role,personnel_name,start_time,end_time,status,remarks,target_hours,rendered_minutes,discrepancy_type,discrepancy_qty,staging_areas,total_qty')
-        .in('so_number', chunk).eq('status', 'Completed');
-      if (!logErr) logs.push(...(logChunk || []));
-      else console.error(logErr);
-    }
-  }
-  const logMap = {}; // `${so_number}||${role}` -> most recently completed log
-  logs.forEach(l => {
-    const key = `${l.so_number}||${l.role}`;
-    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
-  });
-  // Idle-before lookup, scoped to this loaded log set (see buildIdleLookup doc comment).
-  const idleLookup = buildIdleLookup(logs);
-
-  // Keep EVERY record, not just pending ones — the Status filter dropdown
-  // lets the user narrow down to Pending (or any other stage) on demand.
-  // Same effective-status logic as refreshPipelineSummary(): a PGI date
-  // (or an explicit STAGED/PULLED/CHECKED flag) means it's no longer
-  // truly pending, even if `status` itself was left blank.
-  agingRawRows = (data || []).map(row => {
-    let effective = row.status;
-    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
-      effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
-    }
-    const pick = logMap[`${row.so_number}||Picker`];
-    const stage = logMap[`${row.so_number}||Staging Checker`];
-    const pull = logMap[`${row.so_number}||Puller`];
-    const check = logMap[`${row.so_number}||Outbound Checker`];
-    return {
-      so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
-      billing_number: row.billing_number, route_description: row.route_description,
-      customer: row.sold_to_party_name, truck_type: row.truck_type,
-      quantity: row.quantity, so_amount: row.so_amount,
-      qty: rowQtySum(row), status: effective,
-      upload_date: row.uploaded_at, record_date: row.record_date || row.uploaded_at, aging_days: computeAgingDays(row.record_date || row.uploaded_at),
-      // *_id below is the activity_logs.id for that stage's Completed record —
-      // kept on the row so the Master Records drag-and-drop (move a personnel
-      // record to a different S.O.) can target the exact log row instead of
-      // guessing by so_number+role (which could match a stale/duplicate log).
-      pick_id: pick?.id || null,
-      pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
-      pick_remarks: pick?.remarks || null, pick_rendered: pick?.rendered_minutes ?? null, pick_productivity: calcProductivityPct(pick),
-      // Downstream Picker Accuracy: driven by the discrepancy the Staging Checker
-      // recorded for this SAME shipment line, not anything the Picker self-reports.
-      // Accuracy% = (Volume Handled - Discrepancy Qty) / Volume Handled × 100.
-      pick_accuracy: pick ? calcDownstreamPickerAccuracy(pick, stage) : null,
-      pick_hitmiss: calcHitMiss(pick), pick_speedpct: calcSpeedPct(pick),
-      pick_idle: pick ? idleLookup[`${row.so_number}||Picker`] : null,
-      stage_id: stage?.id || null,
-      stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
-      stage_remarks: stage?.remarks || null, stage_rendered: stage?.rendered_minutes ?? null, stage_productivity: calcProductivityPct(stage),
-      stage_discrepancy_type: stage?.discrepancy_type || null, stage_discrepancy_qty: stage?.discrepancy_qty ?? null,
-      stage_accuracy: stage ? calcCheckerAccuracy(stage) : null,
-      stage_hitmiss: calcHitMiss(stage), stage_speedpct: calcSpeedPct(stage),
-      stage_idle: stage ? idleLookup[`${row.so_number}||Staging Checker`] : null,
-      staging_area: (stage?.staging_areas && stage.staging_areas.length) ? stage.staging_areas.join(', ') : null,
-      pull_id: pull?.id || null,
-      pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
-      pull_remarks: pull?.remarks || null, pull_rendered: pull?.rendered_minutes ?? null, pull_productivity: calcProductivityPct(pull),
-      pull_hitmiss: calcHitMiss(pull), pull_speedpct: calcSpeedPct(pull),
-      pull_idle: pull ? idleLookup[`${row.so_number}||Puller`] : null,
-      check_id: check?.id || null,
-      check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null,
-      check_remarks: check?.remarks || null, check_rendered: check?.rendered_minutes ?? null, check_productivity: calcProductivityPct(check),
-      check_discrepancy_type: check?.discrepancy_type || null, check_discrepancy_qty: check?.discrepancy_qty ?? null,
-      check_accuracy: check ? calcCheckerAccuracy(check) : null,
-      check_hitmiss: calcHitMiss(check), check_speedpct: calcSpeedPct(check),
-      check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
-    };
-  });
+  agingRawRows = await buildAgingRowsFromShipments(data);
 
   // Drop any selections that no longer correspond to a loaded row.
   const liveKeys = new Set(agingRawRows.map(r => r.so_number));
@@ -6072,18 +6001,40 @@ async function searchShipmentToEdit() {
 
   results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Searching…</div>`;
 
-  // Drive Master Records' own loader with this Shipment Number as the search
-  // term (temporarily — its own search box is restored right after), so this
-  // tab always reads live shipments+activity_logs data instead of a second,
-  // possibly-stale copy.
-  const agingSearchInput = document.getElementById('aging-search');
-  const prevSearchVal = agingSearchInput ? agingSearchInput.value : '';
-  if (agingSearchInput) agingSearchInput.value = val;
-  await loadAgingData();
-  if (agingSearchInput) agingSearchInput.value = prevSearchVal;
+  // Query `shipments` directly on shipment_no only — deliberately NOT reusing
+  // Master Records' 4-column .or() search, so a type/index quirk on any of
+  // the OTHER searchable columns (so_number/obd_number/customer) can never
+  // cause a false "not found" here. ilike first (partial/case-insensitive
+  // match, works for a text column); if that errors out (e.g. shipment_no is
+  // stored as a numeric column, which doesn't support ilike), fall back to
+  // an exact eq() match automatically instead of just failing silently.
+  const q = escapeForIlikeOr(val);
+  let { data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS)
+    .ilike('shipment_no', `%${q}%`).order('uploaded_at', { ascending: false }).limit(500);
 
-  const needle = val.toLowerCase();
-  const matches = agingRawRows.filter(r => (r.shipment_no || '').toLowerCase().includes(needle));
+  if (error) {
+    console.error('shipment_no ilike search failed, retrying with exact match:', error.message);
+    ({ data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS)
+      .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500));
+  }
+
+  if (error) {
+    results.innerHTML = `<div class="bg-slate-950 border border-rose-800/50 rounded-xl p-8 text-center text-rose-400 text-xs">Search failed: ${error.message}</div>`;
+    return;
+  }
+
+  const matches = await buildAgingRowsFromShipments(data || []);
+
+  // openAgingRecordModal() prefills its header fields from the shared
+  // agingRawRows cache (Master Records' own dataset) — merge these
+  // freshly-fetched rows into it so Edit works correctly even if Master
+  // Records was never opened this session, and so it always reflects the
+  // latest data for a row that was just edited.
+  matches.forEach(m => {
+    const idx = agingRawRows.findIndex(r => r.so_number === m.so_number);
+    if (idx >= 0) agingRawRows[idx] = m; else agingRawRows.push(m);
+  });
+
   renderShipmentEditResults(matches, val);
 }
 
