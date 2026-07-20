@@ -1063,7 +1063,7 @@
               <tr>
                 <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
                 <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Speed %</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
-                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Productivity</th><th class="p-2 text-right">Accuracy</th>
               </tr>
             </thead>
             <tbody id="lb-pickgroup-rows" class="divide-y divide-slate-800/50"></tbody>
@@ -1088,7 +1088,7 @@
               <tr>
                 <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
                 <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Speed %</th><th class="p-2 text-right">Fastest</th><th class="p-2 text-right">Slowest</th>
-                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Accuracy</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle</th><th class="p-2 text-right">Productivity</th><th class="p-2 text-right">Accuracy</th>
               </tr>
             </thead>
             <tbody id="lb-checkgroup-rows" class="divide-y divide-slate-800/50"></tbody>
@@ -4721,7 +4721,7 @@ function renderRoleLeaderboard(groupKey, dayLogs) {
   const sortKey = ROLE_LEADERBOARD_SORT_STATE[groupKey] || 'speed';
   const rows = sortRoleLeaderboardRows(computeRoleLeaderboardRows(dayLogs, groupKey), sortKey);
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500 italic">No personnel on file for this pool yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-slate-500 italic">No personnel on file for this pool yet.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -4741,6 +4741,7 @@ function renderRoleLeaderboard(groupKey, dayLogs) {
         <td class="p-2 text-right font-mono text-slate-600">—</td>
         <td class="p-2 text-right font-mono text-slate-600">—</td>
         <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
       </tr>`;
     }
     return `<tr class="${rowClass}">
@@ -4754,6 +4755,7 @@ function renderRoleLeaderboard(groupKey, dayLogs) {
       <td class="p-2 text-right font-mono text-rose-400">${fmtNum(r.slowestMin)}m</td>
       <td class="p-2 text-right font-mono ${r.incidentMissPct > 30 ? 'text-rose-400' : 'text-slate-300'}">${r.incidentMissPct.toFixed(0)}%</td>
       <td class="p-2 text-right font-mono text-slate-300">${fmtMin(r.idleMin)}</td>
+      <td class="p-2 text-right font-mono ${productivityColorClass(r.productivityPct)}">${fmtProductivity(r.productivityPct)}</td>
       <td class="p-2 text-right font-mono ${accuracyColorClass(r.accuracyPct)}">${fmtAccuracy(r.accuracyPct)}</td>
     </tr>`;
   }).join('');
