@@ -559,7 +559,7 @@
   <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-md w-full space-y-4 max-h-[90vh] overflow-y-auto">
     <div>
       <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">✎ Mass Edit Records</h3>
-      <p class="text-xs text-slate-400 mt-1"><span id="aging-mass-edit-count" class="font-bold text-amber-400">0</span> record(s) will be updated. Tick a field to overwrite it on every selected record — untouched fields are left as-is.</p>
+      <p class="text-xs text-slate-400 mt-1"><span id="aging-mass-edit-count" class="font-bold text-amber-400">0</span> line(s) will be updated. Tick a field to overwrite it on every selected line — untouched fields are left as-is.</p>
     </div>
 
     <div class="space-y-3">
@@ -1751,6 +1751,16 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <button onclick="clearShipmentEditSearch()" class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear</button>
       </div>
       <p id="shipedit-permission-note" class="hidden text-[11px] text-amber-400">You don't have permission to edit Master Records, so results here are view-only. Ask an admin to grant "Edit Master Records" access in User Management.</p>
+    </div>
+
+    <!-- Bulk action bar — appears once 1+ result rows are checked. Reuses the
+         same Mass Edit modal as Master Records (openShipeditMassEditModal). -->
+    <div id="shipedit-bulk-bar" class="hidden bg-amber-950/40 border border-amber-800/50 rounded-xl p-3 flex items-center justify-between gap-3">
+      <p class="text-xs text-amber-200"><span id="shipedit-bulk-count" class="font-bold">0</span> line(s) selected</p>
+      <div class="flex gap-2">
+        <button onclick="clearShipeditSelection()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Clear selection</button>
+        <button onclick="openShipeditMassEditModal()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">✎ Mass Edit Selected</button>
+      </div>
     </div>
 
     <div id="shipedit-results" class="space-y-2">
@@ -5228,6 +5238,15 @@ let agingRawRows = [];
 let agingSelectedSoNumbers = new Set();
 let agingDatesInitialized = false;
 
+// --- EDIT SHIPMENT: mass-edit selection state — tracks which SO lines in
+// the current Edit Shipment search results are ticked, kept completely
+// separate from Master Records' own agingSelectedSoNumbers since the two
+// tabs show different (and often non-overlapping) result sets. Reuses the
+// same Mass Edit modal/apply logic as Master Records — see massEditActiveList.
+let shipeditSelectedSoNumbers = new Set();
+let lastShipeditMatches = [];
+let lastShipeditSearchedVal = '';
+
 // Guard: only hit the DB once the user has narrowed things down with a
 // Record Date range or a search term — opening the tab (or clearing both)
 // should never pull the full shipments/activity_logs tables.
@@ -5949,14 +5968,21 @@ async function deleteAgingRecord(so_number) {
   await refreshBulletinBoard();
 }
 
-// --- MASTER RECORDS: MASS EDIT (ADMIN ONLY) ---
+// --- MASTER RECORDS / EDIT SHIPMENT: MASS EDIT (ADMIN ONLY) ---
 // Bulk-overwrite one or more shipment-level fields across every currently
 // selected record in a single confirmed action. Only the fields the admin
 // explicitly ticks are touched — unticked fields are left completely alone.
-function openAgingMassEditModal() {
+// Shared by both Master Records (agingSelectedSoNumbers) and Edit Shipment
+// (shipeditSelectedSoNumbers) — one modal, one apply path, so edits made
+// from either tab always agree, same convention as openAgingRecordModal.
+let massEditActiveList = [];
+let massEditActiveSource = 'aging'; // 'aging' | 'shipedit' — decides what to refresh after applying
+
+function openMassEditModal(list, source) {
   if (!isAgingAdmin()) return;
-  const list = Array.from(agingSelectedSoNumbers);
   if (!list.length) return showToast("Select at least one record first.", "error");
+  massEditActiveList = list;
+  massEditActiveSource = source;
   document.getElementById('aging-mass-edit-count').innerText = list.length;
   [['ame-status-enable', 'ame-status'], ['ame-truck-enable', 'ame-truck'], ['ame-customer-enable', 'ame-customer'], ['ame-route-enable', 'ame-route'], ['ame-upload-date-enable', 'ame-upload-date'], ['ame-record-date-enable', 'ame-record-date']]
     .forEach(([cbId, fieldId]) => {
@@ -5968,12 +5994,20 @@ function openAgingMassEditModal() {
   document.getElementById('aging-mass-edit-modal').classList.remove('hidden');
 }
 
+function openAgingMassEditModal() {
+  openMassEditModal(Array.from(agingSelectedSoNumbers), 'aging');
+}
+
+function openShipeditMassEditModal() {
+  openMassEditModal(Array.from(shipeditSelectedSoNumbers), 'shipedit');
+}
+
 function closeAgingMassEditModal() {
   document.getElementById('aging-mass-edit-modal').classList.add('hidden');
 }
 
 async function applyAgingMassEdit() {
-  const list = Array.from(agingSelectedSoNumbers);
+  const list = massEditActiveList;
   if (!list.length) { closeAgingMassEditModal(); return; }
 
   const update = {};
@@ -6011,6 +6045,15 @@ async function applyAgingMassEdit() {
   showToast(`Updated ${list.length} record(s).`, "success");
   await loadAgingData();
   await refreshPipelineSummary();
+
+  // Launched from Edit Shipment rather than Master Records — clear that
+  // tab's own selection and re-run its search so the table reflects the
+  // just-applied changes instead of showing stale pre-edit values.
+  if (massEditActiveSource === 'shipedit') {
+    shipeditSelectedSoNumbers.clear();
+    const shipeditInput = document.getElementById('shipedit-search-input');
+    if (shipeditInput && shipeditInput.value.trim()) await searchShipmentToEdit();
+  }
 }
 
 // Maps each pipeline role to the field-id prefix used in the master record modal
@@ -6299,6 +6342,12 @@ async function searchShipmentToEdit() {
   }
 
   results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Searching…</div>`;
+  // A fresh search means a new (or changed) result set — drop any selection
+  // left over from a previous search so Mass Edit never silently applies to
+  // SO lines that aren't even on screen anymore. (The auto-refresh this
+  // function also does after a single-record save re-clears it too, which
+  // is fine — that save already went through its own confirmation.)
+  shipeditSelectedSoNumbers.clear();
 
   // Query `shipments` directly on shipment_no only — deliberately NOT reusing
   // Master Records' 4-column .or() search, so a type/index quirk on any of
@@ -6341,7 +6390,13 @@ function renderShipmentEditResults(matches, searchedVal) {
   const results = document.getElementById('shipedit-results');
   const safeVal = String(searchedVal).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
 
+  // Remembered so the select-all checkbox and Clear selection button can
+  // re-render this same table without a round-trip to the database.
+  lastShipeditMatches = matches;
+  lastShipeditSearchedVal = searchedVal;
+
   if (!matches.length) {
+    document.getElementById('shipedit-bulk-bar')?.classList.add('hidden');
     results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">No records found for Shipment Number "${safeVal}".</div>`;
     return;
   }
@@ -6351,6 +6406,7 @@ function renderShipmentEditResults(matches, searchedVal) {
       <table class="w-full text-xs whitespace-nowrap">
         <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
           <tr>
+            <th class="p-3 text-center"><input type="checkbox" id="shipedit-select-all" onchange="toggleShipeditSelectAll(this)" class="w-3.5 h-3.5 text-amber-600 bg-slate-900 border-slate-700 rounded"></th>
             <th class="p-3 text-center">Actions</th>
             <th class="p-3 text-left">Sales Order</th>
             <th class="p-3 text-left">Shipment</th>
@@ -6368,6 +6424,7 @@ function renderShipmentEditResults(matches, searchedVal) {
           ${matches.map(r => {
             const so = String(r.so_number || '').replace(/'/g, "\\'");
             return `<tr>
+              <td class="p-3 text-center"><input type="checkbox" ${shipeditSelectedSoNumbers.has(r.so_number) ? 'checked' : ''} onchange="toggleShipeditRowSelect('${so}', this.checked)" class="w-3.5 h-3.5 text-amber-600 bg-slate-900 border-slate-700 rounded"></td>
               <td class="p-3 text-center"><button onclick="openAgingRecordModal('${so}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
               <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
               <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
@@ -6384,8 +6441,38 @@ function renderShipmentEditResults(matches, searchedVal) {
         </tbody>
       </table>
     </div>
-    <p class="text-[10px] text-slate-600">${matches.length} record(s) found for Shipment Number "${safeVal}". Click ✎ Edit to open the full editor — stages, names, staging area, and status all update from there and save straight back to Master Records.</p>
+    <p class="text-[10px] text-slate-600">${matches.length} record(s) found for Shipment Number "${safeVal}". Tick the checkbox to select lines for Mass Edit, or click ✎ Edit to open the full editor for one line — stages, names, staging area, and status all update from there and save straight back to Master Records.</p>
   `;
+  updateShipeditBulkBar();
+}
+
+// --- EDIT SHIPMENT: mass-edit selection helpers — mirrors the equivalent
+// Master Records functions (toggleAgingRowSelect / toggleAgingSelectAll /
+// clearAgingSelection / updateAgingBulkBar) but scoped to this tab's own
+// result set and selection Set, since the two tabs' rows rarely match up.
+function toggleShipeditRowSelect(so_number, checked) {
+  if (checked) shipeditSelectedSoNumbers.add(so_number);
+  else shipeditSelectedSoNumbers.delete(so_number);
+  updateShipeditBulkBar();
+}
+
+function toggleShipeditSelectAll(checkbox) {
+  if (checkbox.checked) lastShipeditMatches.forEach(r => shipeditSelectedSoNumbers.add(r.so_number));
+  else lastShipeditMatches.forEach(r => shipeditSelectedSoNumbers.delete(r.so_number));
+  renderShipmentEditResults(lastShipeditMatches, lastShipeditSearchedVal);
+}
+
+function clearShipeditSelection() {
+  shipeditSelectedSoNumbers.clear();
+  renderShipmentEditResults(lastShipeditMatches, lastShipeditSearchedVal);
+}
+
+function updateShipeditBulkBar() {
+  const count = shipeditSelectedSoNumbers.size;
+  document.getElementById('shipedit-bulk-count').innerText = count;
+  document.getElementById('shipedit-bulk-bar')?.classList.toggle('hidden', count === 0);
+  const allCb = document.getElementById('shipedit-select-all');
+  if (allCb) allCb.checked = lastShipeditMatches.length > 0 && lastShipeditMatches.every(r => shipeditSelectedSoNumbers.has(r.so_number));
 }
 
 function clearShipmentEditSearch() {
@@ -6395,6 +6482,10 @@ function clearShipmentEditSearch() {
   if (results) results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">Enter a Shipment Number above and click Search.</div>`;
   const note = document.getElementById('shipedit-permission-note');
   if (note) note.classList.add('hidden');
+  shipeditSelectedSoNumbers.clear();
+  lastShipeditMatches = [];
+  lastShipeditSearchedVal = '';
+  document.getElementById('shipedit-bulk-bar')?.classList.add('hidden');
   if (input) input.focus();
 }
 
