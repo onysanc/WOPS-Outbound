@@ -2662,7 +2662,12 @@ const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHEC
 // truly renders. Keep these in sync with their row-mapping code (and with
 // the admin edit modals, which read from the already-loaded in-memory rows
 // rather than re-fetching) if a new field gets displayed later.
-const MANIFEST_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,status,pgi_date';
+// NOTE: deliberately omits the legacy per-unit columns (cv/bx/pac/try_qty/pc/kg)
+// — some deployments' `shipments` table doesn't have them, which makes the
+// whole query error out with "column shipments.cv does not exist" (same issue
+// documented on loadAgingData()'s shipQuery below). rowQtySum() already treats
+// any of those fields as 0 when absent, so relying on `quantity` alone here is safe.
+const MANIFEST_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,sold_to_party_name,truck_type,quantity,status,pgi_date';
 // Fields actually read off activity_logs rows used as pause/resume/complete
 // "members" (getGroupMembers / maybeAutoCompletePriorRole) — id for updates,
 // the rest for the completion math, duty/roster checks, and the "who's
