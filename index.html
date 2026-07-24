@@ -2575,7 +2575,7 @@ async function setRole(roleName) {
 }
 
 async function populatePersonnelDatalist(role) {
-  const { data, error } = await supabaseClient.from('personnel').select('*').eq('role', role);
+  const { data, error } = await supabaseClient.from('personnel').select('name').eq('role', role);
   if (error) return console.error(error);
   allPersonnel = data || [];
   const dl = document.getElementById('personnel-datalist');
@@ -2662,6 +2662,18 @@ const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHEC
 // truly renders. Keep these in sync with their row-mapping code (and with
 // the admin edit modals, which read from the already-loaded in-memory rows
 // rather than re-fetching) if a new field gets displayed later.
+const MANIFEST_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,status,pgi_date';
+// Fields actually read off activity_logs rows used as pause/resume/complete
+// "members" (getGroupMembers / maybeAutoCompletePriorRole) — id for updates,
+// the rest for the completion math, duty/roster checks, and the "who's
+// working this" labels in the completion modals.
+const ACTIVITY_LOG_MEMBER_COLUMNS = 'id,personnel_name,role,so_number,status,start_time,end_time,accumulated_seconds';
+// Sticky side panel (Active Lines) — only what the batch cards render plus id
+// for the Pause/Done/Resume/Unassign buttons.
+const SIDE_PANEL_LOG_COLUMNS = 'id,so_number,shipment_no,personnel_name,role,start_time,total_qty,target_hours,status';
+// Bulletin Board (computeBulletinEntries) — productivity/speed/accuracy/idle
+// math plus the shipment_no used for shipment counts and idle-gap labels.
+const BULLETIN_LOG_COLUMNS = 'personnel_name,role,status,start_time,end_time,rendered_minutes,target_hours,total_qty,discrepancy_qty,so_number,shipment_no';
 const PENDING_QUEUE_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,so_amount,status,uploaded_at,pgi_date';
 const EXPORT_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,sold_to_party_name,quantity,cv,bx,pac,try_qty,pc,kg,uploaded_at,record_date';
 const AGING_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,so_amount,status,uploaded_at,record_date,pgi_date';
@@ -2779,7 +2791,7 @@ async function fetchShipmentManifest() {
     currentManifestData = [];
     return renderManifestTable();
   }
-  const { data, error } = await supabaseClient.from('shipments').select('*').ilike('shipment_no', `%${shipmentNo}%`);
+  const { data, error } = await supabaseClient.from('shipments').select(MANIFEST_SHIP_COLUMNS).ilike('shipment_no', `%${shipmentNo}%`);
   if (error) return console.error(error);
 
   // attach latest non-completed (or completed) activity log per so_number+role
@@ -2787,7 +2799,7 @@ async function fetchShipmentManifest() {
   let logs = [];
   if (soNumbers.length) {
     const { data: logData, error: logErr } = await supabaseClient
-      .from('activity_logs').select('*')
+      .from('activity_logs').select('so_number,status,personnel_name,start_time')
       .in('so_number', soNumbers).eq('role', currentRole)
       .order('start_time', { ascending: false });
     if (!logErr) logs = logData || [];
@@ -2808,7 +2820,7 @@ async function fetchShipmentManifest() {
   let prevRoleLogMap = new Map(); // so_number -> most recently started prior-role log, any status
   if (prevRole && soNumbers.length) {
     const { data: prevLogs, error: prevErr } = await supabaseClient
-      .from('activity_logs').select('*')
+      .from('activity_logs').select('so_number,staging_areas,bay')
       .in('so_number', soNumbers).eq('role', prevRole)
       .order('start_time', { ascending: false });
     if (!prevErr) (prevLogs || []).forEach(l => {
@@ -3034,7 +3046,7 @@ function projectedTargetCompletion(startDate, baselineHours) {
 // --- GROUPING: rows dispatched together (same confirmation) share personnel_name +
 // role + start_time, so they act — and complete — as a single unified task.
 async function getGroupMembers(log) {
-  const { data, error } = await supabaseClient.from('activity_logs').select('*')
+  const { data, error } = await supabaseClient.from('activity_logs').select(ACTIVITY_LOG_MEMBER_COLUMNS)
     .eq('personnel_name', log.personnel_name)
     .eq('role', log.role)
     .eq('start_time', log.start_time)
@@ -3514,7 +3526,7 @@ async function maybeAutoCompletePriorRole(completingMembers, priorRole, priorAct
   const soNumbers = [...new Set(completingMembers.map(m => m.so_number).filter(Boolean))];
   if (!soNumbers.length) return true;
 
-  const { data: priorLogs, error } = await supabaseClient.from('activity_logs').select('*')
+  const { data: priorLogs, error } = await supabaseClient.from('activity_logs').select(ACTIVITY_LOG_MEMBER_COLUMNS)
     .in('so_number', soNumbers).eq('role', priorRole).in('status', ['Ongoing', 'Paused']);
   if (error) { console.error(error); return true; }
   if (!priorLogs || !priorLogs.length) return true;
@@ -3660,7 +3672,7 @@ let sidePanelShipMap = {};
 let sidePanelStagingAreaMap = {};
 
 async function refreshSidePanel() {
-  const { data, error } = await supabaseClient.from('activity_logs').select('*')
+  const { data, error } = await supabaseClient.from('activity_logs').select(SIDE_PANEL_LOG_COLUMNS)
     .in('status', ['Ongoing', 'Paused'])
     .order('start_time', { ascending: false });
   if (error) return console.error(error);
@@ -3840,14 +3852,14 @@ function toggleBatchDetail(panelId) {
 }
 
 async function sidePanelPause(id) {
-  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
   const members = await getGroupMembers(log);
   const pauseTime = new Date().toISOString();
   await supabaseClient.from('activity_logs').update({ status: 'Paused', end_time: pauseTime }).in('id', members.map(m => m.id));
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelResume(id) {
-  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
   const members = await getGroupMembers(log);
   const memberIds = members.map(m => m.id);
   if (await personnelHasOngoing(log.personnel_name, log.role, memberIds)) {
@@ -3861,7 +3873,7 @@ async function sidePanelResume(id) {
   await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelComplete(id) {
-  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
   const members = await getGroupMembers(log);
   if (log.role === 'Staging Checker') {
     return openStagingCompleteModal(members);
@@ -3872,7 +3884,7 @@ async function sidePanelComplete(id) {
   return openSimpleCompleteModal(members, log.role);
 }
 async function sidePanelUnassign(id) {
-  const { data: log } = await supabaseClient.from('activity_logs').select('*').eq('id', id).single();
+  const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
   const members = await getGroupMembers(log);
   const msg = members.length > 1
     ? `Unassign this task? This deletes all ${members.length} grouped lines started together.`
@@ -3976,7 +3988,7 @@ async function refreshBulletinBoard() {
   const dateStr = dateInput ? dateInput.value : defaultOperationalDateStr();
   const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
 
-  const { data, error } = await supabaseClient.from('activity_logs').select('*')
+  const { data, error } = await supabaseClient.from('activity_logs').select(BULLETIN_LOG_COLUMNS)
     .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
     .order('personnel_name').order('start_time');
   if (error) return console.error(error);
@@ -4476,12 +4488,14 @@ function applyAnalyticsPeriodLabels(periodType, dateStr) {
 // survive the cutoff undercounts Shipments/Qty/etc. for anyone whose
 // activity landed past the cutoff (this is what was happening above).
 // .order('id') makes each page's boundary stable/deterministic.
-async function fetchActivityLogsPaginated(applyFilters) {
+// `columns` defaults to '*' so any future caller stays safe by default —
+// pass an explicit list (see ANALYTICS_LOG_COLUMNS) to cut egress.
+async function fetchActivityLogsPaginated(applyFilters, columns = '*') {
   const pageSize = 1000;
   let from = 0;
   const all = [];
   while (true) {
-    let q = supabaseClient.from('activity_logs').select('*');
+    let q = supabaseClient.from('activity_logs').select(columns);
     q = applyFilters(q);
     const { data, error } = await q.order('id', { ascending: true }).range(from, from + pageSize - 1);
     if (error) throw error;
@@ -4491,6 +4505,11 @@ async function fetchActivityLogsPaginated(applyFilters) {
   }
   return all;
 }
+
+// Analytics view's dayLogs feeds renderCycleTime, renderDiscrepancyReport,
+// renderLeaderboard, renderAllRoleLeaderboards, and renderBacklogForecast —
+// this is the union of every field any of those five actually read.
+const ANALYTICS_LOG_COLUMNS = 'personnel_name,role,start_time,end_time,so_number,shipment_no,total_qty,rendered_minutes,target_hours,discrepancy_qty,discrepancy_type';
 
 async function refreshAnalyticsView() {
   const dateInput = document.getElementById('analytics-date');
@@ -4511,7 +4530,7 @@ async function refreshAnalyticsView() {
   try {
     dayLogs = await fetchActivityLogsPaginated(q => q
       .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
-      .eq('status', 'Completed'));
+      .eq('status', 'Completed'), ANALYTICS_LOG_COLUMNS);
   } catch (dayErr) { console.error(dayErr); return; }
   const filteredDayLogs = (dayLogs || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
@@ -4553,7 +4572,7 @@ function renderCycleTime(logs) {
 // action), sorted worst-overdue first.
 async function refreshAtRiskBoard() {
   const tbody = document.getElementById('atrisk-rows');
-  const { data, error } = await supabaseClient.from('activity_logs').select('*').in('status', ['Ongoing', 'Paused']);
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,target_hours').in('status', ['Ongoing', 'Paused']);
   if (error) {
     console.error(error);
     tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-400">Failed to load.</td></tr>`;
@@ -6146,7 +6165,9 @@ async function openAgingRecordModal(so_number) {
     document.getElementById('ar-record-date').value = toDatetimeLocalValue(row?.record_date || row?.upload_date);
 
     lineDetails.classList.remove('hidden');
-    const { data: lineLogs, error } = await supabaseClient.from('activity_logs').select('*').eq('so_number', so_number);
+    const { data: lineLogs, error } = await supabaseClient.from('activity_logs')
+      .select('id,role,personnel_name,start_time,end_time,remarks,staging_areas,discrepancy_type,discrepancy_qty')
+      .eq('so_number', so_number);
     if (error) {
       console.error(error);
     } else {
@@ -7567,7 +7588,7 @@ async function deleteStagingArea(id) {
   await refreshStagingAreas();
 }
 async function refreshStagingAreaAdminList() {
-  const { data, error } = await supabaseClient.from('staging_areas').select('*').order('name');
+  const { data, error } = await supabaseClient.from('staging_areas').select('id,name').order('name');
   if (error) return console.error(error);
   const container = document.getElementById('staging-area-list-container');
   container.innerHTML = data.length ? data.map(a => `
@@ -7579,7 +7600,7 @@ async function refreshStagingAreaAdminList() {
 // Keeps the in-memory masterlist (used to render the required multi-select in the
 // Staging Check completion modal) in sync with the DB.
 async function refreshStagingAreas() {
-  const { data, error } = await supabaseClient.from('staging_areas').select('*').order('name');
+  const { data, error } = await supabaseClient.from('staging_areas').select('id,name').order('name');
   if (error) return console.error(error);
   allStagingAreas = data || [];
 }
@@ -7740,7 +7761,7 @@ async function togglePersonnelExcluded(id, excluded) {
 // they hold as Main / Secondary / Third (by role_rank, defaulting untagged rows
 // to Main so older data without role_rank still displays sensibly).
 async function refreshPersonnelAdminList() {
-  const { data, error } = await supabaseClient.from('personnel').select('*').order('name');
+  const { data, error } = await supabaseClient.from('personnel').select('id,name,role,role_rank,excluded,duty_backup').order('name');
   if (error) return console.error(error);
   const container = document.getElementById('personnel-list-container');
 
