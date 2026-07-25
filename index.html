@@ -1411,7 +1411,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="flex items-center justify-between mb-3 gap-1">
         <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400 leading-tight">Pipeline Summary</h2>
         <div class="flex items-center gap-1 shrink-0">
-          <button onclick="refreshPipelineSummary(); refreshKanbanBoard();" title="Refresh" class="text-xs text-slate-500 hover:text-emerald-400 font-semibold">⟳ refresh</button>
+          <button onclick="refreshPipelineSummary();" title="Refresh" class="text-xs text-slate-500 hover:text-emerald-400 font-semibold">⟳ refresh</button>
         </div>
       </div>
       <div id="pipeline-summary-body">
@@ -2425,7 +2425,7 @@ function activateView(name) {
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
-  if (name === 'adminops') { refreshPipelineSummary(); refreshKanbanBoard(); refreshDutyRoster(); renderTabOrderList(); }
+  if (name === 'adminops') { refreshPipelineSummary(); refreshDutyRoster(); renderTabOrderList(); }
   if (name === 'export') loadExportData();
   if (name === 'pending') loadPendingQueue();
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -2690,6 +2690,7 @@ const AGING_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,rout
 const SPEED_PCT_CAP = 150;
 let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // line-level — feeds Backlog Forecast, which measures throughput per completed line
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
+let lastPipelineRawRows = []; // shared with refreshKanbanBoard() so it doesn't re-fetch the same columns
 async function refreshPipelineSummary() {
   // Explicit newest-first order (same reasoning as loadAgingData()/loadPendingQueue()):
   // without an explicit order, a capped fetch has no guarantee it favors
@@ -2697,6 +2698,7 @@ async function refreshPipelineSummary() {
   const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) return console.error(error);
   const rows = data || [];
+  lastPipelineRawRows = rows; // let refreshKanbanBoard() reuse this instead of issuing its own 2,000-row fetch
 
   // No date filter here anymore — every pending shipment on file counts,
   // regardless of which upload batch it came in on.
@@ -8011,8 +8013,18 @@ async function refreshKanbanBoard() {
   const grid = document.getElementById('pipeline-kanban-grid');
   if (!grid) return;
   grid.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-4">Loading board...</p>';
-  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('shipment_no', { ascending: false }).limit(2000);
-  if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-4">Failed to load board: ${error.message}</p>`; return; }
+  // Egress fix: this used to run its own separate 2,000-row query on the exact
+  // same 4 columns refreshPipelineSummary() already just fetched (up to 20,000
+  // rows). Since refreshPipelineSummary() always runs immediately before this
+  // (see the wrapper below), we reuse its cached rows instead of doubling the
+  // network cost on every realtime update / write action / manual refresh.
+  // Falls back to a direct fetch only if called standalone before that cache exists.
+  let data = lastPipelineRawRows;
+  if (!data || !data.length) {
+    const res = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('shipment_no', { ascending: false }).limit(2000);
+    if (res.error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-4">Failed to load board: ${res.error.message}</p>`; return; }
+    data = res.data;
+  }
   const cols = [
     { key: 'PENDING', label: 'Pending to Pick', color: 'text-amber-300' },
     { key: 'PICKED', label: 'Pending to Staged', color: 'text-emerald-300' },
