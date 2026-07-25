@@ -1750,7 +1750,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
         <button onclick="searchShipmentToEdit()" class="text-xs font-bold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white whitespace-nowrap">🔍 Search</button>
         <button onclick="clearShipmentEditSearch()" class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear</button>
       </div>
-      <p id="shipedit-permission-note" class="hidden text-[11px] text-amber-400">You don't have permission to edit Master Records, so results here are view-only. Ask an admin to grant "Edit Master Records" access in User Management.</p>
+      <p id="shipedit-permission-note" class="hidden text-[11px] text-amber-400">You don't have permission to edit shipments here, so results here are view-only. Ask an admin to grant "Edit Shipment" (or "Edit Master Records") access in User Management.</p>
     </div>
 
     <!-- Bulk action bar — appears once 1+ result rows are checked. Reuses the
@@ -2224,7 +2224,8 @@ const EXTRA_PERMISSIONS = [
   { key: 'duty_edit', label: 'Edit Duty Log Times (Admin)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
   { key: 'duty_roster_view', label: 'View Duty Roster (Admin)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
   { key: 'duty_backup_manage', label: 'Mark Personnel as Duty Backup (Personnel & Breaks)', hint: 'Lets this user flag a personnel record as "Backup" — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since backups never formally clock in.' },
-  { key: 'aging_edit', label: 'Edit Master Records (Master Records)', hint: 'Lets this user Add/Edit/Delete Master Records rows and correct any per-stage log — Picker, Staging Checker, Puller, Outbound Checker — from the Master Records tab, without granting full User Management access.' }
+  { key: 'aging_edit', label: 'Edit Master Records (Master Records)', hint: 'Lets this user Add/Edit/Delete Master Records rows and correct any per-stage log — Picker, Staging Checker, Puller, Outbound Checker — from the Master Records tab, without granting full User Management access. Also covers editing from the Edit Shipment tab (a superset of shipedit_edit below).' },
+  { key: 'shipedit_edit', label: 'Edit Shipment (Edit Shipment)', hint: 'Lets this user search for a shipment and edit it from the Edit Shipment tab specifically, using the same editor as Master Records — without granting Master Records\' own editing/drag-move rights. Not needed if the user already has "Edit Master Records", which includes this.' }
 ];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
@@ -2418,7 +2419,7 @@ function activateView(name) {
   if (opsStrip) { opsStrip.classList.toggle('hidden', !showOpsStrip); opsStrip.classList.toggle('flex', showOpsStrip); }
   if (name === 'shipedit') {
     const note = document.getElementById('shipedit-permission-note');
-    if (note) note.classList.toggle('hidden', isAgingAdmin());
+    if (note) note.classList.toggle('hidden', isShipeditAdmin());
     const input = document.getElementById('shipedit-search-input');
     if (input) setTimeout(() => input.focus(), 30);
   }
@@ -5834,6 +5835,18 @@ function isAgingAdmin() {
   return (currentUser.allowed_tabs || []).includes('aging_edit');
 }
 
+// Edit Shipment's own edit gate — independent of Master Records' aging_edit,
+// so an admin can grant editing in one tab without the other. aging_edit
+// still satisfies this too (it's the broader permission: Master Records
+// editing already includes everything Edit Shipment can do), so existing
+// aging_edit users see no change; shipedit_edit is for granting Edit
+// Shipment ONLY, without Master Records' own editing/drag-move rights.
+function isShipeditAdmin() {
+  if (isAgingAdmin()) return true;
+  if (!currentUser) return false;
+  return (currentUser.allowed_tabs || []).includes('shipedit_edit');
+}
+
 function applyAgingAdminUI() {
   const admin = isAgingAdmin();
   document.querySelectorAll('.aging-admin-col').forEach(el => el.classList.toggle('hidden', !admin));
@@ -6034,7 +6047,7 @@ let massEditActiveList = [];
 let massEditActiveSource = 'aging'; // 'aging' | 'shipedit' — decides what to refresh after applying
 
 function openMassEditModal(list, source) {
-  if (!isAgingAdmin()) return;
+  if (source === 'shipedit' ? !isShipeditAdmin() : !isAgingAdmin()) return;
   if (!list.length) return showToast("Select at least one record first.", "error");
   massEditActiveList = list;
   massEditActiveSource = source;
@@ -6380,14 +6393,15 @@ async function saveAgingRecordModal() {
 // edit it via the exact same Add/Edit Master Record modal (openAgingRecordModal
 // / saveAgingRecordModal) used by Master Records — so there's only one editor
 // to keep in sync, and edits made from either tab always agree. Gated behind
-// isAgingAdmin(), same permission as Master Records row editing.
+// isShipeditAdmin() — its own permission, independent of Master Records
+// editing (aging_edit still satisfies it too, as a superset).
 async function searchShipmentToEdit() {
   const input = document.getElementById('shipedit-search-input');
   const results = document.getElementById('shipedit-results');
   const note = document.getElementById('shipedit-permission-note');
   const val = (input.value || '').trim();
 
-  const admin = isAgingAdmin();
+  const admin = isShipeditAdmin();
   if (note) note.classList.toggle('hidden', admin);
   if (!admin) {
     results.innerHTML = `<div class="bg-slate-950 border border-slate-800 rounded-xl p-8 text-center text-slate-500 italic text-xs">You don't have permission to edit shipments here.</div>`;
