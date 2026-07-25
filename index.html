@@ -2695,7 +2695,16 @@ async function refreshPipelineSummary() {
   // Explicit newest-first order (same reasoning as loadAgingData()/loadPendingQueue()):
   // without an explicit order, a capped fetch has no guarantee it favors
   // recent rows once the table exceeds the limit.
-  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('uploaded_at', { ascending: false }).limit(20000);
+  // status.neq.CHECKED excludes fully-completed lines from the wire — CHECKED
+  // is computed into allCounts/shipmentAllCounts below but never read by
+  // anything (Backlog Forecast and the on-screen tiles only use PENDING/
+  // PICKED/STAGED/PULLED), and a CHECKED line can never be the least-advanced
+  // line of a shipment that still has other lines, so dropping these rows
+  // changes nothing on screen while keeping the table growth from old
+  // finished shipments out of every refresh. status.is.null is OR'd in
+  // explicitly because PostgREST's neq is SQL <>, which silently drops NULLs
+  // — those rows must stay in (they resolve to PENDING below).
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').or('status.neq.CHECKED,status.is.null').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) return console.error(error);
   const rows = data || [];
   lastPipelineRawRows = rows; // let refreshKanbanBoard() reuse this instead of issuing its own 2,000-row fetch
@@ -8021,7 +8030,7 @@ async function refreshKanbanBoard() {
   // Falls back to a direct fetch only if called standalone before that cache exists.
   let data = lastPipelineRawRows;
   if (!data || !data.length) {
-    const res = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').order('shipment_no', { ascending: false }).limit(2000);
+    const res = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').or('status.neq.CHECKED,status.is.null').order('shipment_no', { ascending: false }).limit(2000);
     if (res.error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-4">Failed to load board: ${res.error.message}</p>`; return; }
     data = res.data;
   }
@@ -8184,7 +8193,11 @@ async function renderLeaderboardChart(dateStr) {
 }
 
 async function renderTruckTypeChart() {
-  const { data, error } = await supabaseClient.from('shipments').select('truck_type,quantity');
+  // Previously uncapped — fetched every row in `shipments` on every Analytics
+  // tab load. Capped and ordered newest-first, same pattern used for the
+  // other whole-table pulls in this file (refreshPipelineSummary, etc.), so
+  // this can't balloon in cost as the table grows.
+  const { data, error } = await supabaseClient.from('shipments').select('truck_type,quantity').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) return;
   const byTruck = {};
   (data || []).forEach(row => { const t = row.truck_type || 'Unspecified'; byTruck[t] = (byTruck[t] || 0) + (parseFloat(row.quantity) || 0); });
