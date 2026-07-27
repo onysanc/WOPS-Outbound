@@ -1960,6 +1960,7 @@ function activateView(name) {
     const input = document.getElementById('shipedit-search-input');
     if (input) setTimeout(() => input.focus(), 30);
   }
+  if (name === 'workbench') refreshSidePanel();
   if (name === 'bulletin') refreshBulletinBoard();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
   if (name === 'adminops') { refreshPipelineSummary(); refreshDutyRoster(); renderTabOrderList(); }
@@ -2225,62 +2226,29 @@ let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED:
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
 let lastPipelineRawRows = []; // raw shipment rows, kept for other consumers (e.g. Backlog Forecast)
 async function refreshPipelineSummary() {
-  // Explicit newest-first order (same reasoning as loadAgingData()):
-  // without an explicit order, a capped fetch has no guarantee it favors
-  // recent rows once the table exceeds the limit.
-  // status.neq.CHECKED excludes fully-completed lines from the wire — CHECKED
-  // is computed into allCounts/shipmentAllCounts below but never read by
-  // anything (Backlog Forecast and the on-screen tiles only use PENDING/
-  // PICKED/STAGED/PULLED), and a CHECKED line can never be the least-advanced
-  // line of a shipment that still has other lines, so dropping these rows
-  // changes nothing on screen while keeping the table growth from old
-  // finished shipments out of every refresh. status.is.null is OR'd in
-  // explicitly because PostgREST's neq is SQL <>, which silently drops NULLs
-  // — those rows must stay in (they resolve to PENDING below).
-  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').or('status.neq.CHECKED,status.is.null').order('uploaded_at', { ascending: false }).limit(20000);
+  // Was: full `shipments` select (up to 20,000 rows, every column we needed
+  // times every row) reduced client-side on every realtime change, times
+  // every connected tab. That's the single biggest egress source in the app.
+  // Now: the exact same reduction (effectiveStatusOf + least-advanced-line
+  // per shipment) runs inside Postgres via get_pipeline_summary(), and the
+  // wire only carries ~10 numbers back. See get_pipeline_summary_migration.sql.
+  //
+  // lastPipelineRawRows is no longer populated — grep found no reader of it
+  // anywhere else in the app (the "Backlog Forecast" comment referencing it
+  // predates Backlog Forecast's removal), so it's kept as an empty array
+  // only so nothing that happens to reference it blows up.
+  lastPipelineRawRows = [];
+
+  const { data, error } = await supabaseClient.rpc('get_pipeline_summary');
   if (error) return console.error(error);
-  const rows = data || [];
-  lastPipelineRawRows = rows;
 
-  // No date filter here anymore — every pending shipment on file counts,
-  // regardless of which upload batch it came in on.
-  const effectiveStatusOf = row => {
-    let effective = row.status;
-    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
-      effective = 'PICKED';
-    }
-    if (!effective || PIPELINE_STAGE_ORDER[effective] === undefined) effective = 'PENDING';
-    return effective;
-  };
-
-  // --- Line-level counts (unchanged) — still what Backlog Forecast needs.
-  const allCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  rows.forEach(row => { allCounts[effectiveStatusOf(row)]++; });
-  lastPipelineCounts = allCounts;
-
-  // --- Shipment-level counts — one entry per Shipment No., taking the
-  // least-advanced line's stage and the earliest upload date on file for it.
-  const byShipment = new Map();
-  rows.forEach(row => {
-    const shipmentNo = (row.shipment_no || '').trim();
-    if (!shipmentNo) return; // no shipment assigned yet — not a shipment to count here
-    const effective = effectiveStatusOf(row);
-    const existing = byShipment.get(shipmentNo);
-    if (!existing) {
-      byShipment.set(shipmentNo, { effective });
-    } else {
-      if (PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing.effective]) existing.effective = effective;
-    }
-  });
-
-  // Every pending shipment on file, across every upload batch — no date filter.
-  const shipmentAllCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  byShipment.forEach(({ effective }) => { shipmentAllCounts[effective]++; });
-  lastPipelineShipmentCounts = shipmentAllCounts;
+  const empty = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  lastPipelineCounts = (data && data.lineCounts) ? data.lineCounts : { ...empty };
+  lastPipelineShipmentCounts = (data && data.shipmentCounts) ? data.shipmentCounts : { ...empty };
 
   // Pipeline Summary panel and Floor Status strip UI have been removed —
-  // lastPipelineCounts / lastPipelineShipmentCounts / lastPipelineRawRows
-  // above are still populated for Backlog Forecast and other consumers.
+  // lastPipelineCounts / lastPipelineShipmentCounts above are still
+  // populated for Backlog Forecast and other consumers.
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
@@ -2604,8 +2572,7 @@ async function startRow(i) {
   if (error) return showToast("Could not start row: " + error.message, "error");
   clearOperatorInput();
   clearShipmentInput();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 async function pauseRow(i) {
@@ -2617,8 +2584,7 @@ async function pauseRow(i) {
     .in('id', members.map(m => m.id));
   if (error) return showToast("Could not pause: " + error.message, "error");
   await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 async function resumeRow(i) {
@@ -2638,8 +2604,7 @@ async function resumeRow(i) {
     if (error) return showToast("Could not resume: " + error.message, "error");
   }
   await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 async function unassignRow(i) {
@@ -2652,8 +2617,7 @@ async function unassignRow(i) {
   const { error } = await supabaseClient.from('activity_logs').delete().in('id', members.map(m => m.id));
   if (error) return showToast("Could not unassign: " + error.message, "error");
   await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 async function completeRow(i) {
@@ -2931,8 +2895,7 @@ async function confirmStagingComplete() {
   showToast(choices.length ? `Staging check completed — ${choices.join(', ')} (${qty}) logged.` : "Staging check completed.", "success");
 
   await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 // --- OUTBOUND CHECK COMPLETION MODAL ---
@@ -3024,8 +2987,7 @@ async function confirmOutboundComplete() {
   showToast(choices.length ? `Outbound check completed — ${choices.join(', ')} (${qty}) logged.` : "Outbound check completed.", "success");
 
   await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 // Checks for any still-open (Ongoing/Paused) log(s) belonging to the PRIOR
@@ -3138,8 +3100,7 @@ async function confirmSimpleComplete() {
   showToast("Task completed.", "success");
 
   await fetchShipmentManifest();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 async function commitJobTransaction() {
@@ -3181,8 +3142,7 @@ async function commitJobTransaction() {
   document.getElementById('target-summary-card').classList.add('hidden');
   clearOperatorInput();
   clearShipmentInput();
-  await refreshBulletinBoard();
-  await refreshSidePanel();
+  await refreshLiveViews({ manifest: false });
 }
 
 // --- STICKY SIDE PANEL ---
@@ -3375,7 +3335,7 @@ async function sidePanelPause(id) {
   const members = await getGroupMembers(log);
   const pauseTime = new Date().toISOString();
   await supabaseClient.from('activity_logs').update({ status: 'Paused', end_time: pauseTime }).in('id', members.map(m => m.id));
-  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: true });
 }
 async function sidePanelResume(id) {
   const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
@@ -3389,7 +3349,7 @@ async function sidePanelResume(id) {
     const pauseSeconds = Math.max(0, Math.floor((new Date() - new Date(m.end_time)) / 1000));
     await supabaseClient.from('activity_logs').update({ status: 'Ongoing', end_time: null, accumulated_seconds: (m.accumulated_seconds || 0) + pauseSeconds }).eq('id', m.id);
   }
-  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: true });
 }
 async function sidePanelComplete(id) {
   const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
@@ -3410,7 +3370,7 @@ async function sidePanelUnassign(id) {
     : "Unassign this line?";
   if (!(await showConfirm(msg))) return;
   await supabaseClient.from('activity_logs').delete().in('id', members.map(m => m.id));
-  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: true });
 }
 
 // --- FLOOR DISPATCH BULLETIN (read-only broadcast, realtime) ---
@@ -3948,17 +3908,49 @@ function makeEgressGuardedRefresh(fn, { debounceMs = 800, minGapMs = 4000 } = {}
   };
 }
 
+// Which tab is actually on screen right now — used so a realtime change
+// only pays for a refetch of the data someone can currently see. Every view
+// still catches itself up the moment it becomes active (see activateView()),
+// so nothing goes stale, it just doesn't refetch invisible tabs on every
+// single row change from every connected client.
+function getCurrentViewName() {
+  return document.querySelector('.view.active')?.id?.replace('view-', '') || null;
+}
+
+// Used after user actions (dispatch confirm/pause/complete/edit/delete, etc.)
+// in place of the old unconditional "refresh side panel + bulletin board
+// (+ pipeline summary)" pattern that ran after nearly every action regardless
+// of which tab the action actually happened on. Side panel and Pipeline
+// Summary are hidden outside Workbench/Admin Ops respectively, and Bulletin
+// Board's whole-day query is wasted work when Performance Summary isn't on
+// screen. Each tab still re-syncs itself the moment it's switched into (see
+// activateView()), so nothing goes stale — this just stops paying to refetch
+// tabs nobody's looking at.
+async function refreshLiveViews({ manifest = false } = {}) {
+  const view = getCurrentViewName();
+  if (view === 'workbench') {
+    await refreshSidePanel();
+    if (manifest) await fetchShipmentManifest();
+  }
+  if (view === 'bulletin') await refreshBulletinBoard();
+  if (view === 'adminops') await refreshPipelineSummary();
+}
+
 const guardedActivityLogsRefresh = makeEgressGuardedRefresh(() => {
-  refreshBulletinBoard();
-  refreshSidePanel();
-  // Keep the on-screen manifest itself realtime too — without this, a status
-  // change made by another role/user (or in another tab) only appeared after
-  // manually re-typing the shipment number.
-  if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+  const view = getCurrentViewName();
+  if (view === 'bulletin') refreshBulletinBoard();
+  if (view === 'workbench') {
+    refreshSidePanel();
+    // Keep the on-screen manifest itself realtime too — without this, a status
+    // change made by another role/user (or in another tab) only appeared after
+    // manually re-typing the shipment number.
+    if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+  }
 });
 const guardedShipmentsRefresh = makeEgressGuardedRefresh(() => {
-  refreshPipelineSummary();
-  if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+  const view = getCurrentViewName();
+  if (view === 'adminops') refreshPipelineSummary();
+  if (view === 'workbench' && document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
 });
 
 function subscribeRealtime() {
@@ -4458,8 +4450,7 @@ async function deleteSelectedAgingRecords() {
   showToast(`${list.length} record(s) and all related activity logs deleted.`, "success");
   await loadAgingData();
   await refreshPipelineSummary();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 async function deleteAgingRecord(so_number) {
@@ -4479,8 +4470,7 @@ async function deleteAgingRecord(so_number) {
   showToast(`Record "${so_number}" and all related activity logs deleted.`, "success");
   await loadAgingData();
   await refreshPipelineSummary();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 // --- MASTER RECORDS / EDIT SHIPMENT: MASS EDIT (ADMIN ONLY) ---
@@ -5164,8 +5154,7 @@ async function moveAgingPersonnelRecord(sourceSo, targetSo, role, logId) {
   showToast(`Moved ${role} record from "${sourceSo}" to "${targetSo}". Related records for both S.O.s have been refreshed.`, "success");
   await loadAgingData();
   await refreshPipelineSummary();
-  await refreshSidePanel();
-  await refreshBulletinBoard();
+  await refreshLiveViews({ manifest: false });
 }
 
 function renderAgingTable() {
