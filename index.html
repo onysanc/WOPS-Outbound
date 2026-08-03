@@ -1961,7 +1961,7 @@ function activateView(name) {
     if (input) setTimeout(() => input.focus(), 30);
   }
   if (name === 'workbench') refreshSidePanel();
-  if (name === 'bulletin') refreshBulletinBoard();
+  if (name === 'bulletin') { refreshBulletinBoard(); startBulletinSlowPoll(); } else { stopBulletinSlowPoll(); }
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
   if (name === 'adminops') { refreshPipelineSummary(); refreshDutyRoster(); renderTabOrderList(); }
   if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
@@ -3936,9 +3936,16 @@ async function refreshLiveViews({ manifest = false } = {}) {
   if (view === 'adminops') await refreshPipelineSummary();
 }
 
+// EGRESS FIX: Bulletin Board used to sit on this realtime chain, meaning
+// ANY activity_logs write from ANY personnel/role anywhere in the warehouse
+// (not just this user) re-pulled the entire day's BULLETIN_LOG_COLUMNS
+// window — a payload that only grows across the shift. On a wall-mounted
+// board that's a refetch every ~4-5s all day (the old min-gap floor), times
+// every connected client. A leaderboard doesn't need sub-5-second freshness,
+// so it's been moved to its own slow poll — see startBulletinSlowPoll()
+// below. It is intentionally NOT triggered from postgres_changes anymore.
 const guardedActivityLogsRefresh = makeEgressGuardedRefresh(() => {
   const view = getCurrentViewName();
-  if (view === 'bulletin') refreshBulletinBoard();
   if (view === 'workbench') {
     refreshSidePanel();
     // Keep the on-screen manifest itself realtime too — without this, a status
@@ -3946,12 +3953,27 @@ const guardedActivityLogsRefresh = makeEgressGuardedRefresh(() => {
     // manually re-typing the shipment number.
     if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
   }
-});
+}, { debounceMs: 1500, minGapMs: 15000 });
 const guardedShipmentsRefresh = makeEgressGuardedRefresh(() => {
   const view = getCurrentViewName();
   if (view === 'adminops') refreshPipelineSummary();
   if (view === 'workbench' && document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
-});
+}, { debounceMs: 1500, minGapMs: 15000 });
+
+// Bulletin Board slow poll — replaces the realtime trigger above. Refreshes
+// only while the Bulletin view is actually on screen, every 45s. This is the
+// single biggest lever here: it turns "refetch on every write company-wide,
+// forever" into "refetch ~80x/hour max, and only when someone's looking."
+let bulletinSlowPollTimer = null;
+function startBulletinSlowPoll() {
+  stopBulletinSlowPoll();
+  bulletinSlowPollTimer = setInterval(() => {
+    if (getCurrentViewName() === 'bulletin') refreshBulletinBoard();
+  }, 45000);
+}
+function stopBulletinSlowPoll() {
+  if (bulletinSlowPollTimer) { clearInterval(bulletinSlowPollTimer); bulletinSlowPollTimer = null; }
+}
 
 function subscribeRealtime() {
   supabaseClient.channel('activity_logs-live')
