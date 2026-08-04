@@ -6012,7 +6012,7 @@ async function deleteBreakRule(id) {
   await refreshConfiguredBreaks();
 }
 async function refreshConfiguredBreaks() {
-  const { data, error } = await supabaseClient.from('break_settings').select('*');
+  const { data, error } = await supabaseClient.from('break_settings').select('id,break_name,start_time,end_time,duration_minutes');
   if (error) return console.error(error);
   configuredBreaks = data || [];
   const container = document.getElementById('break-list-container');
@@ -6485,7 +6485,7 @@ async function dutyGuardMessage(name) {
 
 // --- ADMIN: fixed AM/PM (or however many) duty shift schedules ---
 async function loadDutyShiftSchedules() {
-  const { data, error } = await supabaseClient.from('duty_shift_schedules').select('*').order('start_time');
+  const { data, error } = await supabaseClient.from('duty_shift_schedules').select('id,shift_name,start_time,end_time').order('start_time');
   if (error) {
     if (error.code === '42P01' || /does not exist/i.test(error.message || '')) dutyShiftTableMissing = true;
     console.error('duty_shift_schedules fetch failed:', error.message);
