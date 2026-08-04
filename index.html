@@ -1565,8 +1565,8 @@ const EXTRA_PERMISSIONS = [
   { key: 'duty_edit', label: 'Edit Duty Log Times (Admin)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
   { key: 'duty_roster_view', label: 'View Duty Roster (Admin)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
   { key: 'duty_backup_manage', label: 'Mark Personnel as Duty Backup (Personnel & Breaks)', hint: 'Lets this user flag a personnel record as "Backup" — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since backups never formally clock in.' },
-  { key: 'aging_edit', label: 'Edit Master Records (Master Records)', hint: 'Lets this user Add/Edit/Delete Master Records rows and correct any per-stage log — Picker, Staging Checker, Puller, Outbound Checker — from the Master Records tab, without granting full User Management access. Also covers editing from the Edit Shipment tab (a superset of shipedit_edit below).' },
-  { key: 'shipedit_edit', label: 'Edit Shipment (Edit Shipment)', hint: 'Lets this user search for a shipment and edit it from the Edit Shipment tab specifically, using the same editor as Master Records — without granting Master Records\' own editing/drag-move rights. Not needed if the user already has "Edit Master Records", which includes this.' }
+  { key: 'aging_edit', label: 'Edit Master Records (legacy — no tab left)', hint: 'Master Records tab was removed, so this permission no longer has any visible effect and no longer grants Edit Shipment access either. Kept only so nothing errors for accounts that still have it. Use "Edit Shipment" below instead.' },
+  { key: 'shipedit_edit', label: 'Edit Shipment (Edit Shipment)', hint: 'Lets this user search for a shipment and edit it from the Edit Shipment tab — Picker, Staging Checker, Puller, Outbound Checker, staging area, and status. This is now the only special-permission gate for Edit Shipment (independent of any other permission).' }
 ];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
@@ -4079,14 +4079,10 @@ function fmtRenderedMinutes(mins) {
   return `${fmtNum(mins)}m`;
 }
 
-// --- MASTER RECORDS: ADMIN-ONLY ROW CONTROLS ---
-// "Admin" here means: the literal "admin" account, any user granted the
-// User Management tab, OR any user explicitly granted the 'aging_edit'
-// special permission from User Management. That third case is what lets
-// an admin hand Master Records editing (all stages — Picker, Staging
-// Checker, Puller, Outbound Checker, via the same modal) to a specific
-// account without opening up full User Management to them. Same
-// convention as userCanEditDuty() above.
+// --- MASTER RECORDS: ADMIN-ONLY ROW CONTROLS (dead code path — Master
+// Records tab was removed; kept only because it's still referenced by
+// unreachable render/drag functions from that tab. Not used by Edit
+// Shipment anymore — see isShipeditAdmin() below, which is independent.) ---
 function isAgingAdmin() {
   if (!currentUser) return false;
   if (isAdminAccount()) return true;
@@ -4094,15 +4090,18 @@ function isAgingAdmin() {
   return (currentUser.allowed_tabs || []).includes('aging_edit');
 }
 
-// Edit Shipment's own edit gate — independent of Master Records' aging_edit,
-// so an admin can grant editing in one tab without the other. aging_edit
-// still satisfies this too (it's the broader permission: Master Records
-// editing already includes everything Edit Shipment can do), so existing
-// aging_edit users see no change; shipedit_edit is for granting Edit
-// Shipment ONLY, without Master Records' own editing/drag-move rights.
+// Edit Shipment's own edit gate — fully independent of Master Records'
+// aging_edit (Master Records tab no longer exists). Grants access to: the
+// literal "admin" account, any user granted the User Management tab, or
+// any user explicitly granted the 'shipedit_edit' special permission.
+// NOTE: accounts that previously relied on 'aging_edit' alone (without
+// 'shipedit_edit') for Edit Shipment access will need 'shipedit_edit'
+// added in User Management — the old aging_edit-as-superset behavior is
+// gone now that the two tabs are decoupled.
 function isShipeditAdmin() {
-  if (isAgingAdmin()) return true;
   if (!currentUser) return false;
+  if (isAdminAccount()) return true;
+  if (userCanAccess('usermgmt')) return true;
   return (currentUser.allowed_tabs || []).includes('shipedit_edit');
 }
 
