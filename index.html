@@ -1471,11 +1471,14 @@ async function startApp() {
   await loadDutyShiftSchedules();
   await refreshStagingAreas();
   await refreshExcludedPersonnel();
-  await refreshBulletinBoard();
   await refreshShipmentDatalist();
   await refreshPipelineSummary();
   initManualDispatchRouteOptions();
   subscribeRealtime();
+  // Bulletin/Performance Summary: strictly a 4-hour poll from app start, not
+  // re-triggered by tab switches and not refreshed eagerly here — the board
+  // stays empty/unpopulated until the first tick. See startBulletinSlowPoll().
+  startBulletinSlowPoll();
 }
 
 // --- LOGIN / USER MANAGEMENT ---
@@ -1749,7 +1752,10 @@ function activateView(name) {
     if (input) setTimeout(() => input.focus(), 30);
   }
   if (name === 'workbench') refreshSidePanel();
-  if (name === 'bulletin') { refreshBulletinBoard(); startBulletinSlowPoll(); } else { stopBulletinSlowPoll(); }
+  // Bulletin/Performance Summary intentionally does NOT refetch on tab entry —
+  // it is refreshed ONLY by the strict 4-hour interval started once in
+  // startApp() (see startBulletinSlowPoll). Switching into this tab just shows
+  // whatever was last pulled, even if that's up to 4 hours old.
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
   if (name === 'usermgmt') loadUsers();
 }
@@ -3746,16 +3752,21 @@ const guardedShipmentsRefresh = makeEgressGuardedRefresh(() => {
   if (view === 'workbench' && document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
 }, { debounceMs: 1500, minGapMs: 15000 });
 
-// Bulletin Board slow poll — replaces the realtime trigger above. Refreshes
-// only while the Bulletin view is actually on screen, every 45s. This is the
-// single biggest lever here: it turns "refetch on every write company-wide,
-// forever" into "refetch ~80x/hour max, and only when someone's looking."
+// Bulletin Board slow poll — replaces the realtime trigger above. Strict
+// 4-hour interval, started once from startApp() and never reset or
+// re-triggered by tab switches. On each tick it only actually refetches if
+// the Bulletin view happens to be the one on screen at that moment (so a
+// tab left in the background all day still only costs one fetch every 4h);
+// otherwise that tick is skipped entirely, it is NOT deferred/caught up.
+// Switching into the tab does NOT trigger a fetch — see activateView().
+// The board is empty until the first 4-hour tick fires after app start.
 let bulletinSlowPollTimer = null;
+const BULLETIN_SLOW_POLL_MS = 4 * 60 * 60 * 1000; // 4 hours
 function startBulletinSlowPoll() {
   stopBulletinSlowPoll();
   bulletinSlowPollTimer = setInterval(() => {
     if (getCurrentViewName() === 'bulletin') refreshBulletinBoard();
-  }, 45000);
+  }, BULLETIN_SLOW_POLL_MS);
 }
 function stopBulletinSlowPoll() {
   if (bulletinSlowPollTimer) { clearInterval(bulletinSlowPollTimer); bulletinSlowPollTimer = null; }
