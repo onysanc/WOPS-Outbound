@@ -697,7 +697,7 @@
         </div>
         <div class="flex-1 min-w-[160px]">
           <div class="flex gap-1.5">
-            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="📦 Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="📦 EXACT Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
             <button onclick="openScannerModal()" title="Scan barcode / QR" class="flex-shrink-0 px-3 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-emerald-500 hover:text-emerald-400 transition text-sm">▦</button>
           </div>
           <datalist id="shipment-datalist"></datalist>
@@ -2069,7 +2069,17 @@ async function fetchShipmentManifest() {
     currentManifestData = [];
     return renderManifestTable();
   }
-  const { data, error } = await supabaseClient.from('shipments').select(MANIFEST_SHIP_COLUMNS).ilike('shipment_no', `%${shipmentNo}%`);
+  // EXACT match only — same reasoning as Edit Shipment's search. Workbench
+  // already requires WORKBENCH_SHIPMENT_MIN_CHARS (8) characters before this
+  // even fires, but a partial ilike match with no row cap could still pull
+  // an unbounded number of unrelated shipments for a single keystroke, and
+  // this query re-runs on every realtime write from ANY of the ~50
+  // connected personnel while a tab has a shipment loaded — so its cost is
+  // multiplied by every connected client, not just the person searching.
+  // .limit() stays on as a hard safety cap regardless (a real shipment can
+  // have multiple SO lines, so exact match can still return more than one row).
+  const { data, error } = await supabaseClient.from('shipments').select(MANIFEST_SHIP_COLUMNS)
+    .eq('shipment_no', shipmentNo).limit(50);
   if (error) return console.error(error);
 
   // attach latest non-completed (or completed) activity log per so_number+role
