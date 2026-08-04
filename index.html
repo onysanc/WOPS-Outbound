@@ -657,8 +657,6 @@
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="adminops" onclick="setView('adminops')">Admin</button>
-        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="shipedit" onclick="setView('shipedit')">Edit Shipment</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
@@ -1082,207 +1080,6 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
    </div>
   </section>
 
-  <!-- ================= ADMIN VIEW ================= -->
-  <!-- Houses the Pipeline Summary (relocated here from the Workbench's left
-       rail, now full-width and always expanded — no minimize control) and
-       the Duty Roster (relocated here from the bottom of the Workbench). -->
-  <section id="view-adminops" class="view space-y-4">
-
-    <!-- Tab Order: lets the literal "admin" account rearrange the nav tab sequence -->
-    <div id="tab-order-card" class="hidden collapsed bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
-      <div class="flex items-center justify-between gap-2 cursor-pointer" onclick="toggleTabOrderCollapse()">
-        <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="tab-order-chevron" class="inline-block transition-transform text-slate-500">▸</span>🧩 Tab Order</h2>
-          <p class="text-[11px] text-slate-500 mt-0.5">Rearrange the top navigation tabs using ↑ / ↓. Applies immediately to this browser.</p>
-        </div>
-        <div class="flex items-center gap-3 shrink-0" onclick="event.stopPropagation()">
-          <button onclick="resetTabOrder()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">Reset to default</button>
-          <button onclick="toggleTabOrderCollapse()" id="tab-order-toggle-btn" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">+ expand</button>
-        </div>
-      </div>
-      <div id="tab-order-list-wrap">
-        <div id="tab-order-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5"></div>
-      </div>
-    </div>
-
-    <!-- Duty Roster: report-for-duty / break / idle / productivity monitor for all personnel -->
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 collapsed" id="duty-roster-card">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2 cursor-pointer" onclick="toggleDutyRosterCollapse()">
-        <div>
-          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▸</span>Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
-          <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Personnel flagged as Backup under Personnel &amp; Breaks don't formally clock in and are left off this table.</p>
-        </div>
-        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0" onclick="event.stopPropagation()">
-          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
-          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
-          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
-          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
-          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">+ expand</button>
-        </div>
-      </div>
-      <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
-        <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-900/60 border-b border-slate-800" onclick="event.stopPropagation()">
-          <input type="text" id="duty-roster-search" placeholder="🔎 Search personnel…" oninput="dutyRosterSetSearch(this.value)"
-                 class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 w-40" />
-          <div class="flex items-center gap-1" id="duty-roster-status-pills">
-            <span class="text-[10px] text-slate-500 mr-0.5">Status:</span>
-            <button type="button" class="duty-filter-pill active" data-status="all" onclick="dutyRosterSetFilterStatus('all')">All</button>
-            <button type="button" class="duty-filter-pill" data-status="on" onclick="dutyRosterSetFilterStatus('on')">On Duty</button>
-            <button type="button" class="duty-filter-pill" data-status="break" onclick="dutyRosterSetFilterStatus('break')">On Break</button>
-            <button type="button" class="duty-filter-pill" data-status="off" onclick="dutyRosterSetFilterStatus('off')">Off Duty</button>
-          </div>
-          <div class="flex items-center gap-1" id="duty-roster-task-pills">
-            <span class="text-[10px] text-slate-500 mr-0.5">Task:</span>
-            <button type="button" class="duty-filter-pill active" data-task="all" onclick="dutyRosterSetFilterTask('all')">All</button>
-            <button type="button" class="duty-filter-pill" data-task="idle" onclick="dutyRosterSetFilterTask('idle')">Idle</button>
-            <button type="button" class="duty-filter-pill" data-task="busy" onclick="dutyRosterSetFilterTask('busy')">Non-Idle</button>
-          </div>
-          <select id="duty-roster-role-filter" onchange="dutyRosterSetFilterRole(this.value)"
-                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
-            <option value="all">All Roles</option>
-          </select>
-          <button onclick="dutyRosterClearFilters()" class="text-[10px] text-slate-500 hover:text-emerald-400">Clear filters</button>
-          <span id="duty-roster-filter-count" class="text-[10px] text-slate-500 ml-auto"></span>
-        </div>
-        <table class="w-full text-left text-xs border-collapse">
-          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-            <tr>
-              <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
-              <th class="p-2">Primary Role</th>
-              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
-              <th class="p-2 text-center" title="Whatever this person is currently working on, live from Activity Logs. Blank/Idle means they're on duty with nothing Ongoing right now.">Ongoing Task</th>
-              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedIn" data-label="Time Reported In" onclick="dutyRosterSort('reportedIn')">Time Reported In</th>
-              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedOut" data-label="Time Reported Out" onclick="dutyRosterSort('reportedOut')">Time Reported Out</th>
-              <th class="p-2 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="duty-roster-body">
-            <tr><td colspan="7" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- ================= MASTER RECORDS ================= -->
-  <section id="view-aging" class="view space-y-4">
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-bold text-slate-100">🗂️ Master Records</h2>
-        <p class="text-xs text-slate-400">All Sales Order records across every stage. Use the <span class="text-slate-300 font-semibold">Status</span> filter to show only <span class="text-slate-300 font-semibold">PENDING</span> (no movement yet), or leave it on <span class="text-slate-300 font-semibold">All Records</span> to see everything. Aging = days since the record was uploaded.</p>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <input type="text" id="aging-search" oninput="debouncedAgingSearch()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
-        <button onclick="loadAgingData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
-        <button onclick="exportTableToCSVGeneric('aging-table', 'master-records.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
-        <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
-        <button id="aging-export-all-btn" onclick="exportAgingAllToExcel()" title="Exports every record in the database, ignoring the search/status/customer/truck/date filters above and the 20,000-row browse cap" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export All Data (XLSX)</button>
-        <span class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg pl-2 pr-1 py-1">
-          <input type="month" id="aging-export-month" title="Pick a month, then click Export by Month" class="bg-transparent text-xs focus:outline-none">
-          <button id="aging-export-month-btn" onclick="exportAgingByMonthToExcel()" title="Exports every record whose Record Date falls in the selected month, ignoring the filters above and the 20,000-row browse cap" class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 whitespace-nowrap">⬇ Export by Month</button>
-        </span>
-        <button onclick="exportSectionToPDF('view-aging')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
-        <button id="aging-add-btn" onclick="openAgingRecordModal(null)" class="hidden text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">+ Add Record</button>
-      </div>
-    </div>
-
-    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-wrap items-end gap-3">
-      <div>
-        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Status</label>
-        <select id="aging-status-filter" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[140px]">
-          <option value="ALL">All Records</option>
-          <option value="PENDING">Pending</option>
-          <option value="PICKED">Picked</option>
-          <option value="STAGED">Staged</option>
-          <option value="PULLED">Pulled</option>
-          <option value="CHECKED">Checked</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Customer</label>
-        <select id="aging-customer-filter" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[160px]">
-          <option value="">All Customers</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Truck Type</label>
-        <select id="aging-truck-filter" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[120px]">
-          <option value="">All Truck Types</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date From</label>
-        <input type="date" id="aging-date-from" onchange="loadAgingData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-      </div>
-      <div>
-        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date To</label>
-        <input type="date" id="aging-date-to" onchange="loadAgingData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
-      </div>
-      <div class="min-w-[240px] max-w-[420px] flex-1">
-        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Paste References (SO / Shipment / OBD — one per line or comma-separated)</label>
-        <textarea id="aging-multiref-filter" onchange="renderAgingTable()" rows="1" placeholder="Paste multiple reference numbers here…" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-full focus:outline-none focus:border-emerald-500 resize-y"></textarea>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <button onclick="document.getElementById('aging-multiref-filter').value=''; renderAgingTable();" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear refs</button>
-        <button onclick="clearAgingFilters()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear filters</button>
-      </div>
-      <div class="flex-1"></div>
-      <div class="flex gap-4 text-[11px]">
-        <div><span class="text-slate-500">Records:</span> <span id="aging-total-count" class="text-slate-200 font-bold">0</span></div>
-        <div><span class="text-slate-500">Total Qty:</span> <span id="aging-total-qty" class="text-amber-400 font-bold">0</span></div>
-        <div><span class="text-slate-500">Oldest:</span> <span id="aging-oldest" class="text-rose-400 font-bold">—</span></div>
-      </div>
-    </div>
-
-    <!-- Bulk action bar — Admin only, appears once 1+ rows are checked -->
-    <div id="aging-bulk-bar" class="hidden bg-rose-950/40 border border-rose-800/50 rounded-xl p-3 flex items-center justify-between gap-3">
-      <p class="text-xs text-rose-200"><span id="aging-bulk-count" class="font-bold">0</span> record(s) selected</p>
-      <div class="flex gap-2">
-        <button onclick="clearAgingSelection()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Clear selection</button>
-        <button onclick="openAgingMassEditModal()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">✎ Mass Edit</button>
-        <button onclick="deleteSelectedAgingRecords()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white">🗑 Delete Selected</button>
-      </div>
-    </div>
-
-    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
-      <table id="aging-table" class="w-full text-xs whitespace-nowrap">
-        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
-          <tr>
-            <th rowspan="2" class="p-3 text-left aging-admin-col hidden align-middle"><input type="checkbox" id="aging-select-all" onchange="toggleAgingSelectAll(this)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></th>
-            <th rowspan="2" class="p-3 text-center aging-admin-col hidden align-middle">Actions</th>
-            <th rowspan="2" class="p-3 text-left align-middle">Sales Order</th>
-            <th rowspan="2" class="p-3 text-left align-middle">Shipment</th>
-            <th rowspan="2" class="p-3 text-center align-middle">Upload Date</th>
-            <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
-            <th rowspan="2" class="p-3 text-left align-middle">OBD</th>
-            <th rowspan="2" class="p-3 text-left align-middle">Customer</th>
-            <th rowspan="2" class="p-3 text-left align-middle">Truck Type</th>
-            <th rowspan="2" class="p-3 text-right align-middle">Qty</th>
-            <th rowspan="2" class="p-3 text-center align-middle">Status</th>
-            <th rowspan="2" class="p-3 text-center align-middle">Aging (Days)</th>
-            <th rowspan="2" class="p-3 text-center align-middle text-cyan-300">Staging Area</th>
-            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="10">Picker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="11">Staging Checker</th>
-            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="9">Puller</th>
-            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="11">Outbound Checker</th>
-          </tr>
-          <tr class="text-[10px]">
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
-            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
-          </tr>
-        </thead>
-        <tbody id="aging-rows" class="divide-y divide-slate-800/50">
-          <tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p id="aging-count" class="text-[10px] text-slate-600"></p>
-    <p class="text-[10px] text-slate-600">Set the Status filter to "Pending" to see only Sales Orders with no shipment movement yet. The moment a record is flagged PICKED, STAGED, PULLED, or CHECKED it will show under that status instead — keep the filter on "All Records" to see every stage together.</p>
-    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary. Hit/Miss and Speed % are based on each stage's Target Minutes (Speed % = Target ÷ Rendered × 100). Idle Time is the gap before that task started, task-to-task for the same person+role. Puller has no discrepancy field on file, so Puller Accuracy is untracked and shown as "—". Upload Date is when the record entered the system (drives Aging); Record Date is the record's own business date and can be edited per-record.</p>
-  </section>
-
   <!-- ================= EDIT SHIPMENT ================= -->
   <section id="view-shipedit" class="view space-y-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -1694,8 +1491,6 @@ const ALL_TABS = [
   { key: 'bulletin', label: 'Performance Summary' },
   { key: 'ingestion', label: 'Data Ingestion' },
   { key: 'admin', label: 'Personnel & Breaks' },
-  { key: 'adminops', label: 'Admin' },
-  { key: 'aging', label: 'Master Records' },
   { key: 'shipedit', label: 'Edit Shipment' },
   { key: 'usermgmt', label: 'User Management' }
 ];
@@ -1963,8 +1758,6 @@ function activateView(name) {
   if (name === 'workbench') refreshSidePanel();
   if (name === 'bulletin') { refreshBulletinBoard(); startBulletinSlowPoll(); } else { stopBulletinSlowPoll(); }
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
-  if (name === 'adminops') { refreshPipelineSummary(); refreshDutyRoster(); renderTabOrderList(); }
-  if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
   if (name === 'usermgmt') loadUsers();
 }
 
@@ -4212,6 +4005,11 @@ function escapeForIlikeOr(text) {
 // the exact same way and never drift apart.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
+  // Master Records tab was removed — its table no longer exists in the DOM.
+  // This function is still called from several SHARED save/delete/mass-edit/
+  // move-record functions (also used by Edit Shipment), so it must no-op
+  // safely here instead of throwing, rather than being deleted outright.
+  if (!tbody) return;
   applyAgingAdminUI();
 
   if (!agingHasActiveFilter()) {
