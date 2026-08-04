@@ -1093,7 +1093,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="flex flex-wrap items-end gap-2">
         <div class="flex-1 min-w-[240px]">
           <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment Number</label>
-          <input type="text" id="shipedit-search-input" placeholder="Enter Shipment No. e.g. 8001234567" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();searchShipmentToEdit();}" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <input type="text" id="shipedit-search-input" placeholder="Enter EXACT Shipment No. e.g. 8001234567" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();searchShipmentToEdit();}" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
         </div>
         <button onclick="searchShipmentToEdit()" class="text-xs font-bold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white whitespace-nowrap">🔍 Search</button>
         <button onclick="clearShipmentEditSearch()" class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear</button>
@@ -2045,16 +2045,21 @@ async function refreshShipmentDatalist() {
   document.getElementById('shipment-datalist').innerHTML = unique.map(s => `<option value="${s}">`).join('');
 }
 
+// Workbench's shipment number box needs a higher floor than the other search
+// boxes (MIN_SEARCH_CHARS = 4) — shipment numbers are long enough that an
+// 8-character prefix is still a meaningful, narrow query, and it avoids
+// firing the manifest lookup on a merely-plausible partial number.
+const WORKBENCH_SHIPMENT_MIN_CHARS = 8;
 let shipmentDebounce = null;
 function onShipmentInputChange() {
   clearTimeout(shipmentDebounce);
   shipmentDebounce = setTimeout(() => {
     const len = document.getElementById('target-shipment-no').value.trim().length;
     // Empty box clears the manifest immediately; otherwise wait for at least
-    // MIN_SEARCH_CHARS characters before hitting the database — this is a
-    // live DB query (ilike), so firing it on every 1-3 char keystroke is
-    // what made typing here feel like it was hanging the page.
-    if (len === 0 || len >= MIN_SEARCH_CHARS) fetchShipmentManifest();
+    // WORKBENCH_SHIPMENT_MIN_CHARS characters before hitting the database —
+    // this is a live DB query (ilike), so firing it on every 1-3 char
+    // keystroke is what made typing here feel like it was hanging the page.
+    if (len === 0 || len >= WORKBENCH_SHIPMENT_MIN_CHARS) fetchShipmentManifest();
   }, 300);
 }
 
@@ -4553,22 +4558,17 @@ async function searchShipmentToEdit() {
   // is fine — that save already went through its own confirmation.)
   shipeditSelectedSoNumbers.clear();
 
-  // Query `shipments` directly on shipment_no only — deliberately NOT reusing
-  // Master Records' 4-column .or() search, so a type/index quirk on any of
-  // the OTHER searchable columns (so_number/obd_number/customer) can never
-  // cause a false "not found" here. ilike first (partial/case-insensitive
-  // match, works for a text column); if that errors out (e.g. shipment_no is
-  // stored as a numeric column, which doesn't support ilike), fall back to
-  // an exact eq() match automatically instead of just failing silently.
-  const q = escapeForIlikeOr(val);
+  // EXACT match only — deliberately not a partial/`ilike` search. This tab
+  // is meant to pull up one specific shipment (or its sibling SO lines, if
+  // it's a multi-line shipment) by its full Shipment Number, not to browse
+  // by a fragment. A partial match against the whole `shipments` table can
+  // return and download hundreds of unrelated full rows (select('*')) for a
+  // single keystroke-driven query, which is unnecessary egress for a tab
+  // that only ever needs an exact number. Master Records / Edit Shipment
+  // full-table browsing already covers the "I don't know the exact number"
+  // case, so this stays exact-only on purpose.
   let { data, error } = await supabaseClient.from('shipments').select('*')
-    .ilike('shipment_no', `%${q}%`).order('uploaded_at', { ascending: false }).limit(500);
-
-  if (error) {
-    console.error('shipment_no ilike search failed, retrying with exact match:', error.message);
-    ({ data, error } = await supabaseClient.from('shipments').select('*')
-      .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500));
-  }
+    .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500);
 
   if (error) {
     results.innerHTML = `<div class="bg-slate-950 border border-rose-800/50 rounded-xl p-8 text-center text-rose-400 text-xs">Search failed: ${error.message}</div>`;
