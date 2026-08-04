@@ -2216,6 +2216,13 @@ const SIDE_PANEL_LOG_COLUMNS = 'id,so_number,shipment_no,personnel_name,role,sta
 // math plus the shipment_no used for shipment counts and idle-gap labels.
 const BULLETIN_LOG_COLUMNS = 'personnel_name,role,status,start_time,end_time,rendered_minutes,target_hours,total_qty,discrepancy_qty,so_number,shipment_no';
 const AGING_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,so_amount,status,uploaded_at,record_date,pgi_date';
+// Same as AGING_SHIP_COLUMNS but without the legacy per-unit columns
+// (cv/bx/pac/try_qty/pc/kg) — THIS deployment's `shipments` table doesn't
+// have them, so selecting AGING_SHIP_COLUMNS as-is errors with "column
+// shipments.cv does not exist". rowQtySum() already prefers `quantity` and
+// only falls back to those fields when it's null, so dropping them from the
+// query is safe. Used by loadAgingData() and the Edit Shipment search.
+const AGING_SHIP_COLUMNS_SAFE = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,so_amount,status,uploaded_at,record_date,pgi_date';
 
 // Speed % (Target Minutes ÷ Rendered Minutes × 100) is capped at this ceiling
 // everywhere it's computed — a very short/small batch can otherwise produce an
@@ -4227,12 +4234,14 @@ async function loadAgingData() {
 
   const searchText = (document.getElementById('aging-search').value || '').trim();
 
-  // select('*') rather than the fixed AGING_SHIP_COLUMNS list — some
-  // deployments' `shipments` table doesn't have the legacy per-unit columns
-  // (cv/bx/pac/try_qty/pc/kg) that constant assumes, which made this whole
-  // query error out with "column shipments.cv does not exist". rowQtySum()
-  // already treats any of those fields as 0 when absent, so this is safe.
-  let shipQuery = supabaseClient.from('shipments').select('*');
+  // Explicit column list (not select('*')) to cut egress. This deployment's
+  // `shipments` table doesn't have the legacy per-unit columns
+  // (cv/bx/pac/try_qty/pc/kg) that AGING_SHIP_COLUMNS assumes some other
+  // deployments have — selecting them by name would error with "column
+  // shipments.cv does not exist". rowQtySum() already prefers `quantity`
+  // and only falls back to those fields when quantity is null, so omitting
+  // them here is safe for this deployment.
+  let shipQuery = supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS_SAFE);
   if (searchText) {
     // A typed search goes straight to the DB matched against every
     // searchable reference/customer column, uncapped — so a record is
@@ -4887,12 +4896,14 @@ async function searchShipmentToEdit() {
   // stored as a numeric column, which doesn't support ilike), fall back to
   // an exact eq() match automatically instead of just failing silently.
   const q = escapeForIlikeOr(val);
-  let { data, error } = await supabaseClient.from('shipments').select('*')
+  // AGING_SHIP_COLUMNS_SAFE (not select('*')) to cut egress — same set
+  // loadAgingData() uses, since both feed buildAgingRowsFromShipments().
+  let { data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS_SAFE)
     .ilike('shipment_no', `%${q}%`).order('uploaded_at', { ascending: false }).limit(500);
 
   if (error) {
     console.error('shipment_no ilike search failed, retrying with exact match:', error.message);
-    ({ data, error } = await supabaseClient.from('shipments').select('*')
+    ({ data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS_SAFE)
       .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500));
   }
 
@@ -5327,7 +5338,9 @@ async function fetchAllShipmentsRowsPaginated() {
   let from = 0;
   const all = [];
   while (true) {
-    const { data, error } = await supabaseClient.from('shipments').select('*')
+    // AGING_SHIP_COLUMNS_SAFE (not select('*')) to cut egress — this export
+    // feeds buildAgingRowsFromShipments(), same as loadAgingData().
+    const { data, error } = await supabaseClient.from('shipments').select(AGING_SHIP_COLUMNS_SAFE)
       .order('uploaded_at', { ascending: false }).range(from, from + pageSize - 1);
     if (error) throw error;
     all.push(...(data || []));
