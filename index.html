@@ -1549,13 +1549,6 @@ function moveTabInOrder(key, direction) {
   applyTabOrder();
   renderTabOrderList();
 }
-function resetTabOrder() {
-  try { localStorage.removeItem(TAB_ORDER_STORAGE_KEY); } catch (e) {}
-  applyTabOrder();
-  renderTabOrderList();
-  showToast('Tab order reset to default.', 'success');
-}
-
 // Special permissions: grant a specific capability without opening up a whole
 // tab. Stored in the same `allowed_tabs` array as the tab keys above (it's
 // just a plain text[] column) so no schema/RPC change was needed — these
@@ -2247,10 +2240,6 @@ function speedRateFor(truckType) {
   if (t === 'STO') return 350;
   return 110;
 }
-function totalConfiguredBreakHours() {
-  return configuredBreaks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0) / 60;
-}
-
 // Flat duration bracket keyed off truck type only — used by Staging Checker,
 // Puller, and Outbound Checker. Per operations spec:
 //   AUV / 4W               = 20 minutes
@@ -3190,17 +3179,6 @@ function operationalDayBucketStr(dateLike) {
   return `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
 }
 
-// Coarse shift window a timestamp falls in, used only for the "Idle Time-of-Day
-// Pattern" mini-analysis under the Role Leaderboards — buckets the day into
-// Morning/Day (6AM–3PM), Evening (3PM–12AM), and Overnight (12AM–6AM).
-const TIME_OF_DAY_BUCKET_LABELS = { day: '6AM–3PM', evening: '3PM–12AM', overnight: '12AM–6AM' };
-function timeOfDayBucket(dateLike) {
-  const h = new Date(dateLike).getHours();
-  if (h >= 6 && h < 15) return 'day';
-  if (h >= 15) return 'evening';
-  return 'overnight';
-}
-
 // Operational day window (05:00 local -> 04:59:59.999 the next day) for an
 // arbitrary "YYYY-MM-DD" date string, rather than always "today" like
 // calculateOperationalDayWindow().
@@ -3920,36 +3898,7 @@ function calcCheckerAccuracy(log) {
   return Math.max(0, Math.min(100, ((vol - disc) / vol) * 100));
 }
 
-// --- EXPORT HELPERS: CSV / XLSX / PDF ---
-// CSV: build a comma-separated string directly from the rendered <table>'s
-// current (already-filtered) rows and trigger a download via a data-URI blob.
-function exportTableToCSVGeneric(tableId, filename) {
-  const table = document.getElementById(tableId);
-  if (!table) return showToast('Nothing to export.', 'error');
-  const rows = [...table.querySelectorAll('tr')];
-  if (!rows.length) return showToast('Nothing to export.', 'error');
-  const csvLines = rows.map(tr => [...tr.querySelectorAll('th,td')]
-    .map(cell => `"${(cell.innerText || '').replace(/"/g, '""').trim()}"`).join(','));
-  const csv = csvLines.join('\r\n');
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast(`Exported to ${filename}`, 'success');
-}
-
-// XLSX: leverage XLSX.utils.table_to_book to snapshot the CURRENT filtered
-// on-screen table (including any sort/search state) straight into a workbook.
-function exportTableToXLSXGeneric(tableId, filename, sheetName) {
-  const table = document.getElementById(tableId);
-  if (!table) return showToast('Nothing to export.', 'error');
-  const wb = XLSX.utils.table_to_book(table, { sheet: (sheetName || 'Sheet1').toString().slice(0, 31) });
-  XLSX.writeFile(wb, filename);
-  showToast(`Exported to ${filename}`, 'success');
-}
-
+// --- EXPORT HELPERS: PDF ---
 // PDF: flag the target section as the sole visible content, then hand off to
 // the browser's native print pipeline — a print-only stylesheet (see <style>)
 // hides the sidebar/nav/chrome and isolates just the flagged section/table(s)
@@ -4115,15 +4064,6 @@ function applyAgingAdminUI() {
   }
 }
 
-// Previously defaulted the Record Date filter to the current month on the
-// first tab open each session. Removed per request: Master Records should
-// show ALL records by default (no implicit date filter hiding anything),
-// and the user picks a date range explicitly only when they want one.
-function ensureAgingDefaultDateRange() {
-  // intentionally a no-op now — kept as a named hook in case a default
-  // is wanted again later, but it no longer sets aging-date-from/to.
-}
-
 // Populate the Customer / Truck Type dropdowns from whatever values actually
 // exist in the loaded data, so the filters always match real records.
 function populateAgingFilterOptions() {
@@ -4159,48 +4099,11 @@ function fmtAgingDate(iso) {
   return new Date(iso).toLocaleDateString([], { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
-// Local-calendar-day string (YYYY-MM-DD) for a given ISO timestamp, in the
-// browser's own timezone — NOT a raw UTC slice. uploaded_at is stored in
-// UTC, so a straight `.slice(0, 10)` can land on the wrong calendar day for
-// anyone west of UTC+0 at the boundary (e.g. 2026-07-05 22:00 UTC is already
-// 2026-07-06 locally in Manila/UTC+8). This must match what fmtAgingDate()
-// shows in Master Records, or the two screens disagree on "today's" date.
-function localDateStr(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// Formats an already-local "YYYY-MM-DD" bucket key (e.g. from localDateStr)
-// for display. Deliberately does NOT go through `new Date(str)` — a plain
-// date-only string is parsed as UTC midnight, and re-converting that back to
-// local time can shift the day again (backward for timezones west of UTC),
-// undoing the correction localDateStr just made. Building the label straight
-// from the y/m/d parts keeps it exactly the calendar day it says it is.
-const _shortMonthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function fmtLocalDateStr(ymd) {
-  if (!ymd) return '—';
-  const [y, m, d] = ymd.split('-').map(Number);
-  if (!y || !m || !d) return '—';
-  return `${_shortMonthNames[m - 1]} ${String(d).padStart(2, '0')}, ${y}`;
-}
-
 function agingColorClass(days) {
   if (days === null || days === undefined) return 'text-slate-500';
   if (days >= 3) return 'text-rose-400 font-bold';
   if (days >= 1) return 'text-amber-400 font-semibold';
   return 'text-emerald-400 font-semibold';
-}
-
-function clearAgingFilters() {
-  document.getElementById('aging-date-from').value = '';
-  document.getElementById('aging-date-to').value = '';
-  document.getElementById('aging-status-filter').value = 'ALL';
-  document.getElementById('aging-customer-filter').value = '';
-  document.getElementById('aging-truck-filter').value = '';
-  document.getElementById('aging-search').value = '';
-  document.getElementById('aging-multiref-filter').value = '';
-  loadAgingData();
 }
 
 // --- SAFETY GUARD: block deleting/renaming a shipment while it still has
@@ -4250,28 +4153,6 @@ function clearAgingSelection() {
   renderAgingTable();
 }
 
-async function deleteSelectedAgingRecords() {
-  const list = Array.from(agingSelectedSoNumbers);
-  if (!list.length) return;
-  const active = await soNumbersWithActiveLogs(list);
-  if (active.length) {
-    return showToast(`Cannot delete — ${active.length} of the selected record(s) still have Ongoing/Paused work logged against them: ${active.join(', ')}. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
-  }
-  const ok = await showConfirm(`Delete ${list.length} selected record(s)? This permanently removes the shipment(s) AND all their activity logs (Picker/Staging/Puller/Outbound history) — no trace of these SO(s) will remain. This cannot be undone.`);
-  if (!ok) return;
-  // Child records first (activity_logs references so_number), then the
-  // shipments row itself — so a totally clean delete, nothing orphaned.
-  const { error: logErr } = await supabaseClient.from('activity_logs').delete().in('so_number', list);
-  if (logErr) return showToast("Could not delete activity logs: " + logErr.message, "error");
-  const { error } = await supabaseClient.from('shipments').delete().in('so_number', list);
-  if (error) return showToast("Could not delete selected records: " + error.message, "error");
-  agingSelectedSoNumbers.clear();
-  showToast(`${list.length} record(s) and all related activity logs deleted.`, "success");
-  await loadAgingData();
-  await refreshPipelineSummary();
-  await refreshLiveViews({ manifest: false });
-}
-
 async function deleteAgingRecord(so_number) {
   const active = await soNumbersWithActiveLogs([so_number]);
   if (active.length) {
@@ -4316,10 +4197,6 @@ function openMassEditModal(list, source) {
       if (field.tagName === 'INPUT') field.value = '';
     });
   document.getElementById('aging-mass-edit-modal').classList.remove('hidden');
-}
-
-function openAgingMassEditModal() {
-  openMassEditModal(Array.from(agingSelectedSoNumbers), 'aging');
 }
 
 function openShipeditMassEditModal() {
@@ -5061,79 +4938,6 @@ function renderAgingTable() {
   updateAgingBulkBar();
 }
 
-// Shared row->Excel-columns mapping, used by the on-screen "Export Excel
-// (XLSX)" button (filtered/loaded rows only) as well as the "Export All
-// Data" and "Export by Month" buttons below (which bypass the on-screen
-// filters and the 20,000-row browse cap entirely).
-function agingRowsToExcelSheet(rows) {
-  return rows.map(r => ({
-    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '',
-    'Upload Date': fmtAgingDate(r.upload_date), 'Record Date': fmtAgingDate(r.record_date),
-    'OBD': r.obd_number || '',
-    'Customer': r.customer || '', 'Truck Type': r.truck_type || '', 'Qty': Math.round(r.qty || 0),
-    'Status': r.status,
-    'Aging (Days)': r.aging_days === null ? '' : r.aging_days,
-    'Staging Area': r.staging_area || '',
-    'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
-    'Picker Remarks': r.pick_remarks || '', 'Picker Rendered Min': r.pick_rendered != null ? Math.round(r.pick_rendered) : '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
-    'Picker Accuracy': fmtAccuracy(r.pick_accuracy), 'Picker Hit/Miss': fmtHitMiss(r.pick_hitmiss), 'Picker Speed %': fmtSpeedPct(r.pick_speedpct), 'Picker Idle Time': fmtIdleMinutes(r.pick_idle),
-    'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
-    'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
-    'Staging Remarks': r.stage_remarks || '', 'Staging Rendered Min': r.stage_rendered != null ? Math.round(r.stage_rendered) : '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
-    'Staging Accuracy': fmtAccuracy(r.stage_accuracy), 'Staging Hit/Miss': fmtHitMiss(r.stage_hitmiss), 'Staging Speed %': fmtSpeedPct(r.stage_speedpct), 'Staging Idle Time': fmtIdleMinutes(r.stage_idle),
-    'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
-    'Pulled Remarks': r.pull_remarks || '', 'Pulled Rendered Min': r.pull_rendered != null ? Math.round(r.pull_rendered) : '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
-    'Pulled Hit/Miss': fmtHitMiss(r.pull_hitmiss), 'Pulled Speed %': fmtSpeedPct(r.pull_speedpct), 'Pulled Idle Time': fmtIdleMinutes(r.pull_idle),
-    'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
-    'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty),
-    'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered != null ? Math.round(r.check_rendered) : '', 'Check Productivity': fmtProductivity(r.check_productivity),
-    'Check Accuracy': fmtAccuracy(r.check_accuracy), 'Check Hit/Miss': fmtHitMiss(r.check_hitmiss), 'Check Speed %': fmtSpeedPct(r.check_speedpct), 'Check Idle Time': fmtIdleMinutes(r.check_idle)
-  }));
-}
-
-function writeAgingExcelFile(rows, sheetLabel, filename) {
-  const excelRows = agingRowsToExcelSheet(rows);
-  const ws = XLSX.utils.json_to_sheet(excelRows);
-  ws['!cols'] = new Array(52).fill({ wch: 14 });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, String(sheetLabel).slice(0, 31));
-  XLSX.writeFile(wb, filename);
-}
-
-function exportAgingToExcel() {
-  const rows = filteredAgingRows();
-  if (!rows.length) return showToast("No rows to export.", "error");
-
-  const statusVal = document.getElementById('aging-status-filter').value;
-  const sheetLabel = (statusVal && statusVal !== 'ALL') ? statusVal.charAt(0) + statusVal.slice(1).toLowerCase() : 'All';
-  const stamp = new Date().toISOString().slice(0, 10);
-  writeAgingExcelFile(rows, `${sheetLabel} Aging`, `aging-${statusVal.toLowerCase()}-${stamp}.xlsx`);
-  showToast(`Exported ${rows.length} line(s) to Excel.`, "success");
-}
-
-// --- MASTER RECORDS: EXPORT ALL / EXPORT BY MONTH ---
-// Both bypass whatever is currently in the search box / Status / Customer /
-// Truck Type / Record Date filters, and also bypass the 20,000-row browse
-// cap that loadAgingData() applies when just scrolling the on-screen table.
-// They page straight through the full `shipments` table (Supabase caps a
-// single request at 1000 rows, hence the .range() loop) and re-use the same
-// per-stage Picker/Staging/Puller/Outbound-Checker enrichment as the
-// on-screen Master Records table, so the exported columns match exactly.
-async function fetchAllShipmentsRowsPaginated() {
-  const pageSize = 1000;
-  let from = 0;
-  const all = [];
-  while (true) {
-    const { data, error } = await supabaseClient.from('shipments').select('*')
-      .order('uploaded_at', { ascending: false }).range(from, from + pageSize - 1);
-    if (error) throw error;
-    all.push(...(data || []));
-    if (!data || data.length < pageSize) break;
-    from += pageSize;
-  }
-  return all;
-}
-
 async function buildAgingRowsFromShipments(shipRows) {
   const soNumbers = (shipRows || []).map(r => r.so_number).filter(Boolean);
   let logs = [];
@@ -5199,58 +5003,6 @@ async function buildAgingRowsFromShipments(shipRows) {
       check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
     };
   });
-}
-
-async function exportAgingAllToExcel() {
-  const btn = document.getElementById('aging-export-all-btn');
-  if (btn) { btn.disabled = true; btn.dataset.origText = btn.innerText; btn.innerText = '⏳ Exporting...'; }
-  showToast("Fetching every record — this can take a moment for large tables...", "success");
-  try {
-    const shipRows = await fetchAllShipmentsRowsPaginated();
-    if (!shipRows.length) { showToast("No records found.", "error"); return; }
-    const rows = await buildAgingRowsFromShipments(shipRows);
-    const stamp = new Date().toISOString().slice(0, 10);
-    writeAgingExcelFile(rows, 'All Records', `master-records-all-${stamp}.xlsx`);
-    showToast(`Exported all ${rows.length} record(s) to Excel.`, "success");
-  } catch (err) {
-    console.error(err);
-    showToast("Export failed: " + (err.message || err), "error");
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.origText || '⬇ Export All Data (XLSX)'; }
-  }
-}
-
-async function exportAgingByMonthToExcel() {
-  const monthVal = document.getElementById('aging-export-month').value; // "YYYY-MM"
-  if (!monthVal) return showToast("Pick a month first.", "error");
-  const [y, m] = monthVal.split('-').map(Number);
-  const fromDate = new Date(y, m - 1, 1, 0, 0, 0);
-  const toDate = new Date(y, m, 0, 23, 59, 59, 999); // last day of that month
-
-  const btn = document.getElementById('aging-export-month-btn');
-  if (btn) { btn.disabled = true; btn.dataset.origText = btn.innerText; btn.innerText = '⏳ Exporting...'; }
-  showToast(`Fetching records for ${monthVal}...`, "success");
-  try {
-    const shipRows = await fetchAllShipmentsRowsPaginated();
-    if (!shipRows.length) { showToast("No records found.", "error"); return; }
-    const allRows = await buildAgingRowsFromShipments(shipRows);
-    // Same fallback used everywhere else on this tab: record_date, falling
-    // back to upload_date when a record was never explicitly re-dated.
-    const rows = allRows.filter(r => {
-      if (!r.record_date) return false;
-      const d = new Date(r.record_date);
-      return d >= fromDate && d <= toDate;
-    });
-    if (!rows.length) { showToast(`No records found for ${monthVal}.`, "error"); return; }
-    const monthLabel = fromDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-    writeAgingExcelFile(rows, monthLabel, `master-records-${monthVal}.xlsx`);
-    showToast(`Exported ${rows.length} record(s) for ${monthLabel}.`, "success");
-  } catch (err) {
-    console.error(err);
-    showToast("Export failed: " + (err.message || err), "error");
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.origText || '⬇ Export by Month'; }
-  }
 }
 
 // --- DATA INGESTION ---
@@ -5683,21 +5435,6 @@ async function deletePersonnel(id) {
   await populatePersonnelDatalist(currentRole);
   await refreshExcludedPersonnel();
 }
-// Admin-only toggle: flips whether a personnel record is excluded from every
-// computed metric (Performance Summary ranking/podium/MVP badges, Analytics &
-// Reports leaderboards/cycle-time/discrepancy/throughput). The person stays on
-// the roster and their raw logs are untouched — this only filters them out of
-// aggregate math, e.g. someone on extended leave or a lead who shouldn't be
-// ranked against floor staff.
-async function togglePersonnelExcluded(id, excluded) {
-  const { error } = await supabaseClient.from('personnel').update({ excluded }).eq('id', id);
-  if (error) return showToast(error.message, "error");
-  await refreshExcludedPersonnel();
-  await refreshPersonnelAdminList();
-  // Keep whichever performance views are loaded in sync immediately.
-  if (document.getElementById('bulletin-date')) refreshBulletinBoard();
-  showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
-}
 // Renders one card per PERSON (not per role-row) — each card labels every role
 // they hold as Main / Secondary / Third (by role_rank, defaulting untagged rows
 // to Main so older data without role_rank still displays sensibly).
@@ -5864,30 +5601,6 @@ function toggleLightMode() {
     }
   } catch (e) { /* storage unavailable — ignore */ }
 })();
-
-// --- DUTY ROSTER: minimize / expand toggle (persisted via localStorage) ---
-function toggleDutyRosterCollapse() {
-  const card = document.getElementById('duty-roster-card');
-  if (!card) return;
-  const collapsed = card.classList.toggle('collapsed');
-  const chev = document.getElementById('duty-roster-chevron');
-  if (chev) chev.innerText = collapsed ? '▸' : '▾';
-  const btn = document.getElementById('duty-roster-toggle-btn');
-  if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
-  try { localStorage.setItem('wh_duty_roster_collapsed', collapsed ? '1' : '0'); } catch (e) {}
-}
-
-// --- TAB ORDER: minimize / expand toggle (persisted via localStorage) ---
-function toggleTabOrderCollapse() {
-  const card = document.getElementById('tab-order-card');
-  if (!card) return;
-  const collapsed = card.classList.toggle('collapsed');
-  const chev = document.getElementById('tab-order-chevron');
-  if (chev) chev.innerText = collapsed ? '▸' : '▾';
-  const btn = document.getElementById('tab-order-toggle-btn');
-  if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
-  try { localStorage.setItem('wh_tab_order_collapsed', collapsed ? '1' : '0'); } catch (e) {}
-}
 
 // --- ALL ACTIVE LINES (side panel): minimize / expand toggle (persisted via localStorage) ---
 function toggleSidePanelCollapse() {
@@ -6437,7 +6150,6 @@ async function computeDutyMetricsForRoster(names) {
 }
 
 function fmtDutyClock(d) { return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'; }
-function fmtDutyMin(mins) { return (typeof fmtMinutesShort === 'function') ? fmtMinutesShort(mins) : `${Math.round(mins || 0)}m`; }
 
 async function refreshDutyRoster() {
   const card = document.getElementById('duty-roster-card');
@@ -6501,42 +6213,6 @@ function populateDutyRosterRoleFilterOptions() {
   const current = sel.value || 'all';
   sel.innerHTML = `<option value="all">All Roles</option>` + roles.map(r => `<option value="${r}">${r}</option>`).join('');
   if (roles.includes(current)) sel.value = current;
-}
-
-// Keeps the clickable filter pills' "active" styling in sync with the
-// current filter state — called whenever a pill is clicked or filters are
-// cleared, since the pills (unlike a <select>) don't track their own state.
-function dutyRosterSyncFilterPills() {
-  document.querySelectorAll('#duty-roster-status-pills [data-status]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.status === dutyRosterFilterStatus);
-  });
-  document.querySelectorAll('#duty-roster-task-pills [data-task]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.task === dutyRosterFilterTask);
-  });
-}
-function dutyRosterSetFilterStatus(v) { dutyRosterFilterStatus = v; dutyRosterSyncFilterPills(); renderDutyRosterRows(); }
-function dutyRosterSetFilterTask(v) { dutyRosterFilterTask = v; dutyRosterSyncFilterPills(); renderDutyRosterRows(); }
-function dutyRosterSetFilterRole(v) { dutyRosterFilterRole = v; renderDutyRosterRows(); }
-function dutyRosterSetSearch(v) { dutyRosterSearchTerm = (v || '').trim().toLowerCase(); renderDutyRosterRows(); }
-function dutyRosterClearFilters() {
-  dutyRosterFilterStatus = 'all'; dutyRosterFilterTask = 'all'; dutyRosterFilterRole = 'all'; dutyRosterSearchTerm = '';
-  const s = document.getElementById('duty-roster-search'); if (s) s.value = '';
-  const rl = document.getElementById('duty-roster-role-filter'); if (rl) rl.value = 'all';
-  dutyRosterSyncFilterPills();
-  renderDutyRosterRows();
-}
-// Clicking a sortable header toggles asc/desc if it's already the active
-// column, otherwise switches column with a sensible default direction
-// (name A→Z first click; numeric/status columns show the "most notable"
-// end first — worst idle, lowest productivity, longest on-duty, etc.).
-function dutyRosterSort(key) {
-  if (dutyRosterSortKey === key) {
-    dutyRosterSortDir = dutyRosterSortDir === 'asc' ? 'desc' : 'asc';
-  } else {
-    dutyRosterSortKey = key;
-    dutyRosterSortDir = key === 'name' ? 'asc' : 'desc';
-  }
-  renderDutyRosterRows();
 }
 
 // Per-person "what are they doing right now" for the Duty Roster's Ongoing
