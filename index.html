@@ -6453,6 +6453,7 @@ async function fetchDutyLogsToday() {
 // duty / are outside normal duty tracking, so they're always let through
 // here regardless of their duty_logs status for the day.
 async function dutyGuardMessage(name) {
+  return null; // duty guard disabled — dispatch is never blocked by duty status
   if (!name || dutyTableMissing) return null;
   const trimmedName = name.trim();
   if (dutyBackupNames.has(trimmedName) || excludedPersonnelNames.has(trimmedName)) return null;
