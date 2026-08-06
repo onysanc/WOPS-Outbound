@@ -432,11 +432,15 @@
         <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Picker</div>
         <input type="hidden" id="ar-pick-id">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
-            <input type="text" id="ar-pick-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          <div class="sm:col-span-2">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[10px] uppercase tracking-wider text-slate-500">Personnel</label>
+              <button type="button" onclick="addAgingPersonnelRow('pick')" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300">⎘ Duplicate &amp; add personnel</button>
+            </div>
+            <input type="text" id="ar-pick-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 mb-1.5">
+            <div id="ar-pick-extra-names" class="space-y-1.5"></div>
+            <p class="text-[10px] text-slate-600 mt-1">If this task is logged under more than one name (e.g. "Morales/Oro/J.paul"), keep one real name above and add each of the others below — saving will duplicate this log once per added name so every person gets their own row and their own ranking credit.</p>
           </div>
-          <div></div>
           <div>
             <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
             <input type="datetime-local" id="ar-pick-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
@@ -457,9 +461,14 @@
         <div class="text-[10px] font-bold uppercase tracking-wider text-sky-400">Staging Checker</div>
         <input type="hidden" id="ar-stage-id">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
-            <input type="text" id="ar-stage-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          <div class="sm:col-span-2">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[10px] uppercase tracking-wider text-slate-500">Personnel</label>
+              <button type="button" onclick="addAgingPersonnelRow('stage')" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300">⎘ Duplicate &amp; add personnel</button>
+            </div>
+            <input type="text" id="ar-stage-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 mb-1.5">
+            <div id="ar-stage-extra-names" class="space-y-1.5"></div>
+            <p class="text-[10px] text-slate-600 mt-1">If this task is logged under more than one name (e.g. "Morales/Oro/J.paul"), keep one real name above and add each of the others below — saving will duplicate this log once per added name so every person gets their own row and their own ranking credit.</p>
           </div>
           <div>
             <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Staging Area(s)</label>
@@ -493,11 +502,15 @@
         <div class="text-[10px] font-bold uppercase tracking-wider text-pink-400">Puller</div>
         <input type="hidden" id="ar-pull-id">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
-            <input type="text" id="ar-pull-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          <div class="sm:col-span-2">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[10px] uppercase tracking-wider text-slate-500">Personnel</label>
+              <button type="button" onclick="addAgingPersonnelRow('pull')" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300">⎘ Duplicate &amp; add personnel</button>
+            </div>
+            <input type="text" id="ar-pull-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 mb-1.5">
+            <div id="ar-pull-extra-names" class="space-y-1.5"></div>
+            <p class="text-[10px] text-slate-600 mt-1">If this task is logged under more than one name (e.g. "Morales/Oro/J.paul"), keep one real name above and add each of the others below — saving will duplicate this log once per added name so every person gets their own row and their own ranking credit.</p>
           </div>
-          <div></div>
           <div>
             <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
             <input type="datetime-local" id="ar-pull-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
@@ -518,11 +531,15 @@
         <div class="text-[10px] font-bold uppercase tracking-wider text-blue-400">Outbound Checker</div>
         <input type="hidden" id="ar-check-id">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Personnel</label>
-            <input type="text" id="ar-check-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          <div class="sm:col-span-2">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[10px] uppercase tracking-wider text-slate-500">Personnel</label>
+              <button type="button" onclick="addAgingPersonnelRow('check')" class="text-[10px] font-bold text-emerald-400 hover:text-emerald-300">⎘ Duplicate &amp; add personnel</button>
+            </div>
+            <input type="text" id="ar-check-name" autocomplete="off" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 mb-1.5">
+            <div id="ar-check-extra-names" class="space-y-1.5"></div>
+            <p class="text-[10px] text-slate-600 mt-1">If this task is logged under more than one name (e.g. "Morales/Oro/J.paul"), keep one real name above and add each of the others below — saving will duplicate this log once per added name so every person gets their own row and their own ranking credit.</p>
           </div>
-          <div></div>
           <div>
             <label class="block text-[10px] uppercase tracking-wider text-slate-500 mb-1">Start Time</label>
             <input type="datetime-local" id="ar-check-start" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
@@ -6182,6 +6199,32 @@ async function applyAgingMassEdit() {
 // (ar-pick-*, ar-stage-*, ar-pull-*, ar-check-*), and to the panel that shows/hides it.
 const AGING_LINE_ROLE_PREFIX = { 'Picker': 'pick', 'Staging Checker': 'stage', 'Puller': 'pull', 'Outbound Checker': 'check' };
 
+// Admin tool: a single shipment log sometimes ends up logged under more than
+// one person crammed into one Personnel field (e.g. "Morales/Oro/J.paul STO")
+// instead of three separate rows. This lets an admin add one input per extra
+// person; on save, the original log is duplicated once per added name (same
+// role/times/qty/etc., only personnel_name differs) so each person gets their
+// own row and their own individual ranking credit.
+function addAgingPersonnelRow(prefix, value = '') {
+  const wrap = document.getElementById(`ar-${prefix}-extra-names`);
+  if (!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'flex items-center gap-1.5';
+  row.innerHTML = `
+    <input type="text" value="${(value || '').replace(/"/g, '&quot;')}" placeholder="Additional personnel name" autocomplete="off" class="ar-extra-name-input w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+    <button type="button" onclick="this.parentElement.remove()" title="Remove" class="shrink-0 text-slate-500 hover:text-rose-400 text-xs font-bold px-1.5">✕</button>`;
+  wrap.appendChild(row);
+}
+function clearAgingPersonnelRows(prefix) {
+  const wrap = document.getElementById(`ar-${prefix}-extra-names`);
+  if (wrap) wrap.innerHTML = '';
+}
+function getAgingExtraPersonnelNames(prefix) {
+  const wrap = document.getElementById(`ar-${prefix}-extra-names`);
+  if (!wrap) return [];
+  return [...wrap.querySelectorAll('.ar-extra-name-input')].map(i => i.value.trim()).filter(Boolean);
+}
+
 // datetime-local inputs need "YYYY-MM-DDTHH:mm" in LOCAL time (not UTC), and give
 // back the same format, which the browser's Date parser treats as local time too —
 // these two helpers convert cleanly between that and the ISO strings Supabase stores.
@@ -6225,6 +6268,7 @@ async function openAgingRecordModal(so_number) {
       const el = document.getElementById(`ar-${prefix}-${f}`);
       if (el) el.value = '';
     });
+    clearAgingPersonnelRows(prefix);
   });
   ['ar-stage-area', 'ar-stage-disc-type', 'ar-stage-disc-qty', 'ar-check-disc-type', 'ar-check-disc-qty'].forEach(id => {
     const el = document.getElementById(id);
@@ -6429,6 +6473,24 @@ async function saveAgingRecordModal() {
         shipment_no: row.shipment_no, so_number: soNumber, role, status: 'Completed', total_qty: row.quantity, target_hours: 0, ...shared
       }]);
       if (insErr) showToast(`Saved shipment, but couldn't add ${role} log: ${insErr.message}`, "error");
+    }
+
+    // Duplicate & rename: one brand-new activity_logs row per extra personnel
+    // name the admin added for this stage, cloning every field from the
+    // primary row above (role, times, qty, discrepancy fields, etc.) except
+    // personnel_name — so a task originally logged under one combined name
+    // (e.g. "Morales/Oro/J.paul STO") ends up as separate, individually
+    // credited rows for each real person.
+    const extraNames = getAgingExtraPersonnelNames(prefix);
+    if (extraNames.length) {
+      const cloneBase = { ...shared };
+      delete cloneBase.personnel_name;
+      const dupRows = extraNames.map(n => ({
+        shipment_no: row.shipment_no, so_number: soNumber, role, status: 'Completed',
+        total_qty: row.quantity, target_hours: 0, ...cloneBase, personnel_name: n
+      }));
+      const { error: dupErr } = await supabaseClient.from('activity_logs').insert(dupRows);
+      if (dupErr) showToast(`Saved ${role}, but couldn't duplicate for added personnel: ${dupErr.message}`, "error");
     }
   }
 
