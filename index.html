@@ -640,6 +640,72 @@
 </div>
 
 
+<!-- ================= PENDING QUEUE — EDIT RECORD MODAL ================= -->
+<div id="pending-edit-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
+    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Edit Pending Record</h3>
+    <input type="hidden" id="pe-original-so">
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Truck Type</label>
+        <select id="pe-truck-type" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <option value="AUV">AUV</option>
+          <option value="4W">4W</option>
+          <option value="6W">6W</option>
+          <option value="10W">10W</option>
+          <option value="20F">20F</option>
+          <option value="40">40</option>
+          <option value="40F">40F</option>
+          <option value="STO">STO</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment No.</label>
+        <input type="text" id="pe-shipment-no" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">S.O. Number</label>
+        <input type="text" id="pe-so-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">OBD Number</label>
+        <input type="text" id="pe-obd-number" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">SO Amount</label>
+        <input type="number" step="0.01" min="0" id="pe-so-amount" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div class="col-span-2">
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Route Description</label>
+        <input type="text" id="pe-route" placeholder="e.g. 1102 --> MANILA" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div class="col-span-2">
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Ship To Party Name</label>
+        <input type="text" id="pe-customer" autocomplete="off" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Quantity</label>
+        <input type="number" step="1" min="0" id="pe-quantity" value="0" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Status</label>
+        <select id="pe-status" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <option value="PENDING">Pending</option>
+          <option value="PICKED">Picked</option>
+          <option value="STAGED">Staged</option>
+          <option value="PULLED">Pulled</option>
+          <option value="CHECKED">Checked</option>
+        </select>
+      </div>
+    </div>
+    <p class="text-[10px] text-slate-600">Changing Status to Picked, Staged, Pulled, or Checked logs that move under personnel name <span class="text-slate-300 font-semibold">ADVANCE</span> with Start/End time left blank, purely for documentation.</p>
+    <div class="flex gap-2 pt-2">
+      <button onclick="closePendingEditModal()" class="flex-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 text-xs font-semibold py-2 rounded-lg">Cancel</button>
+      <button onclick="savePendingEditModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Save Record</button>
+    </div>
+  </div>
+</div>
+
 <div id="app-shell" class="hidden">
 
 <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-40">
@@ -655,8 +721,12 @@
       <nav class="flex flex-1 items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-semibold overflow-x-auto">
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="workbench" onclick="setView('workbench')">Workbench</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="bulletin" onclick="setView('bulletin')">Performance Summary</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="analytics" onclick="setView('analytics')">Analytics &amp; Reports</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="ingestion" onclick="setView('ingestion')">Data Ingestion</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="admin" onclick="setView('admin')">Personnel &amp; Breaks</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="adminops" onclick="setView('adminops')">Admin</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="pending" onclick="setView('pending')">Pending Queue</button>
+        <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="aging" onclick="setView('aging')">Master Records</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="shipedit" onclick="setView('shipedit')">Edit Shipment</button>
         <button class="tab-btn flex-1 px-3 py-1.5 rounded-md text-slate-300 hover:bg-slate-800 transition text-center whitespace-nowrap" data-view="usermgmt" onclick="setView('usermgmt')">User Management</button>
       </nav>
@@ -697,7 +767,7 @@
         </div>
         <div class="flex-1 min-w-[160px]">
           <div class="flex gap-1.5">
-            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="📦 EXACT Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
+            <input type="text" id="target-shipment-no" autocomplete="off" oninput="onShipmentInputChange()" placeholder="📦 Shipment No..." class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500">
             <button onclick="openScannerModal()" title="Scan barcode / QR" class="flex-shrink-0 px-3 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-800 hover:border-emerald-500 hover:text-emerald-400 transition text-sm">▦</button>
           </div>
           <datalist id="shipment-datalist"></datalist>
@@ -842,6 +912,231 @@
     </div>
 
     <p class="text-[10px] text-slate-600">Productivity = Active Minutes ÷ 390 (standard daily working minutes) × 100%. Speed % = Target Minutes ÷ Rendered Minutes × 100, capped at 150%. Accuracy is volume-weighted across a person's graded roles for the day (Picker graded downstream by Staging Checker discrepancies; Staging/Outbound Checker graded on their own logged discrepancies; Puller is untracked — shown as "—"). Every personnel on file always holds a rank on whichever board matches their role(s), even with zero logged activity for the selected Activity Day — ranking within a board is by a single selected metric only, with zero-activity personnel always placed last. A person holding roles in both pools (uncommon) appears on both boards, scored only on that board's roles.</p>
+  </section>
+
+  <!-- ================= ANALYTICS & REPORTS VIEW ================= -->
+  <section id="view-analytics" class="view space-y-6">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">📈 Analytics &amp; Reports</h2>
+        <p class="text-xs text-slate-400">Bottlenecks, discrepancies, throughput, and forecasts — Activity Day sections use 05:00–04:59</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <label class="text-[11px] text-slate-400 font-semibold">Report Period</label>
+        <select id="analytics-period" onchange="refreshAnalyticsView()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+          <option value="daily">Daily (Activity Day)</option>
+          <option value="weekly">Weekly (This Week)</option>
+          <option value="mtd">MTD (Month-to-Date)</option>
+          <option value="ytd">YTD (Year-to-Date)</option>
+        </select>
+        <label class="text-[11px] text-slate-400 font-semibold">As of</label>
+        <input type="date" id="analytics-date" onchange="refreshAnalyticsView()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <button onclick="refreshAnalyticsView()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold px-2 py-1.5">⟳ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Cycle Time by Stage -->
+    <div id="report-cycletime-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">⏱ Avg. Active Minutes per Stage <span class="text-slate-500 font-normal" id="cycletime-period-label">(Completed tasks, selected Activity Day)</span></h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="cycle-time-grid"></div>
+    </div>
+
+    <!-- Overdue / At-Risk Board -->
+    <div id="report-atrisk-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">⚠ Overdue &amp; At-Risk Tasks <span class="text-slate-500 font-normal">(live — all currently Ongoing/Paused)</span></h3>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2">Personnel</th><th class="p-2">Role</th><th class="p-2 text-right">Lines</th>
+              <th class="p-2 text-center">Started</th><th class="p-2 text-center">Target</th><th class="p-2 text-right">Overdue By</th>
+            </tr>
+          </thead>
+          <tbody id="atrisk-rows" class="divide-y divide-slate-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Discrepancy Report -->
+    <div id="report-discrepancy-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔍 Discrepancy Report <span class="text-slate-500 font-normal" id="discrepancy-period-label">(Staging + Outbound Check, selected Activity Day)</span></h3>
+      <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr><th class="p-2">Discrepancy Type</th><th class="p-2 text-right"># Occurrences</th><th class="p-2 text-right">Total Qty</th></tr>
+          </thead>
+          <tbody id="discrepancy-rows" class="divide-y divide-slate-800/50"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Throughput Trend -->
+    <div id="report-throughput-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">📊 Throughput Trend <span class="text-slate-500 font-normal">(lines completed per stage, last 7 Activity Days)</span></h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2">Activity Day</th>
+                <th class="p-2 text-right text-green-400">Picker</th>
+                <th class="p-2 text-right text-sky-300">Staging</th>
+                <th class="p-2 text-right text-pink-400">Puller</th>
+                <th class="p-2 text-right text-blue-400">Check</th>
+              </tr>
+            </thead>
+            <tbody id="throughput-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+        <div class="border border-slate-800 rounded-lg bg-slate-900/40 p-3" style="height:220px">
+          <canvas id="throughput-trend-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Throughput Heatmap -->
+    <div id="report-heatmap-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔥 Throughput Heatmap <span class="text-slate-500 font-normal">(completed lines per day, last 35 days, system-wide)</span></h3>
+      <div id="throughput-heatmap" class="flex gap-1 overflow-x-auto pb-1"></div>
+      <div class="flex items-center gap-2 text-[10px] text-slate-500">
+        <span>Less</span>
+        <span class="heatmap-cell" style="background:#141c2c"></span>
+        <span class="heatmap-cell" style="background:#0d4d43"></span>
+        <span class="heatmap-cell" style="background:#0f8f76"></span>
+        <span class="heatmap-cell" style="background:#2dd4bf"></span>
+        <span>More</span>
+      </div>
+    </div>
+
+    <!-- Personnel Leaderboard -->
+    <div id="report-personnel-leaderboard-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🏆 Personnel Leaderboard <span class="text-slate-500 font-normal" id="leaderboard-period-label">(ranked by Productivity %, selected Activity Day)</span></h3>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2">Role(s)</th>
+                <th class="p-2 text-right">Volume</th><th class="p-2 text-right">Active Min</th><th class="p-2 text-right">Productivity</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+        <div class="border border-slate-800 rounded-lg bg-slate-900/40 p-3" style="height:240px">
+          <canvas id="leaderboard-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Role Leaderboards: grouped into Picking Operations (Picker + Puller) and Checking Operations (Staging Checker + Outbound Checker) -->
+    <div id="report-role-leaderboards-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-sm font-semibold text-slate-200">🏆 Role Leaderboards <span class="text-slate-500 font-normal" id="role-leaderboards-period-label">(grouped rankings, selected Activity Day)</span></h3>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="exportTableToCSVGeneric('lb-pickgroup-table', 'picking-operations-leaderboard.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+          <button onclick="exportTableToXLSXGeneric('lb-pickgroup-table', 'role-leaderboards.xlsx', 'Picking Operations')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+          <button onclick="exportSectionToPDF('view-analytics')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
+        </div>
+      </div>
+
+      <!-- Picking Operations Rankings (Picker + Puller combined) -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-xs font-bold text-green-400 uppercase tracking-wider">🧺 Picking Operations Rankings <span class="text-slate-500 font-normal normal-case">(Picker + Puller)</span></h4>
+          <div class="flex items-center gap-1.5">
+            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
+            <select onchange="setRoleLeaderboardSort('PICK_GROUP', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed %</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table id="lb-pickgroup-table" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Speed %</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle %</th><th class="p-2 text-right">Idle Cause</th><th class="p-2 text-right">Productivity</th><th class="p-2 text-right">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="lb-pickgroup-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+        <div id="lb-pickgroup-timeanalysis" class="text-[11px] leading-relaxed text-slate-400 bg-slate-900/40 border border-slate-800 rounded-lg px-3 py-2"></div>
+      </div>
+
+      <!-- Checking Operations Rankings (Staging Checker + Outbound Checker combined) -->
+      <div class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h4 class="text-xs font-bold text-sky-300 uppercase tracking-wider">🧾 Checking Operations Rankings <span class="text-slate-500 font-normal normal-case">(Staging Checker + Outbound Checker)</span></h4>
+          <div class="flex items-center gap-1.5">
+            <label class="text-[10px] text-slate-500 font-semibold">Sort by</label>
+            <select onchange="setRoleLeaderboardSort('CHECK_GROUP', this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-emerald-500">
+              <option value="speed">Speed %</option><option value="qty">Qty</option><option value="productivity">Productivity</option><option value="idle">Idle</option><option value="accuracy">Accuracy</option>
+            </select>
+          </div>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table id="lb-checkgroup-table" class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr>
+                <th class="p-2 text-center w-8">#</th><th class="p-2">Personnel</th><th class="p-2 text-right">Shipments</th><th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-right">Speed %</th>
+                <th class="p-2 text-right">Incident Miss %</th><th class="p-2 text-right">Idle %</th><th class="p-2 text-right">Idle Cause</th><th class="p-2 text-right">Productivity</th><th class="p-2 text-right">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody id="lb-checkgroup-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+        <div id="lb-checkgroup-timeanalysis" class="text-[11px] leading-relaxed text-slate-400 bg-slate-900/40 border border-slate-800 rounded-lg px-3 py-2"></div>
+      </div>
+      <p class="text-[10px] text-slate-600">Hit = Actual Rendered Time ≤ Target Time for that shipment group; Miss otherwise. Speed % = Target Minutes ÷ Rendered Minutes × 100, averaged across every shipment-group task for that person and capped at 150% (e.g. one task at 100% and a second at 80% averages to 90%) — 100% = exactly on target, above 100% = faster than target. Productivity % and Idle % are both computed from the person's FULL COMBINED ACTIVITY across every role/pool they work, not just this board's role group — so a Picker who also Checks has both counted together. Productivity % is computed per Activity Day (that day's active minutes across all roles ÷ 6.5 standard working hours — uncapped, so an overtime day can push it past 100%) then averaged across every day they had recorded activity over the selected Report Period. Idle % = total idle minutes (gaps between back-to-back tasks in ANY role, same-day only) ÷ (6.5hrs × number of days with recorded activity) — e.g. 10 active days = idle minutes ÷ (6.5×60×10). Idle Cause explains WHY, not just when: each idle gap is checked against (a) whether ≥70% of this board's active personnel were simultaneously idle (zero task in progress) at that moment, and (b) how many distinct shipments were completed system-wide (every role) during that gap versus a rate-scaled threshold (<5/hr of gap length) — <span class="text-slate-400">No Dispatches</span> = team-wide idle + thin dispatch volume (nothing to hand out), <span class="text-slate-400">Early Completion</span> = team-wide idle but volume wasn't actually low (backlog ran out faster than expected), <span class="text-slate-400">Individual</span> = idle while most teammates were still working (not explained by lack of work). A person's row shows whichever cause covers the majority of their idle minutes that day, or <span class="text-slate-400">Mixed</span> if no cause clearly leads. A person holding both roles in a group (e.g. Picker + Puller) has tasks from both merged into one row. Picker Accuracy is graded downstream from Staging Checker discrepancies on the same shipment; Staging/Outbound Checker Accuracy is graded from their own logged discrepancies; Puller Accuracy is not separately tracked (—). Every personnel on file who holds a role in a board's pool always appears on that board, even with zero logged activity for the selected Activity Day — zero-activity personnel show dashes and always sink to the bottom regardless of sort.</p>
+    </div>
+
+    <!-- Zero-Discrepancy Streaks -->
+    <div id="report-streaks-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔥 Zero-Discrepancy Streaks <span class="text-slate-500 font-normal">(consecutive Activity Days with no logged discrepancy, Staging + Outbound Checkers)</span></h3>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="streak-leaders-grid">
+        <p class="text-[11px] text-slate-600 italic col-span-3">Loading streak data...</p>
+      </div>
+    </div>
+
+    <!-- Truck Type / Route Breakdown -->
+    <div id="report-truckroute-card" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h3 class="text-sm font-semibold text-slate-200">🚚 Volume by Truck Type <span class="text-slate-500 font-normal">(all shipments on file)</span></h3>
+        <div class="border border-slate-800 rounded-lg bg-slate-900/40 p-3 mb-2" style="height:200px">
+          <canvas id="truck-type-chart"></canvas>
+        </div>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+              <tr><th class="p-2">Truck Type</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (QTY)</th></tr>
+            </thead>
+            <tbody id="truck-breakdown-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h3 class="text-sm font-semibold text-slate-200">🛣 Volume by Route <span class="text-slate-500 font-normal">(all shipments on file)</span></h3>
+        <div class="overflow-x-auto border border-slate-800 rounded-lg bg-slate-950 max-h-72 overflow-y-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium sticky top-0">
+              <tr><th class="p-2">Route</th><th class="p-2 text-right">SOs</th><th class="p-2 text-right">Volume (QTY)</th></tr>
+            </thead>
+            <tbody id="route-breakdown-rows" class="divide-y divide-slate-800/50"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Backlog Forecast -->
+    <div id="report-backlog-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <h3 class="text-sm font-semibold text-slate-200">🔮 Backlog Forecast <span class="text-slate-500 font-normal">(pending lines ÷ today's throughput rate so far)</span></h3>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3" id="backlog-forecast-grid"></div>
+      <p class="text-[10px] text-slate-600">Rate is lines completed ÷ active minutes for that stage today. Resets to N/A early in the day before any lines are completed.</p>
+    </div>
   </section>
 
   <!-- ================= INGESTION VIEW ================= -->
@@ -1080,6 +1375,271 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
    </div>
   </section>
 
+  <!-- ================= ADMIN VIEW ================= -->
+  <!-- Houses the Pipeline Summary (relocated here from the Workbench's left
+       rail, now full-width and always expanded — no minimize control) and
+       the Duty Roster (relocated here from the bottom of the Workbench). -->
+  <section id="view-adminops" class="view space-y-4">
+
+    <!-- Tab Order: lets the literal "admin" account rearrange the nav tab sequence -->
+    <div id="tab-order-card" class="hidden collapsed bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3">
+      <div class="flex items-center justify-between gap-2 cursor-pointer" onclick="toggleTabOrderCollapse()">
+        <div>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="tab-order-chevron" class="inline-block transition-transform text-slate-500">▸</span>🧩 Tab Order</h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Rearrange the top navigation tabs using ↑ / ↓. Applies immediately to this browser.</p>
+        </div>
+        <div class="flex items-center gap-3 shrink-0" onclick="event.stopPropagation()">
+          <button onclick="resetTabOrder()" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">Reset to default</button>
+          <button onclick="toggleTabOrderCollapse()" id="tab-order-toggle-btn" class="text-[10px] text-slate-500 hover:text-emerald-400 font-semibold shrink-0">+ expand</button>
+        </div>
+      </div>
+      <div id="tab-order-list-wrap">
+        <div id="tab-order-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5"></div>
+      </div>
+    </div>
+
+    <!-- Duty Roster: report-for-duty / break / idle / productivity monitor for all personnel -->
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 collapsed" id="duty-roster-card">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:items-center justify-between gap-2 cursor-pointer" onclick="toggleDutyRosterCollapse()">
+        <div>
+          <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400 flex items-center gap-2"><span id="duty-roster-chevron" class="inline-block transition-transform text-slate-500">▸</span>Duty Roster — All Personnel <span id="duty-roster-role-label" class="text-slate-500 normal-case font-normal"></span></h2>
+          <p class="text-[11px] text-slate-500 mt-0.5">Every role's personnel report for duty here, once per person per day. Personnel flagged as Backup under Personnel &amp; Breaks don't formally clock in and are left off this table.</p>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] font-semibold text-slate-400 flex-shrink-0" onclick="event.stopPropagation()">
+          <span class="flex items-center gap-1"><span class="duty-dot on"></span>On Duty</span>
+          <span class="flex items-center gap-1"><span class="duty-dot break"></span>On Break</span>
+          <span class="flex items-center gap-1"><span class="duty-dot off"></span>Off Duty</span>
+          <button onclick="refreshDutyRoster()" class="text-slate-500 hover:text-emerald-400">↻ refresh</button>
+          <button onclick="toggleDutyRosterCollapse()" id="duty-roster-toggle-btn" class="text-slate-500 hover:text-emerald-400">+ expand</button>
+        </div>
+      </div>
+      <div id="duty-roster-content" class="overflow-x-auto border border-slate-800 rounded-lg">
+        <div class="flex flex-wrap items-center gap-2 p-2 bg-slate-900/60 border-b border-slate-800" onclick="event.stopPropagation()">
+          <input type="text" id="duty-roster-search" placeholder="🔎 Search personnel…" oninput="dutyRosterSetSearch(this.value)"
+                 class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 w-40" />
+          <div class="flex items-center gap-1" id="duty-roster-status-pills">
+            <span class="text-[10px] text-slate-500 mr-0.5">Status:</span>
+            <button type="button" class="duty-filter-pill active" data-status="all" onclick="dutyRosterSetFilterStatus('all')">All</button>
+            <button type="button" class="duty-filter-pill" data-status="on" onclick="dutyRosterSetFilterStatus('on')">On Duty</button>
+            <button type="button" class="duty-filter-pill" data-status="break" onclick="dutyRosterSetFilterStatus('break')">On Break</button>
+            <button type="button" class="duty-filter-pill" data-status="off" onclick="dutyRosterSetFilterStatus('off')">Off Duty</button>
+          </div>
+          <div class="flex items-center gap-1" id="duty-roster-task-pills">
+            <span class="text-[10px] text-slate-500 mr-0.5">Task:</span>
+            <button type="button" class="duty-filter-pill active" data-task="all" onclick="dutyRosterSetFilterTask('all')">All</button>
+            <button type="button" class="duty-filter-pill" data-task="idle" onclick="dutyRosterSetFilterTask('idle')">Idle</button>
+            <button type="button" class="duty-filter-pill" data-task="busy" onclick="dutyRosterSetFilterTask('busy')">Non-Idle</button>
+          </div>
+          <select id="duty-roster-role-filter" onchange="dutyRosterSetFilterRole(this.value)"
+                  class="bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-300 focus:outline-none focus:border-emerald-500">
+            <option value="all">All Roles</option>
+          </select>
+          <button onclick="dutyRosterClearFilters()" class="text-[10px] text-slate-500 hover:text-emerald-400">Clear filters</button>
+          <span id="duty-roster-filter-count" class="text-[10px] text-slate-500 ml-auto"></span>
+        </div>
+        <table class="w-full text-left text-xs border-collapse">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+            <tr>
+              <th class="p-2 cursor-pointer select-none hover:text-emerald-400" data-sort-key="name" data-label="Personnel" onclick="dutyRosterSort('name')">Personnel</th>
+              <th class="p-2">Primary Role</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="status" data-label="Status" onclick="dutyRosterSort('status')">Status</th>
+              <th class="p-2 text-center" title="Whatever this person is currently working on, live from Activity Logs. Blank/Idle means they're on duty with nothing Ongoing right now.">Ongoing Task</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedIn" data-label="Time Reported In" onclick="dutyRosterSort('reportedIn')">Time Reported In</th>
+              <th class="p-2 text-center cursor-pointer select-none hover:text-emerald-400" data-sort-key="reportedOut" data-label="Time Reported Out" onclick="dutyRosterSort('reportedOut')">Time Reported Out</th>
+              <th class="p-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="duty-roster-body">
+            <tr><td colspan="7" class="p-4 text-center text-slate-500 italic">Click ↻ refresh to load the duty roster.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MASTER RECORDS ================= -->
+  <!-- ================= PENDING QUEUE ================= -->
+  <section id="view-pending" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">⏳ Pending Queue</h2>
+        <p class="text-xs text-slate-400">Every Sales Order that hasn't reached <span class="text-slate-300 font-semibold">Checked</span> yet — regardless of which upload batch it came in on. Use Edit to correct a record's details or push its stage forward.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="text" id="pending-search" oninput="debouncedPendingSearch()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+        <select id="pending-stage-filter" onchange="renderPendingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[140px]">
+          <option value="ALL">All Pending Stages</option>
+          <option value="PENDING">Pending</option>
+          <option value="PICKED">Picked</option>
+          <option value="STAGED">Staged</option>
+          <option value="PULLED">Pulled</option>
+        </select>
+        <button onclick="loadPendingQueue()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
+        <button onclick="exportTableToCSVGeneric('pending-table', 'pending-queue.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div id="pending-bulk-bar" class="hidden items-center gap-2 bg-slate-900 border border-emerald-500/30 rounded-lg px-3 py-2">
+      <span id="pending-bulk-count" class="text-[11px] font-semibold text-emerald-300 mr-1"></span>
+      <label class="text-[11px] text-slate-400">Set status to</label>
+      <select id="pending-bulk-status" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <option value="PENDING">Pending</option>
+        <option value="PICKED">Picked</option>
+        <option value="STAGED">Staged</option>
+        <option value="PULLED">Pulled</option>
+        <option value="CHECKED">Checked</option>
+      </select>
+      <button onclick="applyPendingBulkStatus()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">Apply to Selected</button>
+      <button onclick="clearPendingSelection()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">Clear Selection</button>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table id="pending-table" class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th class="p-3 text-center"><input type="checkbox" id="pending-select-all" onchange="toggleSelectAllPending(this)" class="w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500"></th>
+            <th class="p-3 text-center cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('upload_date')">Upload Date<span id="pending-sort-arrow-upload_date" class="ml-0.5"></span></th>
+            <th class="p-3 text-center">Actions</th>
+            <th class="p-3 text-center cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('status')">Status<span id="pending-sort-arrow-status" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('truck_type')">Truck Type<span id="pending-sort-arrow-truck_type" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('shipment_no')">Shipment<span id="pending-sort-arrow-shipment_no" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('so_number')">S.O. Number<span id="pending-sort-arrow-so_number" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('obd_number')">OBD Number<span id="pending-sort-arrow-obd_number" class="ml-0.5"></span></th>
+            <th class="p-3 text-left cursor-pointer select-none hover:text-slate-200" onclick="sortPendingBy('customer')">Ship To Party Name<span id="pending-sort-arrow-customer" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-slate-300 cursor-pointer select-none hover:text-slate-100" onclick="sortPendingBy('pick_name')">Picker Name<span id="pending-sort-arrow-pick_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-cyan-300 cursor-pointer select-none hover:text-cyan-200" onclick="sortPendingBy('stage_name')">Staging Name<span id="pending-sort-arrow-stage_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center text-cyan-300 cursor-pointer select-none hover:text-cyan-200" onclick="sortPendingBy('staging_area')">Staging Area<span id="pending-sort-arrow-staging_area" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-purple-300 cursor-pointer select-none hover:text-purple-200" onclick="sortPendingBy('pull_name')">Pulled Name<span id="pending-sort-arrow-pull_name" class="ml-0.5"></span></th>
+            <th class="p-3 text-center border-l border-slate-800/60 text-emerald-300 cursor-pointer select-none hover:text-emerald-200" onclick="sortPendingBy('check_name')">Check Name<span id="pending-sort-arrow-check_name" class="ml-0.5"></span></th>
+          </tr>
+        </thead>
+        <tbody id="pending-rows" class="divide-y divide-slate-800/50">
+          <tr><td colspan="14" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="pending-count" class="text-[10px] text-slate-600"></p>
+    <p class="text-[10px] text-slate-600">Editing Status here (Picked / Staged / Pulled / Checked) advances the record directly — it's logged under personnel name <span class="text-slate-300 font-semibold">ADVANCE</span> for documentation, with Start/End time left blank since no one actually clocked the work.</p>
+  </section>
+
+  <section id="view-aging" class="view space-y-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-bold text-slate-100">🗂️ Master Records</h2>
+        <p class="text-xs text-slate-400">All Sales Order records across every stage. Use the <span class="text-slate-300 font-semibold">Status</span> filter to show only <span class="text-slate-300 font-semibold">PENDING</span> (no movement yet), or leave it on <span class="text-slate-300 font-semibold">All Records</span> to see everything. Aging = days since the record was uploaded.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <input type="text" id="aging-search" oninput="debouncedAgingSearch()" placeholder="Search SO, Shipment, OBD, Customer..." class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-56 focus:outline-none focus:border-emerald-500">
+        <button onclick="loadAgingData()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">↻ Refresh</button>
+        <button onclick="exportTableToCSVGeneric('aging-table', 'master-records.csv')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">⬇ Export CSV</button>
+        <button onclick="exportAgingToExcel()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export Excel (XLSX)</button>
+        <button id="aging-export-all-btn" onclick="exportAgingAllToExcel()" title="Exports every record in the database, ignoring the search/status/customer/truck/date filters above and the 20,000-row browse cap" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">⬇ Export All Data (XLSX)</button>
+        <span class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 rounded-lg pl-2 pr-1 py-1">
+          <input type="month" id="aging-export-month" title="Pick a month, then click Export by Month" class="bg-transparent text-xs focus:outline-none">
+          <button id="aging-export-month-btn" onclick="exportAgingByMonthToExcel()" title="Exports every record whose Record Date falls in the selected month, ignoring the filters above and the 20,000-row browse cap" class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 whitespace-nowrap">⬇ Export by Month</button>
+        </span>
+        <button onclick="exportSectionToPDF('view-aging')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">🖶 Export PDF Summary Report</button>
+        <button id="aging-add-btn" onclick="openAgingRecordModal(null)" class="hidden text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white">+ Add Record</button>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-wrap items-end gap-3">
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Status</label>
+        <select id="aging-status-filter" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[140px]">
+          <option value="ALL">All Records</option>
+          <option value="PENDING">Pending</option>
+          <option value="PICKED">Picked</option>
+          <option value="STAGED">Staged</option>
+          <option value="PULLED">Pulled</option>
+          <option value="CHECKED">Checked</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Customer</label>
+        <select id="aging-customer-filter" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[160px]">
+          <option value="">All Customers</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Truck Type</label>
+        <select id="aging-truck-filter" onchange="renderAgingTable()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500 min-w-[120px]">
+          <option value="">All Truck Types</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date From</label>
+        <input type="date" id="aging-date-from" onchange="loadAgingData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+      </div>
+      <div>
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Record Date To</label>
+        <input type="date" id="aging-date-to" onchange="loadAgingData()" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+      </div>
+      <div class="min-w-[240px] max-w-[420px] flex-1">
+        <label class="block text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Paste References (SO / Shipment / OBD — one per line or comma-separated)</label>
+        <textarea id="aging-multiref-filter" onchange="renderAgingTable()" rows="1" placeholder="Paste multiple reference numbers here…" class="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs w-full focus:outline-none focus:border-emerald-500 resize-y"></textarea>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button onclick="document.getElementById('aging-multiref-filter').value=''; renderAgingTable();" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear refs</button>
+        <button onclick="clearAgingFilters()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear filters</button>
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex gap-4 text-[11px]">
+        <div><span class="text-slate-500">Records:</span> <span id="aging-total-count" class="text-slate-200 font-bold">0</span></div>
+        <div><span class="text-slate-500">Total Qty:</span> <span id="aging-total-qty" class="text-amber-400 font-bold">0</span></div>
+        <div><span class="text-slate-500">Oldest:</span> <span id="aging-oldest" class="text-rose-400 font-bold">—</span></div>
+      </div>
+    </div>
+
+    <!-- Bulk action bar — Admin only, appears once 1+ rows are checked -->
+    <div id="aging-bulk-bar" class="hidden bg-rose-950/40 border border-rose-800/50 rounded-xl p-3 flex items-center justify-between gap-3">
+      <p class="text-xs text-rose-200"><span id="aging-bulk-count" class="font-bold">0</span> record(s) selected</p>
+      <div class="flex gap-2">
+        <button onclick="clearAgingSelection()" class="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Clear selection</button>
+        <button onclick="openAgingMassEditModal()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white">✎ Mass Edit</button>
+        <button onclick="deleteSelectedAgingRecords()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-600 text-white">🗑 Delete Selected</button>
+      </div>
+    </div>
+
+    <div class="bg-slate-950 border border-slate-800 rounded-xl overflow-x-auto">
+      <table id="aging-table" class="w-full text-xs whitespace-nowrap">
+        <thead class="bg-slate-900 text-slate-400 border-b border-slate-800 font-medium">
+          <tr>
+            <th rowspan="2" class="p-3 text-left aging-admin-col hidden align-middle"><input type="checkbox" id="aging-select-all" onchange="toggleAgingSelectAll(this)" class="w-3.5 h-3.5 text-emerald-600 bg-slate-900 border-slate-700 rounded"></th>
+            <th rowspan="2" class="p-3 text-center aging-admin-col hidden align-middle">Actions</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Sales Order</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Shipment</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Upload Date</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Record Date</th>
+            <th rowspan="2" class="p-3 text-left align-middle">OBD</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Customer</th>
+            <th rowspan="2" class="p-3 text-left align-middle">Truck Type</th>
+            <th rowspan="2" class="p-3 text-right align-middle">Qty</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Status</th>
+            <th rowspan="2" class="p-3 text-center align-middle">Aging (Days)</th>
+            <th rowspan="2" class="p-3 text-center align-middle text-cyan-300">Staging Area</th>
+            <th class="p-2 text-center border-l border-slate-800 text-green-400" colspan="10">Picker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-sky-300" colspan="11">Staging Checker</th>
+            <th class="p-2 text-center border-l border-slate-800 text-pink-400" colspan="9">Puller</th>
+            <th class="p-2 text-center border-l border-slate-800 text-blue-400" colspan="11">Outbound Checker</th>
+          </tr>
+          <tr class="text-[10px]">
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+            <th class="p-2 text-center border-l border-slate-800">Name</th><th class="p-2 text-center">Start</th><th class="p-2 text-center">End</th><th class="p-2 text-center">Discrepancy</th><th class="p-2 text-center">Remarks</th><th class="p-2 text-center">Rendered Min</th><th class="p-2 text-center">Productivity</th><th class="p-2 text-center">Accuracy</th><th class="p-2 text-center">Hit/Miss</th><th class="p-2 text-center">Speed %</th><th class="p-2 text-center">Idle Time</th>
+          </tr>
+        </thead>
+        <tbody id="aging-rows" class="divide-y divide-slate-800/50">
+          <tr><td colspan="54" class="p-8 text-center text-slate-500 italic">Open this tab to load records.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="aging-count" class="text-[10px] text-slate-600"></p>
+    <p class="text-[10px] text-slate-600">Set the Status filter to "Pending" to see only Sales Orders with no shipment movement yet. The moment a record is flagged PICKED, STAGED, PULLED, or CHECKED it will show under that status instead — keep the filter on "All Records" to see every stage together.</p>
+    <p class="text-[10px] text-slate-600">Productivity per stage = Rendered Minutes ÷ 60 ÷ 6.5 (standard daily working hours) × 100% — same formula as the Personnel Performance Summary. Hit/Miss and Speed % are based on each stage's Target Minutes (Speed % = Target ÷ Rendered × 100). Idle Time is the gap before that task started, task-to-task for the same person+role. Puller has no discrepancy field on file, so Puller Accuracy is untracked and shown as "—". Upload Date is when the record entered the system (drives Aging); Record Date is the record's own business date and can be edited per-record.</p>
+  </section>
+
   <!-- ================= EDIT SHIPMENT ================= -->
   <section id="view-shipedit" class="view space-y-4">
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -1093,7 +1653,7 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="flex flex-wrap items-end gap-2">
         <div class="flex-1 min-w-[240px]">
           <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Shipment Number</label>
-          <input type="text" id="shipedit-search-input" placeholder="Enter EXACT Shipment No. e.g. 8001234567" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();searchShipmentToEdit();}" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
+          <input type="text" id="shipedit-search-input" placeholder="Enter Shipment No. e.g. 8001234567" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();searchShipmentToEdit();}" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500">
         </div>
         <button onclick="searchShipmentToEdit()" class="text-xs font-bold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white whitespace-nowrap">🔍 Search</button>
         <button onclick="clearShipmentEditSearch()" class="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 whitespace-nowrap">Clear</button>
@@ -1317,8 +1877,8 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
 
 <script>
 // --- SUPABASE CLIENT CONFIGURATION ---
-const SUPABASE_URL = "https://wnjwsdsoewyqisnrguac.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_rGAOTVRSUuVSklKQbRDq0A_qa_nUJHn";
+const SUPABASE_URL = "https://tjiqpswohnzetiysdmet.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_PuLIB96y3_711oSiIGAkHg_Vc6TRcWw";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- SHARED NUMBER FORMATTING ---
@@ -1404,12 +1964,13 @@ function gatedSearchHandler(inputId, fn, delay = 250) {
 // the render functions before their own declarations further down the file:
 // function declarations are hoisted, so these already point at the real
 // functions by the time any of this actually runs.
+const debouncedPendingSearch = gatedSearchHandler('pending-search', () => renderPendingTable());
 const debouncedAgingSearch = gatedSearchHandler('aging-search', () => loadAgingData());
 const debouncedSidePanelSearch = gatedSearchHandler('side-panel-search', () => renderSidePanelList());
 
 // Names an admin has flagged "Exclude from computations" on the Personnel Roster
 // (Personnel & Breaks tab). Excluded personnel are dropped from every aggregate
-// metric across Performance Summary — their raw
+// metric across Performance Summary and Analytics & Reports — their raw
 // activity_logs rows still exist, they're just filtered out before any
 // summary/leaderboard/report math runs. Master Records / Data Export are
 // per-shipment record views (not personnel aggregates), so exclusion does not
@@ -1419,7 +1980,7 @@ const debouncedSidePanelSearch = gatedSearchHandler('side-panel-search', () => r
 // formally report for duty. They're dropped from the Duty Roster panel
 // entirely (both the "All Personnel" table and the Ongoing/Idle/On Duty/
 // No On Duty sidebar buckets) — that's the only thing this flag affects;
-// they still count normally toward Performance Summary unless `excluded`
+// they still count normally toward Performance/Analytics unless `excluded`
 // is also set.
 //
 // REQUIRES a `duty_backup` column on the personnel table. Run once in the
@@ -1471,14 +2032,11 @@ async function startApp() {
   await loadDutyShiftSchedules();
   await refreshStagingAreas();
   await refreshExcludedPersonnel();
+  await refreshBulletinBoard();
   await refreshShipmentDatalist();
   await refreshPipelineSummary();
   initManualDispatchRouteOptions();
   subscribeRealtime();
-  // Bulletin/Performance Summary: strictly a 4-hour poll from app start, not
-  // re-triggered by tab switches and not refreshed eagerly here — the board
-  // stays empty/unpopulated until the first tick. See startBulletinSlowPoll().
-  startBulletinSlowPoll();
 }
 
 // --- LOGIN / USER MANAGEMENT ---
@@ -1492,8 +2050,12 @@ async function startApp() {
 const ALL_TABS = [
   { key: 'workbench', label: 'Workbench' },
   { key: 'bulletin', label: 'Performance Summary' },
+  { key: 'analytics', label: 'Analytics & Reports' },
   { key: 'ingestion', label: 'Data Ingestion' },
   { key: 'admin', label: 'Personnel & Breaks' },
+  { key: 'adminops', label: 'Admin' },
+  { key: 'pending', label: 'Pending Queue' },
+  { key: 'aging', label: 'Master Records' },
   { key: 'shipedit', label: 'Edit Shipment' },
   { key: 'usermgmt', label: 'User Management' }
 ];
@@ -1552,6 +2114,13 @@ function moveTabInOrder(key, direction) {
   applyTabOrder();
   renderTabOrderList();
 }
+function resetTabOrder() {
+  try { localStorage.removeItem(TAB_ORDER_STORAGE_KEY); } catch (e) {}
+  applyTabOrder();
+  renderTabOrderList();
+  showToast('Tab order reset to default.', 'success');
+}
+
 // Special permissions: grant a specific capability without opening up a whole
 // tab. Stored in the same `allowed_tabs` array as the tab keys above (it's
 // just a plain text[] column) so no schema/RPC change was needed — these
@@ -1561,8 +2130,8 @@ const EXTRA_PERMISSIONS = [
   { key: 'duty_edit', label: 'Edit Duty Log Times (Admin)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
   { key: 'duty_roster_view', label: 'View Duty Roster (Admin)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
   { key: 'duty_backup_manage', label: 'Mark Personnel as Duty Backup (Personnel & Breaks)', hint: 'Lets this user flag a personnel record as "Backup" — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since backups never formally clock in.' },
-  { key: 'aging_edit', label: 'Edit Master Records (legacy — no tab left)', hint: 'Master Records tab was removed, so this permission no longer has any visible effect and no longer grants Edit Shipment access either. Kept only so nothing errors for accounts that still have it. Use "Edit Shipment" below instead.' },
-  { key: 'shipedit_edit', label: 'Edit Shipment (Edit Shipment)', hint: 'Lets this user search for a shipment and edit it from the Edit Shipment tab — Picker, Staging Checker, Puller, Outbound Checker, staging area, and status. This is now the only special-permission gate for Edit Shipment (independent of any other permission).' }
+  { key: 'aging_edit', label: 'Edit Master Records (Master Records)', hint: 'Lets this user Add/Edit/Delete Master Records rows and correct any per-stage log — Picker, Staging Checker, Puller, Outbound Checker — from the Master Records tab, without granting full User Management access. Also covers editing from the Edit Shipment tab (a superset of shipedit_edit below).' },
+  { key: 'shipedit_edit', label: 'Edit Shipment (Edit Shipment)', hint: 'Lets this user search for a shipment and edit it from the Edit Shipment tab specifically, using the same editor as Master Records — without granting Master Records\' own editing/drag-move rights. Not needed if the user already has "Edit Master Records", which includes this.' }
 ];
 let currentUser = null; // { id, username, allowed_tabs: [...] }
 
@@ -1751,12 +2320,12 @@ function activateView(name) {
     const input = document.getElementById('shipedit-search-input');
     if (input) setTimeout(() => input.focus(), 30);
   }
-  if (name === 'workbench') refreshSidePanel();
-  // Bulletin/Performance Summary intentionally does NOT refetch on tab entry —
-  // it is refreshed ONLY by the strict 4-hour interval started once in
-  // startApp() (see startBulletinSlowPoll). Switching into this tab just shows
-  // whatever was last pulled, even if that's up to 4 hours old.
+  if (name === 'bulletin') refreshBulletinBoard();
+  if (name === 'analytics') refreshAnalyticsView();
   if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
+  if (name === 'adminops') { refreshPipelineSummary(); refreshDutyRoster(); renderTabOrderList(); }
+  if (name === 'pending') loadPendingQueue();
+  if (name === 'aging') { ensureAgingDefaultDateRange(); loadAgingData(); }
   if (name === 'usermgmt') loadUsers();
 }
 
@@ -1984,7 +2553,7 @@ function clearShipmentInput() {
 const PIPELINE_STAGE_ORDER = { PENDING: 0, PICKED: 1, STAGED: 2, PULLED: 3, CHECKED: 4 };
 
 // --- EGRESS REDUCTION: explicit `shipments` column lists ---
-// Data Export and Master Records each list every column
+// Pending Queue, Data Export, and Master Records each list every column
 // they actually read out of the row objects they build below — used in
 // place of select('*') so the DB only sends over-the-wire what each screen
 // truly renders. Keep these in sync with their row-mapping code (and with
@@ -2007,6 +2576,7 @@ const SIDE_PANEL_LOG_COLUMNS = 'id,so_number,shipment_no,personnel_name,role,sta
 // Bulletin Board (computeBulletinEntries) — productivity/speed/accuracy/idle
 // math plus the shipment_no used for shipment counts and idle-gap labels.
 const BULLETIN_LOG_COLUMNS = 'personnel_name,role,status,start_time,end_time,rendered_minutes,target_hours,total_qty,discrepancy_qty,so_number,shipment_no';
+const PENDING_QUEUE_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,so_amount,status,uploaded_at,pgi_date';
 const AGING_SHIP_COLUMNS = 'so_number,shipment_no,obd_number,billing_number,route_description,sold_to_party_name,truck_type,quantity,cv,bx,pac,try_qty,pc,kg,so_amount,status,uploaded_at,record_date,pgi_date';
 
 // Speed % (Target Minutes ÷ Rendered Minutes × 100) is capped at this ceiling
@@ -2018,29 +2588,62 @@ let lastPipelineCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED:
 let lastPipelineShipmentCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 }; // shipment-level — feeds this widget's on-screen numbers
 let lastPipelineRawRows = []; // raw shipment rows, kept for other consumers (e.g. Backlog Forecast)
 async function refreshPipelineSummary() {
-  // Was: full `shipments` select (up to 20,000 rows, every column we needed
-  // times every row) reduced client-side on every realtime change, times
-  // every connected tab. That's the single biggest egress source in the app.
-  // Now: the exact same reduction (effectiveStatusOf + least-advanced-line
-  // per shipment) runs inside Postgres via get_pipeline_summary(), and the
-  // wire only carries ~10 numbers back. See get_pipeline_summary_migration.sql.
-  //
-  // lastPipelineRawRows is no longer populated — grep found no reader of it
-  // anywhere else in the app (the "Backlog Forecast" comment referencing it
-  // predates Backlog Forecast's removal), so it's kept as an empty array
-  // only so nothing that happens to reference it blows up.
-  lastPipelineRawRows = [];
-
-  const { data, error } = await supabaseClient.rpc('get_pipeline_summary');
+  // Explicit newest-first order (same reasoning as loadAgingData()/loadPendingQueue()):
+  // without an explicit order, a capped fetch has no guarantee it favors
+  // recent rows once the table exceeds the limit.
+  // status.neq.CHECKED excludes fully-completed lines from the wire — CHECKED
+  // is computed into allCounts/shipmentAllCounts below but never read by
+  // anything (Backlog Forecast and the on-screen tiles only use PENDING/
+  // PICKED/STAGED/PULLED), and a CHECKED line can never be the least-advanced
+  // line of a shipment that still has other lines, so dropping these rows
+  // changes nothing on screen while keeping the table growth from old
+  // finished shipments out of every refresh. status.is.null is OR'd in
+  // explicitly because PostgREST's neq is SQL <>, which silently drops NULLs
+  // — those rows must stay in (they resolve to PENDING below).
+  const { data, error } = await supabaseClient.from('shipments').select('shipment_no,status,pgi_date,uploaded_at').or('status.neq.CHECKED,status.is.null').order('uploaded_at', { ascending: false }).limit(20000);
   if (error) return console.error(error);
+  const rows = data || [];
+  lastPipelineRawRows = rows;
 
-  const empty = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
-  lastPipelineCounts = (data && data.lineCounts) ? data.lineCounts : { ...empty };
-  lastPipelineShipmentCounts = (data && data.shipmentCounts) ? data.shipmentCounts : { ...empty };
+  // No date filter here anymore — every pending shipment on file counts,
+  // regardless of which upload batch it came in on.
+  const effectiveStatusOf = row => {
+    let effective = row.status;
+    if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && (row.pgi_date))) {
+      effective = 'PICKED';
+    }
+    if (!effective || PIPELINE_STAGE_ORDER[effective] === undefined) effective = 'PENDING';
+    return effective;
+  };
+
+  // --- Line-level counts (unchanged) — still what Backlog Forecast needs.
+  const allCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  rows.forEach(row => { allCounts[effectiveStatusOf(row)]++; });
+  lastPipelineCounts = allCounts;
+
+  // --- Shipment-level counts — one entry per Shipment No., taking the
+  // least-advanced line's stage and the earliest upload date on file for it.
+  const byShipment = new Map();
+  rows.forEach(row => {
+    const shipmentNo = (row.shipment_no || '').trim();
+    if (!shipmentNo) return; // no shipment assigned yet — not a shipment to count here
+    const effective = effectiveStatusOf(row);
+    const existing = byShipment.get(shipmentNo);
+    if (!existing) {
+      byShipment.set(shipmentNo, { effective });
+    } else {
+      if (PIPELINE_STAGE_ORDER[effective] < PIPELINE_STAGE_ORDER[existing.effective]) existing.effective = effective;
+    }
+  });
+
+  // Every pending shipment on file, across every upload batch — no date filter.
+  const shipmentAllCounts = { PENDING: 0, PICKED: 0, STAGED: 0, PULLED: 0, CHECKED: 0 };
+  byShipment.forEach(({ effective }) => { shipmentAllCounts[effective]++; });
+  lastPipelineShipmentCounts = shipmentAllCounts;
 
   // Pipeline Summary panel and Floor Status strip UI have been removed —
-  // lastPipelineCounts / lastPipelineShipmentCounts above are still
-  // populated for Backlog Forecast and other consumers.
+  // lastPipelineCounts / lastPipelineShipmentCounts / lastPipelineRawRows
+  // above are still populated for Backlog Forecast and other consumers.
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
@@ -2051,21 +2654,16 @@ async function refreshShipmentDatalist() {
   document.getElementById('shipment-datalist').innerHTML = unique.map(s => `<option value="${s}">`).join('');
 }
 
-// Workbench's shipment number box needs a higher floor than the other search
-// boxes (MIN_SEARCH_CHARS = 4) — shipment numbers are long enough that an
-// 8-character prefix is still a meaningful, narrow query, and it avoids
-// firing the manifest lookup on a merely-plausible partial number.
-const WORKBENCH_SHIPMENT_MIN_CHARS = 8;
 let shipmentDebounce = null;
 function onShipmentInputChange() {
   clearTimeout(shipmentDebounce);
   shipmentDebounce = setTimeout(() => {
     const len = document.getElementById('target-shipment-no').value.trim().length;
     // Empty box clears the manifest immediately; otherwise wait for at least
-    // WORKBENCH_SHIPMENT_MIN_CHARS characters before hitting the database —
-    // this is a live DB query (ilike), so firing it on every 1-3 char
-    // keystroke is what made typing here feel like it was hanging the page.
-    if (len === 0 || len >= WORKBENCH_SHIPMENT_MIN_CHARS) fetchShipmentManifest();
+    // MIN_SEARCH_CHARS characters before hitting the database — this is a
+    // live DB query (ilike), so firing it on every 1-3 char keystroke is
+    // what made typing here feel like it was hanging the page.
+    if (len === 0 || len >= MIN_SEARCH_CHARS) fetchShipmentManifest();
   }, 300);
 }
 
@@ -2075,17 +2673,7 @@ async function fetchShipmentManifest() {
     currentManifestData = [];
     return renderManifestTable();
   }
-  // EXACT match only — same reasoning as Edit Shipment's search. Workbench
-  // already requires WORKBENCH_SHIPMENT_MIN_CHARS (8) characters before this
-  // even fires, but a partial ilike match with no row cap could still pull
-  // an unbounded number of unrelated shipments for a single keystroke, and
-  // this query re-runs on every realtime write from ANY of the ~50
-  // connected personnel while a tab has a shipment loaded — so its cost is
-  // multiplied by every connected client, not just the person searching.
-  // .limit() stays on as a hard safety cap regardless (a real shipment can
-  // have multiple SO lines, so exact match can still return more than one row).
-  const { data, error } = await supabaseClient.from('shipments').select(MANIFEST_SHIP_COLUMNS)
-    .eq('shipment_no', shipmentNo).limit(50);
+  const { data, error } = await supabaseClient.from('shipments').select(MANIFEST_SHIP_COLUMNS).ilike('shipment_no', `%${shipmentNo}%`);
   if (error) return console.error(error);
 
   // attach latest non-completed (or completed) activity log per so_number+role
@@ -2261,6 +2849,10 @@ function speedRateFor(truckType) {
   if (t === 'STO') return 350;
   return 110;
 }
+function totalConfiguredBreakHours() {
+  return configuredBreaks.reduce((sum, b) => sum + (b.duration_minutes || 0), 0) / 60;
+}
+
 // Flat duration bracket keyed off truck type only — used by Staging Checker,
 // Puller, and Outbound Checker. Per operations spec:
 //   AUV / 4W               = 20 minutes
@@ -2375,7 +2967,8 @@ async function startRow(i) {
   if (error) return showToast("Could not start row: " + error.message, "error");
   clearOperatorInput();
   clearShipmentInput();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 async function pauseRow(i) {
@@ -2387,7 +2980,8 @@ async function pauseRow(i) {
     .in('id', members.map(m => m.id));
   if (error) return showToast("Could not pause: " + error.message, "error");
   await fetchShipmentManifest();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 async function resumeRow(i) {
@@ -2407,7 +3001,8 @@ async function resumeRow(i) {
     if (error) return showToast("Could not resume: " + error.message, "error");
   }
   await fetchShipmentManifest();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 async function unassignRow(i) {
@@ -2420,7 +3015,8 @@ async function unassignRow(i) {
   const { error } = await supabaseClient.from('activity_logs').delete().in('id', members.map(m => m.id));
   if (error) return showToast("Could not unassign: " + error.message, "error");
   await fetchShipmentManifest();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 async function completeRow(i) {
@@ -2698,7 +3294,8 @@ async function confirmStagingComplete() {
   showToast(choices.length ? `Staging check completed — ${choices.join(', ')} (${qty}) logged.` : "Staging check completed.", "success");
 
   await fetchShipmentManifest();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 // --- OUTBOUND CHECK COMPLETION MODAL ---
@@ -2790,7 +3387,8 @@ async function confirmOutboundComplete() {
   showToast(choices.length ? `Outbound check completed — ${choices.join(', ')} (${qty}) logged.` : "Outbound check completed.", "success");
 
   await fetchShipmentManifest();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 // Checks for any still-open (Ongoing/Paused) log(s) belonging to the PRIOR
@@ -2903,7 +3501,8 @@ async function confirmSimpleComplete() {
   showToast("Task completed.", "success");
 
   await fetchShipmentManifest();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 async function commitJobTransaction() {
@@ -2945,7 +3544,8 @@ async function commitJobTransaction() {
   document.getElementById('target-summary-card').classList.add('hidden');
   clearOperatorInput();
   clearShipmentInput();
-  await refreshLiveViews({ manifest: false });
+  await refreshBulletinBoard();
+  await refreshSidePanel();
 }
 
 // --- STICKY SIDE PANEL ---
@@ -3138,7 +3738,7 @@ async function sidePanelPause(id) {
   const members = await getGroupMembers(log);
   const pauseTime = new Date().toISOString();
   await supabaseClient.from('activity_logs').update({ status: 'Paused', end_time: pauseTime }).in('id', members.map(m => m.id));
-  await refreshLiveViews({ manifest: true });
+  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelResume(id) {
   const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
@@ -3152,7 +3752,7 @@ async function sidePanelResume(id) {
     const pauseSeconds = Math.max(0, Math.floor((new Date() - new Date(m.end_time)) / 1000));
     await supabaseClient.from('activity_logs').update({ status: 'Ongoing', end_time: null, accumulated_seconds: (m.accumulated_seconds || 0) + pauseSeconds }).eq('id', m.id);
   }
-  await refreshLiveViews({ manifest: true });
+  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 async function sidePanelComplete(id) {
   const { data: log } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time').eq('id', id).single();
@@ -3173,7 +3773,7 @@ async function sidePanelUnassign(id) {
     : "Unassign this line?";
   if (!(await showConfirm(msg))) return;
   await supabaseClient.from('activity_logs').delete().in('id', members.map(m => m.id));
-  await refreshLiveViews({ manifest: true });
+  await refreshSidePanel(); await fetchShipmentManifest(); await refreshBulletinBoard();
 }
 
 // --- FLOOR DISPATCH BULLETIN (read-only broadcast, realtime) ---
@@ -3198,6 +3798,17 @@ function operationalDayBucketStr(dateLike) {
   const bucket = new Date(t);
   if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
   return `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+}
+
+// Coarse shift window a timestamp falls in, used only for the "Idle Time-of-Day
+// Pattern" mini-analysis under the Role Leaderboards — buckets the day into
+// Morning/Day (6AM–3PM), Evening (3PM–12AM), and Overnight (12AM–6AM).
+const TIME_OF_DAY_BUCKET_LABELS = { day: '6AM–3PM', evening: '3PM–12AM', overnight: '12AM–6AM' };
+function timeOfDayBucket(dateLike) {
+  const h = new Date(dateLike).getHours();
+  if (h >= 6 && h < 15) return 'day';
+  if (h >= 15) return 'evening';
+  return 'overnight';
 }
 
 // Operational day window (05:00 local -> 04:59:59.999 the next day) for an
@@ -3237,9 +3848,9 @@ function sumGroupMinutes(logs) {
 }
 
 // Full personnel roster (deduped by name, with every role they hold), regardless
-// of whether they logged anything on this particular Activity Day — used by
-// the Performance Summary so it always lists every name on file, not just
-// people with logged activity that day.
+// of whether they logged anything on this particular Activity Day — shared by
+// the Performance Summary AND the Analytics Role Leaderboards so both always
+// list every name on file, not just people with logged activity that day.
 async function refreshPersonnelRosterNames() {
   const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role, excluded');
   if (rosterErr) { console.error(rosterErr); return; }
@@ -3272,11 +3883,10 @@ async function refreshBulletinBoard() {
 
 // Two independent role pools: Picker+Puller share one leaderboard, Staging
 // Checker+Outbound Checker share the other, since they're graded against
-// different per-role targets and shouldn't be ranked head-to-head.
-const ROLE_GROUPS = {
-  PICK_GROUP: { label: 'Picking Operations', roles: ['Picker', 'Puller'] },
-  CHECK_GROUP: { label: 'Checking Operations', roles: ['Staging Checker', 'Outbound Checker'] }
-};
+// different per-role targets and shouldn't be ranked head-to-head. Reuses the
+// same grouping as the Analytics "Role Leaderboards" (ROLE_GROUPS, defined
+// further down — safe to reference here since this only runs at render time,
+// well after the whole script has finished its top-to-bottom initialization).
 const BULLETIN_GROUP_KEYS = ['PICK_GROUP', 'CHECK_GROUP'];
 
 // Which single metric currently ranks each board. Clickable filter buttons
@@ -3572,17 +4182,6 @@ function renderBulletinGroupBoard(groupKey) {
   renderBulletinTrendChart(groupKey);
 }
 
-// --- Shared Chart.js helper: creates/replaces a chart on a canvas, destroying
-// any prior instance first (used by the Performance Summary trend chart).
-const _chartInstances = {};
-function upsertChart(id, config) {
-  const canvas = document.getElementById(id);
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_chartInstances[id]) _chartInstances[id].destroy();
-  _chartInstances[id] = new Chart(canvas.getContext('2d'), config);
-}
-const CHART_AXIS_OPTS = { ticks: { color: '#647089', font: { size: 9 } }, grid: { color: '#1a2436' } };
-
 // --- 14-day trend chart (replaces the old per-personnel table): one line each
 // for Productivity %, Speed %, and Accuracy %, aggregated across the WHOLE role
 // pool per operational day, ending at the selected Activity Day. Reuses the same
@@ -3679,6 +4278,833 @@ function computeGroupDayMetrics(dayLogsAll, groupKey, groupRoles) {
   return { productivityPct, speedPct, accuracyPct };
 }
 
+// ================= ANALYTICS & REPORTS =================
+function fmtMin(mins) {
+  mins = Math.round(mins || 0);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+function fmtPct(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return '—';
+  return `${pct.toFixed(0)}%`;
+}
+function idlePctColorClass(pct) {
+  if (pct === null || pct === undefined || isNaN(pct)) return 'text-slate-500';
+  return pct >= 40 ? 'text-rose-400 font-semibold' : pct >= 20 ? 'text-amber-400 font-semibold' : 'text-slate-300';
+}
+
+// --- Idle Cause badges (see classifyIdleGap / rollUpIdleCause below): labels
+// and pill styling for the "Idle Cause" column on the Role Leaderboards.
+const IDLE_CAUSE_LABELS = { noDispatches: 'No Dispatches', earlyCompletion: 'Early Completion', individual: 'Individual', mixed: 'Mixed', none: '—' };
+function idleCauseBadgeClass(cause) {
+  switch (cause) {
+    case 'noDispatches': return 'bg-slate-700/60 text-slate-300'; // systemic, nothing to do — neutral
+    case 'earlyCompletion': return 'bg-sky-500/20 text-sky-300'; // systemic, backlog just ran out — informational
+    case 'individual': return 'bg-rose-500/20 text-rose-400 font-semibold'; // worth flagging
+    case 'mixed': return 'bg-amber-500/20 text-amber-300';
+    default: return 'text-slate-600';
+  }
+}
+function idleCauseBadge(cause) {
+  if (!cause || cause === 'none') return '<span class="text-slate-600">—</span>';
+  return `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] ${idleCauseBadgeClass(cause)}">${IDLE_CAUSE_LABELS[cause]}</span>`;
+}
+
+// Window for the Analytics & Reports "Report Period" selector. Extends
+// operationalDayWindowForDate() to cover Weekly / MTD / YTD as well as the
+// original single Activity Day — all still anchored to the same 05:00
+// operational-day boundary so a shift that starts at 4am doesn't get split
+// across two periods. The end of the window is always the end of the
+// selected "As of" Activity Day; the start moves back depending on period:
+//   daily  -> start of the "As of" Activity Day (unchanged behavior)
+//   weekly -> start of the Monday Activity Day of that week
+//   mtd    -> start of the 1st Activity Day of that month
+//   ytd    -> start of the 1st Activity Day of that year (Jan 1)
+function operationalPeriodWindow(periodType, dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const asOfStart = new Date(y, m - 1, d, 5, 0, 0, 0);
+  const endOfOpDay = new Date(asOfStart);
+  endOfOpDay.setDate(endOfOpDay.getDate() + 1);
+  endOfOpDay.setMilliseconds(endOfOpDay.getMilliseconds() - 1);
+
+  let startOfOpDay;
+  if (periodType === 'weekly') {
+    const dow = asOfStart.getDay(); // 0=Sun..6=Sat
+    const diffToMonday = (dow === 0 ? 6 : dow - 1);
+    startOfOpDay = new Date(asOfStart);
+    startOfOpDay.setDate(startOfOpDay.getDate() - diffToMonday);
+  } else if (periodType === 'mtd') {
+    startOfOpDay = new Date(y, m - 1, 1, 5, 0, 0, 0);
+  } else if (periodType === 'ytd') {
+    startOfOpDay = new Date(y, 0, 1, 5, 0, 0, 0);
+  } else {
+    startOfOpDay = asOfStart; // daily
+  }
+  return { startOfOpDay, endOfOpDay };
+}
+
+// Human-readable tag appended to each report card's subtitle so it's obvious
+// which period the numbers on screen represent.
+function analyticsPeriodLabel(periodType, dateStr) {
+  switch (periodType) {
+    case 'weekly': return `Week of ${fmtAgingDate(operationalPeriodWindow('weekly', dateStr).startOfOpDay)} – ${fmtAgingDate(dateStr)}`;
+    case 'mtd': return `MTD through ${fmtAgingDate(dateStr)}`;
+    case 'ytd': return `YTD through ${fmtAgingDate(dateStr)}`;
+    default: return `Activity Day ${fmtAgingDate(dateStr)}`;
+  }
+}
+
+function applyAnalyticsPeriodLabels(periodType, dateStr) {
+  const tag = analyticsPeriodLabel(periodType, dateStr);
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set('cycletime-period-label', `(Completed tasks, ${tag})`);
+  set('discrepancy-period-label', `(Staging + Outbound Check, ${tag})`);
+  set('leaderboard-period-label', `(ranked by Productivity %, ${tag})`);
+  set('role-leaderboards-period-label', `(grouped rankings, ${tag})`);
+}
+
+// Pages through activity_logs past Supabase/PostgREST's default max-rows cap
+// (commonly 1000). A single Activity Day rarely has 1000+ Completed logs, but
+// Weekly/MTD/YTD periods across the whole roster easily do — without this,
+// a plain .select('*') silently truncates and whichever rows happen to
+// survive the cutoff undercounts Shipments/Qty/etc. for anyone whose
+// activity landed past the cutoff (this is what was happening above).
+// .order('id') makes each page's boundary stable/deterministic.
+// `columns` defaults to '*' so any future caller stays safe by default —
+// pass an explicit list (see ANALYTICS_LOG_COLUMNS) to cut egress.
+async function fetchActivityLogsPaginated(applyFilters, columns = '*') {
+  const pageSize = 1000;
+  let from = 0;
+  const all = [];
+  while (true) {
+    let q = supabaseClient.from('activity_logs').select(columns);
+    q = applyFilters(q);
+    const { data, error } = await q.order('id', { ascending: true }).range(from, from + pageSize - 1);
+    if (error) throw error;
+    all.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
+// Analytics view's dayLogs feeds renderCycleTime, renderDiscrepancyReport,
+// renderLeaderboard, renderAllRoleLeaderboards, and renderBacklogForecast —
+// this is the union of every field any of those five actually read.
+const ANALYTICS_LOG_COLUMNS = 'personnel_name,role,start_time,end_time,so_number,shipment_no,total_qty,rendered_minutes,target_hours,discrepancy_qty,discrepancy_type';
+
+async function refreshAnalyticsView() {
+  const dateInput = document.getElementById('analytics-date');
+  if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
+  const dateStr = dateInput ? dateInput.value : defaultOperationalDateStr();
+  const periodSelect = document.getElementById('analytics-period');
+  const periodType = periodSelect ? periodSelect.value : 'daily';
+  const { startOfOpDay, endOfOpDay } = operationalPeriodWindow(periodType, dateStr);
+  applyAnalyticsPeriodLabels(periodType, dateStr);
+
+  await refreshPipelineSummary(); // keep backlog forecast's pending counts current
+
+  // Completed logs for the selected Report Period (Daily / Weekly / MTD / YTD)
+  // — backs Cycle Time, Discrepancy Report, Leaderboard, and Backlog
+  // Forecast's throughput rate. Paginated (see fetchActivityLogsPaginated) so
+  // Weekly/MTD/YTD periods aren't silently capped at 1000 rows.
+  let dayLogs;
+  try {
+    dayLogs = await fetchActivityLogsPaginated(q => q
+      .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString())
+      .eq('status', 'Completed'), ANALYTICS_LOG_COLUMNS);
+  } catch (dayErr) { console.error(dayErr); return; }
+  const filteredDayLogs = (dayLogs || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
+
+  // Role Leaderboards need the full personnel roster (so zero-activity people
+  // still show up) — usually already loaded by refreshBulletinBoard at app
+  // boot, but guard here too in case Analytics is the very first tab opened.
+  if (!bulletinRosterNames.length) await refreshPersonnelRosterNames();
+
+  renderCycleTime(filteredDayLogs);
+  renderDiscrepancyReport(filteredDayLogs);
+  renderLeaderboard(filteredDayLogs);
+  renderAllRoleLeaderboards(filteredDayLogs);
+  renderBacklogForecast(filteredDayLogs);
+
+  await refreshAtRiskBoard();
+  await refreshThroughputTrend(dateStr);
+  await refreshTruckRouteBreakdown();
+}
+
+// --- Cycle Time: avg active minutes per stage, from Completed logs on the
+// selected Activity Day.
+function renderCycleTime(logs) {
+  const grid = document.getElementById('cycle-time-grid');
+  const roles = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
+  grid.innerHTML = roles.map(role => {
+    const roleLogs = logs.filter(l => l.role === role);
+    const groupMins = dedupeGroupMinutes(roleLogs); // one duration per dispatched batch, not per line
+    const avgMin = groupMins.length ? groupMins.reduce((s, m) => s + m, 0) / groupMins.length : 0;
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900 p-3">
+      <span class="text-[10px] uppercase tracking-wider font-semibold block mb-1 ${roleTextClass(role)}">${role}</span>
+      <span class="text-xl font-black ${roleTextClass(role)}">${roleLogs.length ? fmtNum(avgMin) : '—'}</span>
+      <span class="text-[10px] text-slate-500"> min avg · ${roleLogs.length} lines</span>
+    </div>`;
+  }).join('');
+}
+
+// --- Overdue / At-Risk: every currently Ongoing/Paused batch, grouped the same
+// way the side panel groups them (personnel+role+start_time = one dispatch
+// action), sorted worst-overdue first.
+async function refreshAtRiskBoard() {
+  const tbody = document.getElementById('atrisk-rows');
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,target_hours').in('status', ['Ongoing', 'Paused']);
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-400">Failed to load.</td></tr>`;
+    return;
+  }
+  const batches = {};
+  (data || []).filter(log => !excludedPersonnelNames.has((log.personnel_name || '').trim())).forEach(log => {
+    const key = `${log.personnel_name}||${log.role}||${log.start_time}`;
+    (batches[key] = batches[key] || []).push(log);
+  });
+  const now = new Date();
+  const rows = Object.values(batches).map(members => {
+    const rep = members[0];
+    const target = projectedTargetCompletion(new Date(rep.start_time), rep.target_hours || 0);
+    const overdueMin = (now - target) / 60000;
+    return { rep, lines: members.length, target, overdueMin };
+  }).sort((a, b) => b.overdueMin - a.overdueMin);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No ongoing or paused tasks right now.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const isOverdue = r.overdueMin > 0;
+    return `<tr class="hover:bg-slate-900/40">
+      <td class="p-2 font-semibold text-slate-200">${r.rep.personnel_name}</td>
+      <td class="p-2"><span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${roleBadgeClass(r.rep.role)}">${r.rep.role}</span></td>
+      <td class="p-2 text-right font-mono text-slate-300">${r.lines}</td>
+      <td class="p-2 text-center font-mono text-slate-400">${new Date(r.rep.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+      <td class="p-2 text-center font-mono text-slate-400">${r.target.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+      <td class="p-2 text-right font-mono font-semibold ${isOverdue ? 'text-rose-400' : 'text-emerald-400'}">${isOverdue ? fmtMin(r.overdueMin) : 'On track'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- Discrepancy Report: tally discrepancy_type (text[]) across Staging +
+// Outbound Check completions for the selected Activity Day. discrepancy_qty is
+// one shared value per log row, so a row with 2 types contributes its qty to
+// both — a reasonable approximation for "how much volume was affected".
+function renderDiscrepancyReport(logs) {
+  const tbody = document.getElementById('discrepancy-rows');
+  const relevant = logs.filter(l => (l.role === 'Staging Checker' || l.role === 'Outbound Checker') && l.discrepancy_type && l.discrepancy_type.length);
+  const tally = {};
+  relevant.forEach(l => {
+    (l.discrepancy_type || []).forEach(type => {
+      if (!tally[type]) tally[type] = { count: 0, qty: 0 };
+      tally[type].count++;
+      tally[type].qty += (l.discrepancy_qty || 0);
+    });
+  });
+  const entries = Object.entries(tally).sort((a, b) => b[1].count - a[1].count);
+  if (!entries.length) {
+    tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-500 italic">No discrepancies logged for this Activity Day.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = entries.map(([type, v]) => `
+    <tr class="hover:bg-slate-900/40">
+      <td class="p-2 text-rose-400 font-semibold">${type}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${v.count}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${fmtNum(v.qty)}</td>
+    </tr>`).join('');
+}
+
+// --- Personnel Leaderboard: same metrics as Performance Summary, ranked by
+// Productivity % (top 10, selected Activity Day, only personnel with logged time).
+function renderLeaderboard(logs) {
+  const tbody = document.getElementById('leaderboard-rows');
+  const byPersonnel = {};
+  logs.forEach(l => {
+    const key = l.personnel_name || '—';
+    (byPersonnel[key] = byPersonnel[key] || []).push(l);
+  });
+  const rows = Object.entries(byPersonnel).map(([name, entries]) => {
+    const roles = [...new Set(entries.map(l => l.role))];
+    const volume = entries.reduce((s, l) => s + (parseFloat(l.total_qty) || 0), 0);
+    const activeMinutes = sumGroupMinutes(entries);
+    // Productivity is computed per Activity Day (uncapped, so an overtime day
+    // can push it past 100%) then averaged across every day with recorded
+    // activity — same methodology as the Role Leaderboards, so multi-day
+    // Report Periods (Weekly/MTD/YTD) stay meaningful.
+    const entriesByDay = {};
+    entries.forEach(l => { const d = operationalDayBucketStr(l.start_time); (entriesByDay[d] = entriesByDay[d] || []).push(l); });
+    const dayKeys = Object.keys(entriesByDay);
+    const dailyProdPcts = dayKeys.map(d => (sumGroupMinutes(entriesByDay[d]) / 60 / STANDARD_DAILY_HOURS) * 100);
+    const productivityPct = dayKeys.length ? dailyProdPcts.reduce((s, v) => s + v, 0) / dayKeys.length : 0;
+    return { name, roles, volume, activeMinutes, productivityPct };
+  }).filter(r => r.activeMinutes > 0).sort((a, b) => b.productivityPct - a.productivityPct).slice(0, 10);
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500 italic">No completed activity for this Activity Day yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const color = r.productivityPct >= 100 ? 'text-emerald-400' : r.productivityPct >= 70 ? 'text-amber-400' : 'text-rose-400';
+    return `<tr class="hover:bg-slate-900/40">
+      <td class="p-2 text-center font-bold">${medal}</td>
+      <td class="p-2 font-semibold text-slate-200">${r.name}</td>
+      <td class="p-2">${r.roles.map(rl => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1 ${roleBadgeClass(rl)}">${rl}</span>`).join('')}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${fmtNum(r.volume)}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${fmtNum(r.activeMinutes)}</td>
+      <td class="p-2 text-right font-mono font-semibold ${color}">${r.productivityPct.toFixed(1)}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- ROLE LEADERBOARDS: grouped into two combined boards so a person's work
+// under EITHER role in the group counts toward the same ranking —
+// "Picking Operations" (Picker + Puller) and "Checking Operations" (Staging
+// Checker + Outbound Checker). Each is still scored at the SHIPMENT-GROUP
+// level (one dispatched batch = personnel_name + role + start_time), matching
+// the Hit/Miss and Speed % spec; a person holding both roles in a group has
+// their batches from both merged into one row.
+const ROLE_GROUPS = {
+  PICK_GROUP: { label: 'Picking Operations', roles: ['Picker', 'Puller'] },
+  CHECK_GROUP: { label: 'Checking Operations', roles: ['Staging Checker', 'Outbound Checker'] }
+};
+const ROLE_LEADERBOARD_SORT_STATE = { PICK_GROUP: 'speed', CHECK_GROUP: 'speed' };
+const ROLE_LEADERBOARD_TBODY_IDS = { PICK_GROUP: 'lb-pickgroup-rows', CHECK_GROUP: 'lb-checkgroup-rows' };
+const ROLE_LEADERBOARD_TIMEANALYSIS_IDS = { PICK_GROUP: 'lb-pickgroup-timeanalysis', CHECK_GROUP: 'lb-checkgroup-timeanalysis' };
+
+// --- Idle Cause classification: explains WHY a person was idle, not just
+// when. Each of a person's idle gaps (same definition/basis as the Idle %
+// column — full combined activity, same-day only) gets classified as one of:
+//   'noDispatches'   — teammates in the same board's role group were mostly
+//                       idle at the same time too, AND system-wide completed
+//                       dispatch volume during that window was thin — there
+//                       simply wasn't work to hand out (systemic).
+//   'earlyCompletion' — teammates were mostly idle too, but dispatch volume
+//                       wasn't actually low — the group burned through the
+//                       available backlog faster than expected (systemic,
+//                       different flavor from the above).
+//   'individual'      — this person was idle while most same-group teammates
+//                       were still actively working — not explained by lack
+//                       of work; flagged as a possible personal slowdown.
+// A person's row is then labeled with whichever cause covers the majority of
+// their OWN idle minutes that day, falling back to 'mixed' when the top two
+// causes are close (not a clean majority).
+const IDLE_CAUSE_TEAMWIDE_FRACTION = 0.7; // >=70% of the group's active personnel simultaneously idle (zero task in progress) counts the window as "team-wide"
+const IDLE_CAUSE_DISPATCH_RATE_PER_HOUR = 5; // "<5 dispatches" scales with gap length — <5/hr of gap duration, counted system-wide across every role, not just this board's group
+const IDLE_CAUSE_MIXED_MARGIN = 15; // top cause must lead the runner-up by at least this many points of idle-minute share, else the person's row is labeled 'Mixed'
+
+// Is `t` inside any [start,end) interval in a sorted interval list? Used to
+// check whether a given teammate had a task actively in progress at time t.
+function isWithinIntervals(intervals, t) {
+  for (let i = 0; i < intervals.length; i++) {
+    if (intervals[i].start > t) break; // sorted by start — no earlier-starting interval left to check
+    if (t >= intervals[i].start && t < intervals[i].end) return true;
+  }
+  return false;
+}
+
+// Fraction of `activeNames` (this board's group, hasActivity personnel) who
+// have zero task in progress at time `t`, based on their FULL combined
+// activity intervals (same basis as the Idle % column) — i.e. what fraction
+// of the team was simultaneously idle at that moment.
+function teamIdleFractionAt(activeNames, intervalsByPerson, t) {
+  if (!activeNames.length) return 0;
+  let idleCount = 0;
+  activeNames.forEach(name => {
+    const intervals = intervalsByPerson[name] || [];
+    if (!isWithinIntervals(intervals, t)) idleCount++;
+  });
+  return idleCount / activeNames.length;
+}
+
+// Distinct shipment numbers (DS) whose completion (batch end_time) falls in
+// [start, end) — system-wide, across every role, not just this board's
+// group — used as the "how much work was actually moving" signal.
+function countDispatchesInWindow(dispatchEvents, start, end) {
+  const seen = new Set();
+  for (const ev of dispatchEvents) {
+    if (ev.time >= start && ev.time < end) seen.add(ev.shipmentNo);
+  }
+  return seen.size;
+}
+
+function classifyIdleGap(gapStart, gapEnd, activeNames, intervalsByPerson, dispatchEvents) {
+  const midpoint = new Date((gapStart.getTime() + gapEnd.getTime()) / 2);
+  const teamIdleFrac = teamIdleFractionAt(activeNames, intervalsByPerson, midpoint);
+  if (teamIdleFrac < IDLE_CAUSE_TEAMWIDE_FRACTION) return 'individual';
+  const gapHours = (gapEnd - gapStart) / 3600000;
+  const threshold = Math.max(1, Math.round(IDLE_CAUSE_DISPATCH_RATE_PER_HOUR * gapHours));
+  const dispatches = countDispatchesInWindow(dispatchEvents, gapStart, gapEnd);
+  return dispatches < threshold ? 'noDispatches' : 'earlyCompletion';
+}
+
+// Rolls a person's per-cause idle-minute tally up into a single label for
+// their leaderboard row — majority of idle minutes wins, 'mixed' if the top
+// two causes are within IDLE_CAUSE_MIXED_MARGIN points of each other.
+function rollUpIdleCause(causeMinutes, totalIdleMin) {
+  if (totalIdleMin < 0.5) return 'none';
+  const entries = Object.entries(causeMinutes).sort((a, b) => b[1] - a[1]);
+  const topPct = (entries[0][1] / totalIdleMin) * 100;
+  const secondPct = entries[1] ? (entries[1][1] / totalIdleMin) * 100 : 0;
+  if (topPct - secondPct < IDLE_CAUSE_MIXED_MARGIN) return 'mixed';
+  return entries[0][0];
+}
+
+function computeRoleLeaderboardRows(dayLogs, groupKey) {
+  const groupRoles = ROLE_GROUPS[groupKey].roles;
+  const roleLogs = dayLogs.filter(l => groupRoles.includes(l.role));
+
+  // Group into dispatched batches (one "shipment group" task): personnel + role + start_time.
+  const batches = {};
+  roleLogs.forEach(l => {
+    const key = `${l.personnel_name}||${l.role}||${l.start_time}`;
+    (batches[key] = batches[key] || []).push(l);
+  });
+
+  const byPersonnel = {};
+  Object.values(batches).forEach(members => {
+    const rep = members[0];
+    const name = rep.personnel_name || '—';
+    const uniqueBySO = new Map(); // one entry per unique shipment/SO line in this batch
+    members.forEach(m => { if (!uniqueBySO.has(m.so_number)) uniqueBySO.set(m.so_number, m); });
+    const lineRows = [...uniqueBySO.values()];
+    const qty = lineRows.reduce((s, m) => s + (parseFloat(m.total_qty) || 0), 0);
+    const renderedMin = rep.rendered_minutes || 0;
+    const targetMin = (rep.target_hours || 0) * 60;
+    const isHit = renderedMin <= targetMin;
+    const speedPct = (targetMin > 0 && renderedMin > 0) ? Math.min(SPEED_PCT_CAP, (targetMin / renderedMin) * 100) : null;
+    const discrepQty = lineRows.reduce((s, m) => s + (m.discrepancy_qty ? (parseFloat(m.discrepancy_qty) || 0) : 0), 0);
+
+    if (!byPersonnel[name]) byPersonnel[name] = { name, batches: [], shipments: new Set() };
+    byPersonnel[name].batches.push({ role: rep.role, qty, renderedMin, targetMin, isHit, speedPct, discrepQty, lineRows, day: operationalDayBucketStr(rep.start_time) });
+    lineRows.forEach(m => { if (m.shipment_no) byPersonnel[name].shipments.add(m.shipment_no); });
+  });
+
+  // Every personnel on file who holds a role in this pool must appear on the
+  // board even with zero completed activity that day — reuses the same
+  // roster (bulletinRosterNames) the Performance Summary keeps refreshed, so
+  // both views always agree on who's on file. A roster name already present
+  // via batches above is left alone; only names with no activity get a blank
+  // placeholder entry (hasActivity:false, filled in below).
+  bulletinRosterNames.forEach(p => {
+    if (byPersonnel[p.name]) return; // already has activity
+    if (!p.roles.some(r => groupRoles.includes(r))) return; // no role in this pool
+    byPersonnel[p.name] = { name: p.name, batches: [], shipments: new Set(), _rosterRoles: p.roles.filter(r => groupRoles.includes(r)) };
+  });
+
+  // Staging Checker logs for the day — used to grade downstream Picker Accuracy.
+  const stagingLogsForDay = dayLogs.filter(l => l.role === 'Staging Checker');
+
+  // Full (ALL-ROLE) activity per personnel, across every pool they touch — used
+  // ONLY for Productivity and Idle Time, since those describe a person's whole
+  // work day, not just their work in this board's role group. Everything else
+  // on this board (Shipments, Qty, Hit/Miss, Speed, Accuracy) stays scoped to
+  // this pool's roles. Deduped the same way as the group batches above (one
+  // entry per personnel + role + start_time) so multi-line SO batches aren't
+  // double counted.
+  const seenFullBatchKeys = new Set();
+  const fullMinutesByPersonDay = {}; // name -> { day: minutes }
+  const fullLogsByPerson = {};       // name -> [one representative log per batch]
+  dayLogs.forEach(l => {
+    const name = l.personnel_name || '—';
+    const bKey = `${name}||${l.role}||${l.start_time}`;
+    if (seenFullBatchKeys.has(bKey)) return;
+    seenFullBatchKeys.add(bKey);
+    const day = operationalDayBucketStr(l.start_time);
+    fullMinutesByPersonDay[name] = fullMinutesByPersonDay[name] || {};
+    fullMinutesByPersonDay[name][day] = (fullMinutesByPersonDay[name][day] || 0) + (l.rendered_minutes || 0);
+    (fullLogsByPerson[name] = fullLogsByPerson[name] || []).push(l);
+  });
+
+  // --- Idle Cause inputs (see classifyIdleGap above) ---
+  // 1) Every active personnel's task-in-progress intervals (full combined
+  //    activity, same basis as idle gaps below) — used to check whether a
+  //    given teammate had zero task in progress at another person's idle
+  //    moment.
+  const fullIntervalsByPerson = {};
+  Object.entries(fullLogsByPerson).forEach(([name, logs]) => {
+    fullIntervalsByPerson[name] = logs
+      .filter(l => l.end_time)
+      .map(l => ({ start: new Date(l.start_time), end: new Date(l.end_time) }))
+      .sort((a, b) => a.start - b.start);
+  });
+  // 2) This board's group — who counts as "the team" for the team-wide idle
+  //    check — is everyone with logged activity in THIS group's roles today
+  //    (i.e. hasActivity on this board), not the full personnel roster.
+  const activeNamesInGroup = Object.values(byPersonnel).filter(p => p.batches.length > 0).map(p => p.name);
+  // 3) System-wide dispatch completions for the day, across EVERY role (not
+  //    just this board's group) — one event per distinct shipment number per
+  //    completed batch, timestamped at that batch's end_time. Used to gauge
+  //    how much work was actually moving during a given idle window.
+  const allBatchesForDay = {};
+  dayLogs.forEach(l => {
+    const key = `${l.personnel_name}||${l.role}||${l.start_time}`;
+    (allBatchesForDay[key] = allBatchesForDay[key] || []).push(l);
+  });
+  const dispatchEvents = [];
+  Object.values(allBatchesForDay).forEach(members => {
+    const rep = members[0];
+    if (!rep.end_time) return;
+    const t = new Date(rep.end_time);
+    const shipNos = new Set();
+    members.forEach(m => { if (m.shipment_no) shipNos.add(m.shipment_no); });
+    shipNos.forEach(sn => dispatchEvents.push({ time: t, shipmentNo: sn }));
+  });
+  dispatchEvents.sort((a, b) => a.time - b.time);
+
+  return (function buildRowsAndTimeOfDay() {
+  // Idle & Active minutes bucketed by time-of-day window, across every
+  // personnel actually shown on this board (hasActivity) — feeds the small
+  // "Idle Time-of-Day Pattern" analysis rendered under the table. Uses the
+  // same FULL COMBINED ACTIVITY basis as the Idle %/Productivity columns
+  // above (a gap is bucketed by when it started; active time is bucketed by
+  // each task's start time).
+  const idleByBucket = { day: 0, evening: 0, overnight: 0 };
+  const activeByBucket = { day: 0, evening: 0, overnight: 0 };
+
+  const rows = Object.values(byPersonnel).map(p => {
+    const hasActivity = p.batches.length > 0;
+    const totalQty = p.batches.reduce((s, b) => s + b.qty, 0);
+    const totalMin = p.batches.reduce((s, b) => s + b.renderedMin, 0);
+    const hits = p.batches.filter(b => b.isHit).length;
+    const misses = p.batches.length - hits;
+    const incidentMissPct = p.batches.length ? (misses / p.batches.length) * 100 : 0;
+    // Productivity is computed PER OPERATIONAL DAY, from the person's FULL
+    // combined activity across every role/pool they work (not just this
+    // board's role group) — active minutes that day ÷ standard 6.5hr day ×
+    // 100 (uncapped, so overtime days can push it past 100%) — then
+    // AVERAGED across every day they had recorded activity (in any pool).
+    // This keeps the number meaningful whether the report period is a
+    // single Activity Day or a Weekly/MTD/YTD range spanning many days, and
+    // correct for personnel who split time across both Picking and Checking
+    // roles.
+    const minutesByDay = fullMinutesByPersonDay[p.name] || {};
+    const activeDayKeys = Object.keys(minutesByDay);
+    const daysActive = activeDayKeys.length;
+    const dailyProdPcts = activeDayKeys.map(d => (minutesByDay[d] / 60 / STANDARD_DAILY_HOURS) * 100);
+    const productivityPct = daysActive > 0 ? dailyProdPcts.reduce((s, v) => s + v, 0) / daysActive : 0;
+    // Speed % is the plain average of each batch's own Target ÷ Rendered × 100 —
+    // one task at 100% and a second at 80% averages to 90%, per-role target
+    // (e.g. Picker/Puller each keep their own target rate; a Picker+Puller
+    // dual-role person's batches from both roles are averaged together here).
+    const gradeableSpeedBatches = p.batches.filter(b => b.speedPct != null);
+    const avgSpeedPct = gradeableSpeedBatches.length ? gradeableSpeedBatches.reduce((s, b) => s + b.speedPct, 0) / gradeableSpeedBatches.length : null;
+
+    // Idle time: gaps between this person's own back-to-back tasks ACROSS
+    // THEIR FULL COMBINED ACTIVITY (every role/pool), not just this board's
+    // role group — so a gap on the Picking board while they were actually
+    // working a Checking task doesn't get miscounted as idle. Same
+    // methodology as the Performance Summary's idle calc otherwise. Only
+    // counted when both tasks fall on the SAME Activity Day — a gap that
+    // crosses into a different day is off-duty/overnight time, not idle time
+    // on shift, and would otherwise inflate Idle Time once the report period
+    // spans more than one day (Weekly/MTD/YTD).
+    const personAllLogsSorted = (fullLogsByPerson[p.name] || [])
+      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    let idleMin = 0;
+    // Idle Cause: each gap gets classified (see classifyIdleGap above) and its
+    // minutes tallied under that cause, so the row can be labeled with
+    // whichever cause covers the majority of this person's idle time.
+    const causeMinutes = { noDispatches: 0, earlyCompletion: 0, individual: 0 };
+    for (let i = 0; i < personAllLogsSorted.length - 1; i++) {
+      const prev = personAllLogsSorted[i], next = personAllLogsSorted[i + 1];
+      if (!prev.end_time) continue;
+      if (operationalDayBucketStr(prev.end_time) !== operationalDayBucketStr(next.start_time)) continue;
+      const gapStart = new Date(prev.end_time), gapEnd = new Date(next.start_time);
+      const gap = (gapEnd - gapStart) / 60000;
+      if (gap > 0.5) {
+        idleMin += gap;
+        if (hasActivity) idleByBucket[timeOfDayBucket(prev.end_time)] += gap;
+        const cause = classifyIdleGap(gapStart, gapEnd, activeNamesInGroup, fullIntervalsByPerson, dispatchEvents);
+        causeMinutes[cause] += gap;
+      }
+    }
+    const idleCause = rollUpIdleCause(causeMinutes, idleMin);
+    if (hasActivity) {
+      personAllLogsSorted.forEach(l => { activeByBucket[timeOfDayBucket(l.start_time)] += (l.rendered_minutes || 0); });
+    }
+    // Idle % = idle minutes ÷ total available time across every day this
+    // person had recorded activity (in any pool) — 6.5 standard working
+    // hours × days active — e.g. 10 active days = idleMin ÷ (6.5×60×10).
+    const idlePct = daysActive > 0 ? (idleMin / (STANDARD_DAILY_HOURS * 60 * daysActive)) * 100 : 0;
+
+    // Accuracy: Picker is graded downstream (Staging Checker's discrepancy on the
+    // same shipment line); Staging/Outbound Checker are graded on their own logged
+    // discrepancy vs. volume handled; Puller has no discrepancy field — untracked.
+    // A dual-role person's accuracy blends both roles' gradeable volume together.
+    let handledVol = 0, discVol = 0, anyGradeable = false;
+    const seenSO = new Set();
+    p.batches.forEach(b => {
+      if (b.role === 'Picker') {
+        anyGradeable = true;
+        b.lineRows.forEach(m => {
+          if (seenSO.has(m.so_number)) return;
+          seenSO.add(m.so_number);
+          const vol = parseFloat(m.total_qty) || 0;
+          handledVol += vol;
+          const stageLog = stagingLogsForDay.find(l => l.so_number === m.so_number);
+          if (stageLog && stageLog.discrepancy_qty) discVol += parseFloat(stageLog.discrepancy_qty) || 0;
+        });
+      } else if (b.role === 'Staging Checker' || b.role === 'Outbound Checker') {
+        anyGradeable = true;
+        handledVol += b.qty;
+        discVol += b.discrepQty;
+      }
+    });
+    const accuracyPct = anyGradeable ? (handledVol > 0 ? Math.max(0, Math.min(100, ((handledVol - discVol) / handledVol) * 100)) : 100) : null;
+
+    return { name: p.name, roles: p._rosterRoles || [...new Set(p.batches.map(b => b.role))], shipments: p.shipments.size, qty: totalQty, hits, misses, avgSpeedPct, incidentMissPct, productivityPct, idleMin, idlePct, idleCause, daysActive, accuracyPct, hasActivity };
+  });
+
+  return { rows, timeOfDay: { idleByBucket, activeByBucket } };
+  })();
+}
+
+function sortRoleLeaderboardRows(rows, sortKey) {
+  const arr = [...rows];
+  arr.sort((a, b) => {
+    if (a.hasActivity !== b.hasActivity) return a.hasActivity ? -1 : 1;
+    if (!a.hasActivity) return a.name.localeCompare(b.name); // zero-activity personnel: alphabetical among themselves
+    if (sortKey === 'qty') return b.qty - a.qty;
+    if (sortKey === 'productivity') return b.productivityPct - a.productivityPct;
+    if (sortKey === 'idle') return b.idlePct - a.idlePct;
+    if (sortKey === 'accuracy') return (b.accuracyPct ?? -1) - (a.accuracyPct ?? -1);
+    return (b.avgSpeedPct ?? -1) - (a.avgSpeedPct ?? -1); // 'speed' — higher % vs target = faster = ranked first
+  });
+  return arr;
+}
+
+// Small "Idle Time-of-Day Pattern" analysis shown under each Role
+// Leaderboard: buckets idle minutes and active minutes (both from every
+// hasActivity personnel on this board, full combined activity) into three
+// shift windows — 6AM–3PM, 3PM–12AM, 12AM–6AM — and calls out whichever
+// window carries the largest share of idle time as the less-productive one.
+function renderIdleTimeOfDayAnalysis(groupKey, timeOfDay) {
+  const el = document.getElementById(ROLE_LEADERBOARD_TIMEANALYSIS_IDS[groupKey]);
+  if (!el) return;
+  const { idleByBucket, activeByBucket } = timeOfDay;
+  const totalIdle = idleByBucket.day + idleByBucket.evening + idleByBucket.overnight;
+  const totalActive = activeByBucket.day + activeByBucket.evening + activeByBucket.overnight;
+  if (totalIdle < 1 && totalActive < 1) {
+    el.innerHTML = `<span class="text-slate-600 italic">📊 Not enough recorded activity yet to show an idle time-of-day pattern.</span>`;
+    return;
+  }
+  const buckets = ['day', 'evening', 'overnight'];
+  const idlePctOf = k => totalIdle > 0 ? (idleByBucket[k] / totalIdle) * 100 : 0;
+  const activePctOf = k => totalActive > 0 ? (activeByBucket[k] / totalActive) * 100 : 0;
+
+  // Only compare the two main shift windows (day/evening) for the headline
+  // callout — overnight is almost always negligible and would just add noise.
+  const idleLeader = idlePctOf('evening') >= idlePctOf('day') ? 'evening' : 'day';
+  const activeLeader = activePctOf('day') >= activePctOf('evening') ? 'day' : 'evening';
+  const idleLeaderPct = idlePctOf(idleLeader);
+  const oppositeOfIdleLeader = idleLeader === 'evening' ? 'day' : 'evening';
+
+  let headline;
+  if (Math.abs(idlePctOf('day') - idlePctOf('evening')) < 10) {
+    headline = `Idle time is fairly evenly split between ${TIME_OF_DAY_BUCKET_LABELS.day} and ${TIME_OF_DAY_BUCKET_LABELS.evening} this period — no strong time-of-day pattern yet.`;
+  } else {
+    headline = `Most idle time falls in the <strong class="text-rose-400">${TIME_OF_DAY_BUCKET_LABELS[idleLeader]}</strong> window (${idleLeaderPct.toFixed(0)}% of all idle minutes)`;
+    headline += idleLeader === activeLeader
+      ? `, even though that's also the busier window overall — worth a closer look.`
+      : `, while <strong class="text-emerald-400">${TIME_OF_DAY_BUCKET_LABELS[oppositeOfIdleLeader]}</strong> stays the more productive stretch (${activePctOf(oppositeOfIdleLeader).toFixed(0)}% of active minutes) — the ${TIME_OF_DAY_BUCKET_LABELS[idleLeader]} window trends less productive.`;
+  }
+
+  const bar = (label, pct, colorClass) => `
+    <div class="flex items-center gap-2">
+      <span class="w-20 shrink-0 text-slate-500">${label}</span>
+      <div class="flex-1 h-2 rounded bg-slate-800 overflow-hidden"><div class="h-full ${colorClass}" style="width:${Math.max(2, pct).toFixed(0)}%"></div></div>
+      <span class="w-9 shrink-0 text-right font-mono text-slate-400">${pct.toFixed(0)}%</span>
+    </div>`;
+
+  el.innerHTML = `
+    <div class="font-semibold text-slate-300 mb-1.5">📊 Idle Time-of-Day Pattern</div>
+    <p class="mb-2">${headline}</p>
+    <div class="space-y-1 mb-1">
+      <div class="text-[10px] uppercase tracking-wide text-slate-600">Idle minutes by window</div>
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.day, idlePctOf('day'), 'bg-rose-500/70')}
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.evening, idlePctOf('evening'), 'bg-rose-500/70')}
+      ${idleByBucket.overnight > 0 ? bar(TIME_OF_DAY_BUCKET_LABELS.overnight, idlePctOf('overnight'), 'bg-rose-500/70') : ''}
+    </div>
+    <div class="space-y-1">
+      <div class="text-[10px] uppercase tracking-wide text-slate-600">Active minutes by window</div>
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.day, activePctOf('day'), 'bg-emerald-500/70')}
+      ${bar(TIME_OF_DAY_BUCKET_LABELS.evening, activePctOf('evening'), 'bg-emerald-500/70')}
+      ${activeByBucket.overnight > 0 ? bar(TIME_OF_DAY_BUCKET_LABELS.overnight, activePctOf('overnight'), 'bg-emerald-500/70') : ''}
+    </div>`;
+}
+
+function renderRoleLeaderboard(groupKey, dayLogs) {
+  const tbody = document.getElementById(ROLE_LEADERBOARD_TBODY_IDS[groupKey]);
+  if (!tbody) return;
+  const sortKey = ROLE_LEADERBOARD_SORT_STATE[groupKey] || 'speed';
+  const { rows: baseRows, timeOfDay } = computeRoleLeaderboardRows(dayLogs, groupKey);
+  const rows = sortRoleLeaderboardRows(baseRows, sortKey);
+  renderIdleTimeOfDayAnalysis(groupKey, timeOfDay);
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="p-4 text-center text-slate-500 italic">No personnel on file for this pool yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((r, i) => {
+    const medal = !r.hasActivity ? '—' : i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const rowClass = r.hasActivity ? 'hover:bg-slate-900/40' : 'hover:bg-slate-900/40 opacity-50';
+    const nameClass = r.hasActivity ? 'text-slate-200' : 'text-slate-500';
+    if (!r.hasActivity) {
+      return `<tr class="${rowClass}">
+        <td class="p-2 text-center font-bold text-slate-600">${medal}</td>
+        <td class="p-2 font-semibold ${nameClass}">${r.name}</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-center font-mono text-[10px] text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+        <td class="p-2 text-right font-mono text-slate-600">—</td>
+      </tr>`;
+    }
+    return `<tr class="${rowClass}">
+      <td class="p-2 text-center font-bold">${medal}</td>
+      <td class="p-2 font-semibold ${nameClass}">${r.name}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${r.shipments}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${fmtNum(r.qty)}</td>
+      <td class="p-2 text-center font-mono text-[10px] ${r.misses > 0 ? 'text-rose-400' : 'text-emerald-400'}">${r.hits} Hit, ${r.misses} Miss</td>
+      <td class="p-2 text-right font-mono ${speedColorClass(r.avgSpeedPct)}">${fmtSpeedPct(r.avgSpeedPct)}</td>
+      <td class="p-2 text-right font-mono ${r.incidentMissPct > 30 ? 'text-rose-400' : 'text-slate-300'}">${r.incidentMissPct.toFixed(0)}%</td>
+      <td class="p-2 text-right font-mono ${idlePctColorClass(r.idlePct)}">${fmtPct(r.idlePct)}</td>
+      <td class="p-2 text-right">${idleCauseBadge(r.idleCause)}</td>
+      <td class="p-2 text-right font-mono ${productivityColorClass(r.productivityPct)}">${fmtProductivity(r.productivityPct)}</td>
+      <td class="p-2 text-right font-mono ${accuracyColorClass(r.accuracyPct)}">${fmtAccuracy(r.accuracyPct)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Keep the day's Completed logs cached so switching a sort dropdown doesn't
+// require a fresh Supabase round-trip.
+let _roleLeaderboardDayLogsCache = [];
+function renderAllRoleLeaderboards(dayLogs) {
+  if (dayLogs) _roleLeaderboardDayLogsCache = dayLogs;
+  Object.keys(ROLE_GROUPS).forEach(groupKey => renderRoleLeaderboard(groupKey, _roleLeaderboardDayLogsCache));
+}
+function setRoleLeaderboardSort(groupKey, key) {
+  ROLE_LEADERBOARD_SORT_STATE[groupKey] = key;
+  renderRoleLeaderboard(groupKey, _roleLeaderboardDayLogsCache);
+}
+
+// --- Throughput Trend: lines completed per stage, per Activity Day, for the
+// 7 Activity Days ending on the one selected above.
+async function refreshThroughputTrend(endDateStr) {
+  const tbody = document.getElementById('throughput-rows');
+  tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">Loading...</td></tr>`;
+
+  const [y, m, d] = endDateStr.split('-').map(Number);
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const dt = new Date(y, m - 1, d - i);
+    days.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`);
+  }
+  const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
+  const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
+
+  const { data, error } = await supabaseClient.from('activity_logs').select('role,start_time,personnel_name')
+    .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString()).eq('status', 'Completed');
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-400">Failed to load.</td></tr>`;
+    return;
+  }
+
+  const counts = {};
+  days.forEach(ds => counts[ds] = { Picker: 0, 'Staging Checker': 0, Puller: 0, 'Outbound Checker': 0 });
+  (data || []).filter(log => !excludedPersonnelNames.has((log.personnel_name || '').trim())).forEach(log => {
+    const t = new Date(log.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1); // same 05:00 cutover as elsewhere
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    if (counts[ds] && counts[ds][log.role] !== undefined) counts[ds][log.role]++;
+  });
+
+  tbody.innerHTML = days.map(ds => {
+    const c = counts[ds];
+    const isToday = ds === endDateStr;
+    return `<tr class="${isToday ? 'bg-slate-900/60' : ''} hover:bg-slate-900/40">
+      <td class="p-2 font-mono text-slate-300">${ds}${isToday ? ' <span class="text-[9px] text-emerald-400">●</span>' : ''}</td>
+      <td class="p-2 text-right font-mono text-green-400">${c.Picker}</td>
+      <td class="p-2 text-right font-mono text-sky-300">${c['Staging Checker']}</td>
+      <td class="p-2 text-right font-mono text-pink-400">${c.Puller}</td>
+      <td class="p-2 text-right font-mono text-blue-400">${c['Outbound Checker']}</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- Truck Type / Route Breakdown: SO count + volume across every shipments
+// row currently on file (not date-scoped — this reflects the whole manifest).
+async function refreshTruckRouteBreakdown() {
+  const truckBody = document.getElementById('truck-breakdown-rows');
+  const routeBody = document.getElementById('route-breakdown-rows');
+  // Reuses the same paginated fetch as Master Records' "Export All Data" —
+  // this table has no date filter at all (always all-time), so on a large
+  // shipments table it hit the exact same silent 1000-row cap.
+  let data;
+  try { data = await fetchAllShipmentsRowsPaginated(); }
+  catch (error) { console.error(error); return; }
+
+  const byTruck = {}, byRoute = {};
+  (data || []).forEach(row => {
+    const truck = row.truck_type || 'Unspecified';
+    const route = row.route_description || 'Unspecified';
+    const qty = parseFloat(row.quantity) || 0;
+    if (!byTruck[truck]) byTruck[truck] = { count: 0, qty: 0 };
+    byTruck[truck].count++; byTruck[truck].qty += qty;
+    if (!byRoute[route]) byRoute[route] = { count: 0, qty: 0 };
+    byRoute[route].count++; byRoute[route].qty += qty;
+  });
+
+  const truckEntries = Object.entries(byTruck).sort((a, b) => b[1].qty - a[1].qty);
+  const routeEntries = Object.entries(byRoute).sort((a, b) => b[1].qty - a[1].qty);
+  const rowsHtml = entries => entries.map(([label, v]) => `
+    <tr class="hover:bg-slate-900/40">
+      <td class="p-2 font-semibold text-slate-200">${label}</td>
+      <td class="p-2 text-right font-mono text-slate-300">${v.count}</td>
+      <td class="p-2 text-right font-mono text-amber-400">${fmtNum(v.qty)}</td>
+    </tr>`).join('');
+
+  truckBody.innerHTML = truckEntries.length ? rowsHtml(truckEntries) : `<tr><td colspan="3" class="p-4 text-center text-slate-500 italic">No shipments on file.</td></tr>`;
+  routeBody.innerHTML = routeEntries.length ? rowsHtml(routeEntries) : `<tr><td colspan="3" class="p-4 text-center text-slate-500 italic">No shipments on file.</td></tr>`;
+}
+
+// --- Backlog Forecast: pending count per stage (from the Pipeline Summary)
+// divided by that stage's own throughput rate so far today (lines completed
+// ÷ active minutes spent). N/A until at least one line has been completed
+// for that stage today.
+function renderBacklogForecast(logs) {
+  const grid = document.getElementById('backlog-forecast-grid');
+  const roles = ['Picker', 'Staging Checker', 'Puller', 'Outbound Checker'];
+  const pendingByRole = {
+    'Picker': lastPipelineCounts.PENDING,
+    'Staging Checker': lastPipelineCounts.PICKED,
+    'Puller': lastPipelineCounts.STAGED,
+    'Outbound Checker': lastPipelineCounts.PULLED
+  };
+  grid.innerHTML = roles.map(role => {
+    const roleLogs = logs.filter(l => l.role === role);
+    const lines = roleLogs.length;
+    const activeMin = sumGroupMinutes(roleLogs); // true active minutes, not multiplied by batch size
+    const rate = activeMin > 0 ? lines / activeMin : 0; // lines per minute
+    const pending = pendingByRole[role] || 0;
+    const etaMin = rate > 0 ? pending / rate : null;
+    return `<div class="rounded-lg border border-slate-800 bg-slate-900 p-3">
+      <span class="text-[10px] uppercase tracking-wider font-semibold block mb-1 ${roleTextClass(role)}">${role}</span>
+      <div class="flex items-baseline gap-1"><span class="text-xl font-black ${roleTextClass(role)}">${pending}</span><span class="text-[10px] text-slate-500">pending</span></div>
+      <div class="text-[10px] text-slate-500 mt-1">ETA to clear: <span class="font-mono ${etaMin === null ? 'text-slate-500' : 'text-amber-400 font-semibold'}">${etaMin === null ? 'N/A' : fmtMin(etaMin)}</span></div>
+    </div>`;
+  }).join('');
+}
 
 // --- EGRESS GUARD ---------------------------------------------------------
 // `postgres_changes` with event:'*' fires once PER ROW touched. A single
@@ -3700,77 +5126,18 @@ function makeEgressGuardedRefresh(fn, { debounceMs = 800, minGapMs = 4000 } = {}
   };
 }
 
-// Which tab is actually on screen right now — used so a realtime change
-// only pays for a refetch of the data someone can currently see. Every view
-// still catches itself up the moment it becomes active (see activateView()),
-// so nothing goes stale, it just doesn't refetch invisible tabs on every
-// single row change from every connected client.
-function getCurrentViewName() {
-  return document.querySelector('.view.active')?.id?.replace('view-', '') || null;
-}
-
-// Used after user actions (dispatch confirm/pause/complete/edit/delete, etc.)
-// in place of the old unconditional "refresh side panel + bulletin board
-// (+ pipeline summary)" pattern that ran after nearly every action regardless
-// of which tab the action actually happened on. Side panel and Pipeline
-// Summary are hidden outside Workbench/Admin Ops respectively, and Bulletin
-// Board's whole-day query is wasted work when Performance Summary isn't on
-// screen. Each tab still re-syncs itself the moment it's switched into (see
-// activateView()), so nothing goes stale — this just stops paying to refetch
-// tabs nobody's looking at.
-async function refreshLiveViews({ manifest = false } = {}) {
-  const view = getCurrentViewName();
-  if (view === 'workbench') {
-    await refreshSidePanel();
-    if (manifest) await fetchShipmentManifest();
-  }
-  if (view === 'bulletin') await refreshBulletinBoard();
-  if (view === 'adminops') await refreshPipelineSummary();
-}
-
-// EGRESS FIX: Bulletin Board used to sit on this realtime chain, meaning
-// ANY activity_logs write from ANY personnel/role anywhere in the warehouse
-// (not just this user) re-pulled the entire day's BULLETIN_LOG_COLUMNS
-// window — a payload that only grows across the shift. On a wall-mounted
-// board that's a refetch every ~4-5s all day (the old min-gap floor), times
-// every connected client. A leaderboard doesn't need sub-5-second freshness,
-// so it's been moved to its own slow poll — see startBulletinSlowPoll()
-// below. It is intentionally NOT triggered from postgres_changes anymore.
 const guardedActivityLogsRefresh = makeEgressGuardedRefresh(() => {
-  const view = getCurrentViewName();
-  if (view === 'workbench') {
-    refreshSidePanel();
-    // Keep the on-screen manifest itself realtime too — without this, a status
-    // change made by another role/user (or in another tab) only appeared after
-    // manually re-typing the shipment number.
-    if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
-  }
-}, { debounceMs: 1500, minGapMs: 15000 });
+  refreshBulletinBoard();
+  refreshSidePanel();
+  // Keep the on-screen manifest itself realtime too — without this, a status
+  // change made by another role/user (or in another tab) only appeared after
+  // manually re-typing the shipment number.
+  if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+});
 const guardedShipmentsRefresh = makeEgressGuardedRefresh(() => {
-  const view = getCurrentViewName();
-  if (view === 'adminops') refreshPipelineSummary();
-  if (view === 'workbench' && document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
-}, { debounceMs: 1500, minGapMs: 15000 });
-
-// Bulletin Board slow poll — replaces the realtime trigger above. Strict
-// 4-hour interval, started once from startApp() and never reset or
-// re-triggered by tab switches. On each tick it only actually refetches if
-// the Bulletin view happens to be the one on screen at that moment (so a
-// tab left in the background all day still only costs one fetch every 4h);
-// otherwise that tick is skipped entirely, it is NOT deferred/caught up.
-// Switching into the tab does NOT trigger a fetch — see activateView().
-// The board is empty until the first 4-hour tick fires after app start.
-let bulletinSlowPollTimer = null;
-const BULLETIN_SLOW_POLL_MS = 4 * 60 * 60 * 1000; // 4 hours
-function startBulletinSlowPoll() {
-  stopBulletinSlowPoll();
-  bulletinSlowPollTimer = setInterval(() => {
-    if (getCurrentViewName() === 'bulletin') refreshBulletinBoard();
-  }, BULLETIN_SLOW_POLL_MS);
-}
-function stopBulletinSlowPoll() {
-  if (bulletinSlowPollTimer) { clearInterval(bulletinSlowPollTimer); bulletinSlowPollTimer = null; }
-}
+  refreshPipelineSummary();
+  if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+});
 
 function subscribeRealtime() {
   supabaseClient.channel('activity_logs-live')
@@ -3924,7 +5291,36 @@ function calcCheckerAccuracy(log) {
   return Math.max(0, Math.min(100, ((vol - disc) / vol) * 100));
 }
 
-// --- EXPORT HELPERS: PDF ---
+// --- EXPORT HELPERS: CSV / XLSX / PDF ---
+// CSV: build a comma-separated string directly from the rendered <table>'s
+// current (already-filtered) rows and trigger a download via a data-URI blob.
+function exportTableToCSVGeneric(tableId, filename) {
+  const table = document.getElementById(tableId);
+  if (!table) return showToast('Nothing to export.', 'error');
+  const rows = [...table.querySelectorAll('tr')];
+  if (!rows.length) return showToast('Nothing to export.', 'error');
+  const csvLines = rows.map(tr => [...tr.querySelectorAll('th,td')]
+    .map(cell => `"${(cell.innerText || '').replace(/"/g, '""').trim()}"`).join(','));
+  const csv = csvLines.join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`Exported to ${filename}`, 'success');
+}
+
+// XLSX: leverage XLSX.utils.table_to_book to snapshot the CURRENT filtered
+// on-screen table (including any sort/search state) straight into a workbook.
+function exportTableToXLSXGeneric(tableId, filename, sheetName) {
+  const table = document.getElementById(tableId);
+  if (!table) return showToast('Nothing to export.', 'error');
+  const wb = XLSX.utils.table_to_book(table, { sheet: (sheetName || 'Sheet1').toString().slice(0, 31) });
+  XLSX.writeFile(wb, filename);
+  showToast(`Exported to ${filename}`, 'success');
+}
+
 // PDF: flag the target section as the sole visible content, then hand off to
 // the browser's native print pipeline — a print-only stylesheet (see <style>)
 // hides the sidebar/nav/chrome and isolates just the flagged section/table(s)
@@ -3980,11 +5376,6 @@ function escapeForIlikeOr(text) {
 // the exact same way and never drift apart.
 async function loadAgingData() {
   const tbody = document.getElementById('aging-rows');
-  // Master Records tab was removed — its table no longer exists in the DOM.
-  // This function is still called from several SHARED save/delete/mass-edit/
-  // move-record functions (also used by Edit Shipment), so it must no-op
-  // safely here instead of throwing, rather than being deleted outright.
-  if (!tbody) return;
   applyAgingAdminUI();
 
   if (!agingHasActiveFilter()) {
@@ -4054,10 +5445,14 @@ function fmtRenderedMinutes(mins) {
   return `${fmtNum(mins)}m`;
 }
 
-// --- MASTER RECORDS: ADMIN-ONLY ROW CONTROLS (dead code path — Master
-// Records tab was removed; kept only because it's still referenced by
-// unreachable render/drag functions from that tab. Not used by Edit
-// Shipment anymore — see isShipeditAdmin() below, which is independent.) ---
+// --- MASTER RECORDS: ADMIN-ONLY ROW CONTROLS ---
+// "Admin" here means: the literal "admin" account, any user granted the
+// User Management tab, OR any user explicitly granted the 'aging_edit'
+// special permission from User Management. That third case is what lets
+// an admin hand Master Records editing (all stages — Picker, Staging
+// Checker, Puller, Outbound Checker, via the same modal) to a specific
+// account without opening up full User Management to them. Same
+// convention as userCanEditDuty() above.
 function isAgingAdmin() {
   if (!currentUser) return false;
   if (isAdminAccount()) return true;
@@ -4065,18 +5460,15 @@ function isAgingAdmin() {
   return (currentUser.allowed_tabs || []).includes('aging_edit');
 }
 
-// Edit Shipment's own edit gate — fully independent of Master Records'
-// aging_edit (Master Records tab no longer exists). Grants access to: the
-// literal "admin" account, any user granted the User Management tab, or
-// any user explicitly granted the 'shipedit_edit' special permission.
-// NOTE: accounts that previously relied on 'aging_edit' alone (without
-// 'shipedit_edit') for Edit Shipment access will need 'shipedit_edit'
-// added in User Management — the old aging_edit-as-superset behavior is
-// gone now that the two tabs are decoupled.
+// Edit Shipment's own edit gate — independent of Master Records' aging_edit,
+// so an admin can grant editing in one tab without the other. aging_edit
+// still satisfies this too (it's the broader permission: Master Records
+// editing already includes everything Edit Shipment can do), so existing
+// aging_edit users see no change; shipedit_edit is for granting Edit
+// Shipment ONLY, without Master Records' own editing/drag-move rights.
 function isShipeditAdmin() {
+  if (isAgingAdmin()) return true;
   if (!currentUser) return false;
-  if (isAdminAccount()) return true;
-  if (userCanAccess('usermgmt')) return true;
   return (currentUser.allowed_tabs || []).includes('shipedit_edit');
 }
 
@@ -4088,6 +5480,15 @@ function applyAgingAdminUI() {
     agingSelectedSoNumbers.clear();
     document.getElementById('aging-bulk-bar').classList.add('hidden');
   }
+}
+
+// Previously defaulted the Record Date filter to the current month on the
+// first tab open each session. Removed per request: Master Records should
+// show ALL records by default (no implicit date filter hiding anything),
+// and the user picks a date range explicitly only when they want one.
+function ensureAgingDefaultDateRange() {
+  // intentionally a no-op now — kept as a named hook in case a default
+  // is wanted again later, but it no longer sets aging-date-from/to.
 }
 
 // Populate the Customer / Truck Type dropdowns from whatever values actually
@@ -4125,11 +5526,48 @@ function fmtAgingDate(iso) {
   return new Date(iso).toLocaleDateString([], { year: 'numeric', month: 'short', day: '2-digit' });
 }
 
+// Local-calendar-day string (YYYY-MM-DD) for a given ISO timestamp, in the
+// browser's own timezone — NOT a raw UTC slice. uploaded_at is stored in
+// UTC, so a straight `.slice(0, 10)` can land on the wrong calendar day for
+// anyone west of UTC+0 at the boundary (e.g. 2026-07-05 22:00 UTC is already
+// 2026-07-06 locally in Manila/UTC+8). This must match what fmtAgingDate()
+// shows in Master Records, or the two screens disagree on "today's" date.
+function localDateStr(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Formats an already-local "YYYY-MM-DD" bucket key (e.g. from localDateStr)
+// for display. Deliberately does NOT go through `new Date(str)` — a plain
+// date-only string is parsed as UTC midnight, and re-converting that back to
+// local time can shift the day again (backward for timezones west of UTC),
+// undoing the correction localDateStr just made. Building the label straight
+// from the y/m/d parts keeps it exactly the calendar day it says it is.
+const _shortMonthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtLocalDateStr(ymd) {
+  if (!ymd) return '—';
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return '—';
+  return `${_shortMonthNames[m - 1]} ${String(d).padStart(2, '0')}, ${y}`;
+}
+
 function agingColorClass(days) {
   if (days === null || days === undefined) return 'text-slate-500';
   if (days >= 3) return 'text-rose-400 font-bold';
   if (days >= 1) return 'text-amber-400 font-semibold';
   return 'text-emerald-400 font-semibold';
+}
+
+function clearAgingFilters() {
+  document.getElementById('aging-date-from').value = '';
+  document.getElementById('aging-date-to').value = '';
+  document.getElementById('aging-status-filter').value = 'ALL';
+  document.getElementById('aging-customer-filter').value = '';
+  document.getElementById('aging-truck-filter').value = '';
+  document.getElementById('aging-search').value = '';
+  document.getElementById('aging-multiref-filter').value = '';
+  loadAgingData();
 }
 
 // --- SAFETY GUARD: block deleting/renaming a shipment while it still has
@@ -4179,6 +5617,29 @@ function clearAgingSelection() {
   renderAgingTable();
 }
 
+async function deleteSelectedAgingRecords() {
+  const list = Array.from(agingSelectedSoNumbers);
+  if (!list.length) return;
+  const active = await soNumbersWithActiveLogs(list);
+  if (active.length) {
+    return showToast(`Cannot delete — ${active.length} of the selected record(s) still have Ongoing/Paused work logged against them: ${active.join(', ')}. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
+  }
+  const ok = await showConfirm(`Delete ${list.length} selected record(s)? This permanently removes the shipment(s) AND all their activity logs (Picker/Staging/Puller/Outbound history) — no trace of these SO(s) will remain. This cannot be undone.`);
+  if (!ok) return;
+  // Child records first (activity_logs references so_number), then the
+  // shipments row itself — so a totally clean delete, nothing orphaned.
+  const { error: logErr } = await supabaseClient.from('activity_logs').delete().in('so_number', list);
+  if (logErr) return showToast("Could not delete activity logs: " + logErr.message, "error");
+  const { error } = await supabaseClient.from('shipments').delete().in('so_number', list);
+  if (error) return showToast("Could not delete selected records: " + error.message, "error");
+  agingSelectedSoNumbers.clear();
+  showToast(`${list.length} record(s) and all related activity logs deleted.`, "success");
+  await loadAgingData();
+  await refreshPipelineSummary();
+  await refreshSidePanel();
+  await refreshBulletinBoard();
+}
+
 async function deleteAgingRecord(so_number) {
   const active = await soNumbersWithActiveLogs([so_number]);
   if (active.length) {
@@ -4196,7 +5657,8 @@ async function deleteAgingRecord(so_number) {
   showToast(`Record "${so_number}" and all related activity logs deleted.`, "success");
   await loadAgingData();
   await refreshPipelineSummary();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 // --- MASTER RECORDS / EDIT SHIPMENT: MASS EDIT (ADMIN ONLY) ---
@@ -4223,6 +5685,10 @@ function openMassEditModal(list, source) {
       if (field.tagName === 'INPUT') field.value = '';
     });
   document.getElementById('aging-mass-edit-modal').classList.remove('hidden');
+}
+
+function openAgingMassEditModal() {
+  openMassEditModal(Array.from(agingSelectedSoNumbers), 'aging');
 }
 
 function openShipeditMassEditModal() {
@@ -4579,17 +6045,22 @@ async function searchShipmentToEdit() {
   // is fine — that save already went through its own confirmation.)
   shipeditSelectedSoNumbers.clear();
 
-  // EXACT match only — deliberately not a partial/`ilike` search. This tab
-  // is meant to pull up one specific shipment (or its sibling SO lines, if
-  // it's a multi-line shipment) by its full Shipment Number, not to browse
-  // by a fragment. A partial match against the whole `shipments` table can
-  // return and download hundreds of unrelated full rows (select('*')) for a
-  // single keystroke-driven query, which is unnecessary egress for a tab
-  // that only ever needs an exact number. Master Records / Edit Shipment
-  // full-table browsing already covers the "I don't know the exact number"
-  // case, so this stays exact-only on purpose.
+  // Query `shipments` directly on shipment_no only — deliberately NOT reusing
+  // Master Records' 4-column .or() search, so a type/index quirk on any of
+  // the OTHER searchable columns (so_number/obd_number/customer) can never
+  // cause a false "not found" here. ilike first (partial/case-insensitive
+  // match, works for a text column); if that errors out (e.g. shipment_no is
+  // stored as a numeric column, which doesn't support ilike), fall back to
+  // an exact eq() match automatically instead of just failing silently.
+  const q = escapeForIlikeOr(val);
   let { data, error } = await supabaseClient.from('shipments').select('*')
-    .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500);
+    .ilike('shipment_no', `%${q}%`).order('uploaded_at', { ascending: false }).limit(500);
+
+  if (error) {
+    console.error('shipment_no ilike search failed, retrying with exact match:', error.message);
+    ({ data, error } = await supabaseClient.from('shipments').select('*')
+      .eq('shipment_no', val).order('uploaded_at', { ascending: false }).limit(500));
+  }
 
   if (error) {
     results.innerHTML = `<div class="bg-slate-950 border border-rose-800/50 rounded-xl p-8 text-center text-rose-400 text-xs">Search failed: ${error.message}</div>`;
@@ -4610,14 +6081,6 @@ async function searchShipmentToEdit() {
 
   renderShipmentEditResults(matches, val);
 }
-
-// Status badge coloring shared by the Edit Shipment results table.
-const PENDING_STATUS_BADGE = {
-  PENDING: 'bg-green-500/10 text-green-400 border-green-500/30',
-  PICKED: 'bg-sky-400/10 text-sky-300 border-sky-400/30',
-  STAGED: 'bg-pink-500/10 text-pink-400 border-pink-500/30',
-  PULLED: 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-};
 
 function renderShipmentEditResults(matches, searchedVal) {
   const results = document.getElementById('shipedit-results');
@@ -4720,6 +6183,357 @@ function clearShipmentEditSearch() {
   lastShipeditSearchedVal = '';
   document.getElementById('shipedit-bulk-bar')?.classList.add('hidden');
   if (input) input.focus();
+}
+
+// --- PENDING QUEUE: quick-edit list of every SO not yet fully Checked ---
+// Maps a status the user picks in this tab to the role whose stage that
+// status represents — same convention as ROLE_COMPLETE_LABEL, just inverted.
+const STATUS_TO_ROLE = { PICKED: 'Picker', STAGED: 'Staging Checker', PULLED: 'Puller', CHECKED: 'Outbound Checker' };
+let pendingRawRows = [];
+let pendingSelectedSo = new Set();
+
+async function loadPendingQueue() {
+  const tbody = document.getElementById('pending-rows');
+  tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">Loading...</td></tr>`;
+  pendingSelectedSo.clear();
+
+  // Newest-first for the same reason as loadAgingData(): an ascending fetch
+  // capped at 20,000 rows drops the newest shipments off the end once the
+  // table exceeds the cap, so brand-new pending dispatches can silently
+  // never appear in the queue. Descending guarantees new rows always land
+  // inside the window.
+  // Excludes CHECKED at the DB level (equivalent to the old
+  // `.filter(r => r.status !== 'CHECKED')` below, since the "effective"
+  // status computed further down can only equal 'CHECKED' when the raw
+  // `status` column literally is 'CHECKED') — a blank/null status still
+  // needs to come through, since that's a fresh, not-yet-processed record,
+  // so it's explicitly included alongside the neq.
+  const { data, error } = await supabaseClient.from('shipments').select(PENDING_QUEUE_SHIP_COLUMNS)
+    .or('status.is.null,status.neq.CHECKED')
+    .order('uploaded_at', { ascending: false }).limit(20000);
+  if (error) {
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-rose-400">Failed to load: ${error.message}</td></tr>`;
+    return;
+  }
+
+  // Pull the most recently completed log per SO+role so each stage's
+  // Name/Start/End can be shown alongside the record, same pattern as
+  // loadExportData()'s logMap.
+  const soNumbers = (data || []).map(r => r.so_number).filter(Boolean);
+  let logs = [];
+  if (soNumbers.length) {
+    const chunkSize = 300;
+    for (let i = 0; i < soNumbers.length; i += chunkSize) {
+      const chunk = soNumbers.slice(i, i + chunkSize);
+      const { data: logData, error: logErr } = await supabaseClient.from('activity_logs')
+        .select('so_number,role,personnel_name,start_time,end_time,status,staging_areas')
+        .in('so_number', chunk).eq('status', 'Completed');
+      if (!logErr) logs.push(...(logData || []));
+      else console.error(logErr);
+    }
+  }
+  const logMap = {}; // `${so_number}||${role}` -> most recent completed log
+  logs.forEach(l => {
+    const key = `${l.so_number}||${l.role}`;
+    if (!logMap[key] || new Date(l.end_time) > new Date(logMap[key].end_time)) logMap[key] = l;
+  });
+
+  // Same effective-status logic as refreshPipelineSummary()/loadAgingData(),
+  // then keep only records that haven't reached CHECKED yet — no upload-date
+  // filtering at all, so every pending record on file is always listed here.
+  pendingRawRows = (data || [])
+    .map(row => {
+      let effective = row.status;
+      if (!effective || (effective !== 'STAGED' && effective !== 'PULLED' && effective !== 'CHECKED' && row.pgi_date)) {
+        effective = row.pgi_date ? 'PICKED' : (effective || 'PENDING');
+      }
+      if (!PIPELINE_STAGE_ORDER.hasOwnProperty(effective)) effective = 'PENDING';
+      const pick = logMap[`${row.so_number}||Picker`];
+      const stage = logMap[`${row.so_number}||Staging Checker`];
+      const pull = logMap[`${row.so_number}||Puller`];
+      const check = logMap[`${row.so_number}||Outbound Checker`];
+      return {
+        so_number: row.so_number, shipment_no: row.shipment_no, obd_number: row.obd_number,
+        billing_number: row.billing_number, route_description: row.route_description,
+        customer: row.sold_to_party_name, truck_type: row.truck_type,
+        quantity: row.quantity, so_amount: row.so_amount, status: effective,
+        upload_date: row.uploaded_at,
+        pick_name: pick?.personnel_name || null, pick_start: pick?.start_time || null, pick_end: pick?.end_time || null,
+        stage_name: stage?.personnel_name || null, stage_start: stage?.start_time || null, stage_end: stage?.end_time || null,
+        staging_area: stage?.staging_areas || null,
+        pull_name: pull?.personnel_name || null, pull_start: pull?.start_time || null, pull_end: pull?.end_time || null,
+        check_name: check?.personnel_name || null, check_start: check?.start_time || null, check_end: check?.end_time || null
+      };
+    })
+    .filter(r => r.status !== 'CHECKED');
+
+  renderPendingTable();
+}
+
+function filteredPendingRows() {
+  const searchText = (document.getElementById('pending-search').value || '').trim().toLowerCase();
+  const stageVal = document.getElementById('pending-stage-filter').value;
+  return pendingRawRows.filter(r => {
+    if (stageVal !== 'ALL' && r.status !== stageVal) return false;
+    if (!searchText) return true;
+    return (
+      (r.so_number || '').toLowerCase().includes(searchText) ||
+      (r.shipment_no || '').toLowerCase().includes(searchText) ||
+      (r.obd_number || '').toLowerCase().includes(searchText) ||
+      (r.customer || '').toLowerCase().includes(searchText) ||
+      (r.staging_area || []).join(' ').toLowerCase().includes(searchText)
+    );
+  });
+}
+
+// --- PENDING QUEUE: column sorting ---
+let pendingSortKey = null;   // one of PENDING_SORT_ACCESSORS' keys, or null for unsorted
+let pendingSortDir = 'asc';  // 'asc' | 'desc'
+
+const PENDING_SORT_ACCESSORS = {
+  upload_date: r => r.upload_date ? new Date(r.upload_date).getTime() : null,
+  status: r => PIPELINE_STAGE_ORDER.hasOwnProperty(r.status) ? PIPELINE_STAGE_ORDER[r.status] : null,
+  truck_type: r => (r.truck_type || '').toLowerCase() || null,
+  shipment_no: r => (r.shipment_no || '').toLowerCase() || null,
+  so_number: r => (r.so_number || '').toLowerCase() || null,
+  obd_number: r => (r.obd_number || '').toLowerCase() || null,
+  customer: r => (r.customer || '').toLowerCase() || null,
+  pick_name: r => (r.pick_name || '').toLowerCase() || null,
+  stage_name: r => (r.stage_name || '').toLowerCase() || null,
+  staging_area: r => ((r.staging_area || []).join(', ').toLowerCase()) || null,
+  pull_name: r => (r.pull_name || '').toLowerCase() || null,
+  check_name: r => (r.check_name || '').toLowerCase() || null
+};
+
+function sortPendingBy(key) {
+  if (!PENDING_SORT_ACCESSORS[key]) return;
+  if (pendingSortKey === key) pendingSortDir = pendingSortDir === 'asc' ? 'desc' : 'asc';
+  else { pendingSortKey = key; pendingSortDir = 'asc'; }
+  renderPendingTable();
+}
+
+function sortPendingRows(rows) {
+  if (!pendingSortKey) return rows;
+  const accessor = PENDING_SORT_ACCESSORS[pendingSortKey];
+  if (!accessor) return rows;
+  const dir = pendingSortDir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const av = accessor(a), bv = accessor(b);
+    const aEmpty = av === null || av === undefined;
+    const bEmpty = bv === null || bv === undefined;
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;  // blanks always sink to the bottom, regardless of direction
+    if (bEmpty) return -1;
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  });
+}
+
+function updatePendingSortIndicators() {
+  Object.keys(PENDING_SORT_ACCESSORS).forEach(key => {
+    const el = document.getElementById(`pending-sort-arrow-${key}`);
+    if (!el) return;
+    el.textContent = key === pendingSortKey ? (pendingSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  });
+}
+
+const PENDING_STATUS_BADGE = {
+  PENDING: 'bg-green-500/10 text-green-400 border-green-500/30',
+  PICKED: 'bg-sky-400/10 text-sky-300 border-sky-400/30',
+  STAGED: 'bg-pink-500/10 text-pink-400 border-pink-500/30',
+  PULLED: 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+};
+
+function renderPendingTable() {
+  const rows = sortPendingRows(filteredPendingRows());
+  const tbody = document.getElementById('pending-rows');
+  document.getElementById('pending-count').innerText = `Showing ${rows.length} of ${pendingRawRows.length} pending record(s).`;
+  updatePendingSortIndicators();
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-slate-500 italic">No pending records match.</td></tr>`;
+    updatePendingBulkBar();
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const escapedSo = (r.so_number || '').replace(/'/g, "\\'");
+    return `
+    <tr>
+      <td class="p-3 text-center"><input type="checkbox" class="pending-row-checkbox w-4 h-4 text-emerald-600 bg-slate-900 border-slate-700 rounded focus:ring-emerald-500" ${pendingSelectedSo.has(r.so_number) ? 'checked' : ''} onchange="togglePendingRowSelected('${escapedSo}', this.checked)"></td>
+      <td class="p-3 text-center font-mono text-[10px] text-slate-400">${fmtAgingDate(r.upload_date)}</td>
+      <td class="p-3 text-center"><button onclick="openPendingEditModal('${escapedSo}')" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white border border-slate-700">✎ Edit</button></td>
+      <td class="p-3 text-center"><span class="px-2 py-0.5 rounded text-[10px] border font-mono ${PENDING_STATUS_BADGE[r.status] || 'bg-slate-800 text-slate-300 border-slate-700'}">${r.status}</span></td>
+      <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700 font-mono">${r.truck_type || 'Unset'}</span></td>
+      <td class="p-3 font-mono text-slate-400">${r.shipment_no || '—'}</td>
+      <td class="p-3 font-mono text-slate-300 font-semibold">${r.so_number || '—'}</td>
+      <td class="p-3 font-mono text-slate-400 text-[11px]">${r.obd_number || '—'}</td>
+      <td class="p-3 text-slate-300">${r.customer || 'N/A'}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-slate-300 font-semibold">${r.pick_name || '—'}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-cyan-300 font-semibold">${r.stage_name || '—'}</td>
+      <td class="p-3 text-center text-[10px] text-cyan-300 font-mono">${(r.staging_area || []).join(', ') || '—'}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-purple-300 font-semibold">${r.pull_name || '—'}</td>
+      <td class="p-3 text-center border-l border-slate-800/60 text-[10px] text-emerald-300 font-semibold">${r.check_name || '—'}</td>
+    </tr>`;
+  }).join('');
+
+  updatePendingBulkBar();
+}
+
+// --- PENDING QUEUE: multi-select + mass status edit ---
+function togglePendingRowSelected(so_number, checked) {
+  if (checked) pendingSelectedSo.add(so_number);
+  else pendingSelectedSo.delete(so_number);
+  updatePendingBulkBar();
+}
+
+function toggleSelectAllPending(checkbox) {
+  const visibleSo = filteredPendingRows().map(r => r.so_number).filter(Boolean);
+  if (checkbox.checked) visibleSo.forEach(so => pendingSelectedSo.add(so));
+  else visibleSo.forEach(so => pendingSelectedSo.delete(so));
+  renderPendingTable();
+}
+
+function clearPendingSelection() {
+  pendingSelectedSo.clear();
+  renderPendingTable();
+}
+
+function updatePendingBulkBar() {
+  const bar = document.getElementById('pending-bulk-bar');
+  const countEl = document.getElementById('pending-bulk-count');
+  const selectAll = document.getElementById('pending-select-all');
+  if (!bar || !countEl) return;
+
+  const count = pendingSelectedSo.size;
+  countEl.innerText = `${count} selected`;
+  bar.classList.toggle('hidden', count === 0);
+  bar.classList.toggle('flex', count > 0);
+
+  if (selectAll) {
+    const visibleSo = filteredPendingRows().map(r => r.so_number).filter(Boolean);
+    const visibleSelectedCount = visibleSo.filter(so => pendingSelectedSo.has(so)).length;
+    selectAll.checked = visibleSo.length > 0 && visibleSelectedCount === visibleSo.length;
+    selectAll.indeterminate = visibleSelectedCount > 0 && visibleSelectedCount < visibleSo.length;
+  }
+}
+
+async function applyPendingBulkStatus() {
+  const newStatus = document.getElementById('pending-bulk-status').value;
+  const soArray = Array.from(pendingSelectedSo);
+  if (!soArray.length) return showToast("Select at least one pending row.", "error");
+  if (!confirm(`Set status to "${newStatus}" for ${soArray.length} selected record(s)?`)) return;
+
+  // Same PICKED/pgi_date convention used by the single-record edit modal.
+  const updatePayload = { status: newStatus };
+  if (newStatus === 'PICKED') updatePayload.pgi_date = new Date().toISOString();
+
+  const { error } = await supabaseClient.from('shipments').update(updatePayload).in('so_number', soArray);
+  if (error) return showToast("Bulk update failed: " + error.message, "error");
+
+  // Same ADVANCE-attributed documentation log as the single-record edit,
+  // fired once per record whose status actually changed.
+  const role = STATUS_TO_ROLE[newStatus];
+  if (role) {
+    const logsToInsert = soArray
+      .map(so => pendingRawRows.find(r => r.so_number === so))
+      .filter(row => row && row.status !== newStatus)
+      .map(row => ({
+        shipment_no: row.shipment_no, so_number: row.so_number, role,
+        personnel_name: 'ADVANCE', status: 'Completed', start_time: null, end_time: null
+      }));
+    if (logsToInsert.length) {
+      const { error: logErr } = await supabaseClient.from('activity_logs').insert(logsToInsert);
+      if (logErr) console.error('Could not log bulk ADVANCE status change:', logErr.message);
+    }
+  }
+
+  showToast(`Updated ${soArray.length} record(s) to ${newStatus}.`, "success");
+  pendingSelectedSo.clear();
+  await loadPendingQueue();
+  await refreshPipelineSummary();
+}
+
+function openPendingEditModal(so_number) {
+  const row = pendingRawRows.find(r => r.so_number === so_number);
+  if (!row) return showToast("Record not found — try refreshing the Pending Queue.", "error");
+  document.getElementById('pe-original-so').value = row.so_number || '';
+  document.getElementById('pe-truck-type').value = row.truck_type || 'AUV';
+  document.getElementById('pe-shipment-no').value = row.shipment_no || '';
+  document.getElementById('pe-so-number').value = row.so_number || '';
+  document.getElementById('pe-obd-number').value = row.obd_number || '';
+  document.getElementById('pe-route').value = row.route_description || '';
+  document.getElementById('pe-customer').value = row.customer || '';
+  document.getElementById('pe-so-amount').value = row.so_amount ?? 0;
+  document.getElementById('pe-quantity').value = row.quantity ?? 0;
+  document.getElementById('pe-status').value = row.status || 'PENDING';
+  document.getElementById('pending-edit-modal').classList.remove('hidden');
+}
+
+function closePendingEditModal() {
+  document.getElementById('pending-edit-modal').classList.add('hidden');
+}
+
+async function savePendingEditModal() {
+  const originalSo = document.getElementById('pe-original-so').value.trim();
+  const soNumber = document.getElementById('pe-so-number').value.trim();
+  if (!soNumber) return showToast("S.O. Number is required.", "error");
+
+  const priorRow = pendingRawRows.find(r => r.so_number === originalSo);
+  const priorStatus = priorRow ? priorRow.status : 'PENDING';
+  const newStatus = document.getElementById('pe-status').value;
+
+  const row = {
+    so_number: soNumber,
+    shipment_no: document.getElementById('pe-shipment-no').value.trim(),
+    obd_number: document.getElementById('pe-obd-number').value.trim(),
+    route_description: document.getElementById('pe-route').value.trim(),
+    sold_to_party_name: document.getElementById('pe-customer').value.trim(),
+    truck_type: document.getElementById('pe-truck-type').value,
+    status: newStatus,
+    quantity: parseFloat(document.getElementById('pe-quantity').value) || 0,
+    so_amount: parseFloat(document.getElementById('pe-so-amount').value) || 0
+  };
+  // Same PICKED/pgi_date convention used by manual dispatch and Master
+  // Records, so this stays consistent with the rest of the app's state machine.
+  if (newStatus === 'PICKED') row.pgi_date = new Date().toISOString();
+
+  // Renaming the SO Number is the upsert conflict key — same handling as Master Records.
+  // Blocked outright while the OLD SO still has Ongoing/Paused work logged
+  // against it — otherwise the delete succeeds, the repoint below can
+  // silently fail, and the assigned personnel end up working a row that no
+  // longer exists anywhere except their own active session.
+  if (originalSo && originalSo !== soNumber) {
+    const active = await soNumbersWithActiveLogs([originalSo]);
+    if (active.length) {
+      return showToast(`Cannot rename "${originalSo}" — it still has Ongoing/Paused work logged against it. Ask the assigned personnel to finish or have their session paused/cancelled first, then try again.`, "error");
+    }
+    const { error: delError } = await supabaseClient.from('shipments').delete().eq('so_number', originalSo);
+    if (delError) return showToast("Could not update record: " + delError.message, "error");
+    const { error: renameErr } = await supabaseClient.from('activity_logs').update({ so_number: soNumber }).eq('so_number', originalSo);
+    if (renameErr) console.error('Could not repoint activity logs to renamed SO:', renameErr.message);
+  }
+
+  const { error } = await supabaseClient.from('shipments').upsert([row], { onConflict: 'so_number' });
+  if (error) return showToast("Could not save record: " + error.message, "error");
+
+  // A stage advanced through this tab is always attributed to personnel
+  // "ADVANCE" — a documentation-only log entry, with no Start/End time since
+  // no one actually clocked the work. Only fires when Status actually changed.
+  if (newStatus !== priorStatus && STATUS_TO_ROLE[newStatus]) {
+    const { error: logErr } = await supabaseClient.from('activity_logs').insert([{
+      shipment_no: row.shipment_no, so_number: soNumber, role: STATUS_TO_ROLE[newStatus],
+      personnel_name: 'ADVANCE', status: 'Completed', start_time: null, end_time: null
+    }]);
+    if (logErr) console.error('Could not log ADVANCE status change:', logErr.message);
+  }
+
+  showToast(`Record "${soNumber}" saved.`, "success");
+  closePendingEditModal();
+  await loadPendingQueue();
+  await refreshPipelineSummary();
 }
 
 function filteredAgingRows() {
@@ -4871,7 +6685,8 @@ async function moveAgingPersonnelRecord(sourceSo, targetSo, role, logId) {
   showToast(`Moved ${role} record from "${sourceSo}" to "${targetSo}". Related records for both S.O.s have been refreshed.`, "success");
   await loadAgingData();
   await refreshPipelineSummary();
-  await refreshLiveViews({ manifest: false });
+  await refreshSidePanel();
+  await refreshBulletinBoard();
 }
 
 function renderAgingTable() {
@@ -4959,6 +6774,79 @@ function renderAgingTable() {
   updateAgingBulkBar();
 }
 
+// Shared row->Excel-columns mapping, used by the on-screen "Export Excel
+// (XLSX)" button (filtered/loaded rows only) as well as the "Export All
+// Data" and "Export by Month" buttons below (which bypass the on-screen
+// filters and the 20,000-row browse cap entirely).
+function agingRowsToExcelSheet(rows) {
+  return rows.map(r => ({
+    'Sales Order': r.so_number || '', 'Shipment': r.shipment_no || '',
+    'Upload Date': fmtAgingDate(r.upload_date), 'Record Date': fmtAgingDate(r.record_date),
+    'OBD': r.obd_number || '',
+    'Customer': r.customer || '', 'Truck Type': r.truck_type || '', 'Qty': Math.round(r.qty || 0),
+    'Status': r.status,
+    'Aging (Days)': r.aging_days === null ? '' : r.aging_days,
+    'Staging Area': r.staging_area || '',
+    'Picker Name': r.pick_name || '', 'Picker Start': fmtExportDT(r.pick_start), 'Picker End': fmtExportDT(r.pick_end),
+    'Picker Remarks': r.pick_remarks || '', 'Picker Rendered Min': r.pick_rendered != null ? Math.round(r.pick_rendered) : '', 'Picker Productivity': fmtProductivity(r.pick_productivity),
+    'Picker Accuracy': fmtAccuracy(r.pick_accuracy), 'Picker Hit/Miss': fmtHitMiss(r.pick_hitmiss), 'Picker Speed %': fmtSpeedPct(r.pick_speedpct), 'Picker Idle Time': fmtIdleMinutes(r.pick_idle),
+    'Staging Name': r.stage_name || '', 'Staging Start': fmtExportDT(r.stage_start), 'Staging End': fmtExportDT(r.stage_end),
+    'Staging Discrepancy': fmtDiscrepancy(r.stage_discrepancy_type, r.stage_discrepancy_qty),
+    'Staging Remarks': r.stage_remarks || '', 'Staging Rendered Min': r.stage_rendered != null ? Math.round(r.stage_rendered) : '', 'Staging Productivity': fmtProductivity(r.stage_productivity),
+    'Staging Accuracy': fmtAccuracy(r.stage_accuracy), 'Staging Hit/Miss': fmtHitMiss(r.stage_hitmiss), 'Staging Speed %': fmtSpeedPct(r.stage_speedpct), 'Staging Idle Time': fmtIdleMinutes(r.stage_idle),
+    'Pulled Name': r.pull_name || '', 'Pulled Start': fmtExportDT(r.pull_start), 'Pulled End': fmtExportDT(r.pull_end),
+    'Pulled Remarks': r.pull_remarks || '', 'Pulled Rendered Min': r.pull_rendered != null ? Math.round(r.pull_rendered) : '', 'Pulled Productivity': fmtProductivity(r.pull_productivity),
+    'Pulled Hit/Miss': fmtHitMiss(r.pull_hitmiss), 'Pulled Speed %': fmtSpeedPct(r.pull_speedpct), 'Pulled Idle Time': fmtIdleMinutes(r.pull_idle),
+    'Check Name': r.check_name || '', 'Check Start': fmtExportDT(r.check_start), 'Check End': fmtExportDT(r.check_end),
+    'Check Discrepancy': fmtDiscrepancy(r.check_discrepancy_type, r.check_discrepancy_qty),
+    'Check Remarks': r.check_remarks || '', 'Check Rendered Min': r.check_rendered != null ? Math.round(r.check_rendered) : '', 'Check Productivity': fmtProductivity(r.check_productivity),
+    'Check Accuracy': fmtAccuracy(r.check_accuracy), 'Check Hit/Miss': fmtHitMiss(r.check_hitmiss), 'Check Speed %': fmtSpeedPct(r.check_speedpct), 'Check Idle Time': fmtIdleMinutes(r.check_idle)
+  }));
+}
+
+function writeAgingExcelFile(rows, sheetLabel, filename) {
+  const excelRows = agingRowsToExcelSheet(rows);
+  const ws = XLSX.utils.json_to_sheet(excelRows);
+  ws['!cols'] = new Array(52).fill({ wch: 14 });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, String(sheetLabel).slice(0, 31));
+  XLSX.writeFile(wb, filename);
+}
+
+function exportAgingToExcel() {
+  const rows = filteredAgingRows();
+  if (!rows.length) return showToast("No rows to export.", "error");
+
+  const statusVal = document.getElementById('aging-status-filter').value;
+  const sheetLabel = (statusVal && statusVal !== 'ALL') ? statusVal.charAt(0) + statusVal.slice(1).toLowerCase() : 'All';
+  const stamp = new Date().toISOString().slice(0, 10);
+  writeAgingExcelFile(rows, `${sheetLabel} Aging`, `aging-${statusVal.toLowerCase()}-${stamp}.xlsx`);
+  showToast(`Exported ${rows.length} line(s) to Excel.`, "success");
+}
+
+// --- MASTER RECORDS: EXPORT ALL / EXPORT BY MONTH ---
+// Both bypass whatever is currently in the search box / Status / Customer /
+// Truck Type / Record Date filters, and also bypass the 20,000-row browse
+// cap that loadAgingData() applies when just scrolling the on-screen table.
+// They page straight through the full `shipments` table (Supabase caps a
+// single request at 1000 rows, hence the .range() loop) and re-use the same
+// per-stage Picker/Staging/Puller/Outbound-Checker enrichment as the
+// on-screen Master Records table, so the exported columns match exactly.
+async function fetchAllShipmentsRowsPaginated() {
+  const pageSize = 1000;
+  let from = 0;
+  const all = [];
+  while (true) {
+    const { data, error } = await supabaseClient.from('shipments').select('*')
+      .order('uploaded_at', { ascending: false }).range(from, from + pageSize - 1);
+    if (error) throw error;
+    all.push(...(data || []));
+    if (!data || data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
+}
+
 async function buildAgingRowsFromShipments(shipRows) {
   const soNumbers = (shipRows || []).map(r => r.so_number).filter(Boolean);
   let logs = [];
@@ -5024,6 +6912,58 @@ async function buildAgingRowsFromShipments(shipRows) {
       check_idle: check ? idleLookup[`${row.so_number}||Outbound Checker`] : null
     };
   });
+}
+
+async function exportAgingAllToExcel() {
+  const btn = document.getElementById('aging-export-all-btn');
+  if (btn) { btn.disabled = true; btn.dataset.origText = btn.innerText; btn.innerText = '⏳ Exporting...'; }
+  showToast("Fetching every record — this can take a moment for large tables...", "success");
+  try {
+    const shipRows = await fetchAllShipmentsRowsPaginated();
+    if (!shipRows.length) { showToast("No records found.", "error"); return; }
+    const rows = await buildAgingRowsFromShipments(shipRows);
+    const stamp = new Date().toISOString().slice(0, 10);
+    writeAgingExcelFile(rows, 'All Records', `master-records-all-${stamp}.xlsx`);
+    showToast(`Exported all ${rows.length} record(s) to Excel.`, "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Export failed: " + (err.message || err), "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.origText || '⬇ Export All Data (XLSX)'; }
+  }
+}
+
+async function exportAgingByMonthToExcel() {
+  const monthVal = document.getElementById('aging-export-month').value; // "YYYY-MM"
+  if (!monthVal) return showToast("Pick a month first.", "error");
+  const [y, m] = monthVal.split('-').map(Number);
+  const fromDate = new Date(y, m - 1, 1, 0, 0, 0);
+  const toDate = new Date(y, m, 0, 23, 59, 59, 999); // last day of that month
+
+  const btn = document.getElementById('aging-export-month-btn');
+  if (btn) { btn.disabled = true; btn.dataset.origText = btn.innerText; btn.innerText = '⏳ Exporting...'; }
+  showToast(`Fetching records for ${monthVal}...`, "success");
+  try {
+    const shipRows = await fetchAllShipmentsRowsPaginated();
+    if (!shipRows.length) { showToast("No records found.", "error"); return; }
+    const allRows = await buildAgingRowsFromShipments(shipRows);
+    // Same fallback used everywhere else on this tab: record_date, falling
+    // back to upload_date when a record was never explicitly re-dated.
+    const rows = allRows.filter(r => {
+      if (!r.record_date) return false;
+      const d = new Date(r.record_date);
+      return d >= fromDate && d <= toDate;
+    });
+    if (!rows.length) { showToast(`No records found for ${monthVal}.`, "error"); return; }
+    const monthLabel = fromDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    writeAgingExcelFile(rows, monthLabel, `master-records-${monthVal}.xlsx`);
+    showToast(`Exported ${rows.length} record(s) for ${monthLabel}.`, "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Export failed: " + (err.message || err), "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = btn.dataset.origText || '⬇ Export by Month'; }
+  }
 }
 
 // --- DATA INGESTION ---
@@ -5456,6 +7396,22 @@ async function deletePersonnel(id) {
   await populatePersonnelDatalist(currentRole);
   await refreshExcludedPersonnel();
 }
+// Admin-only toggle: flips whether a personnel record is excluded from every
+// computed metric (Performance Summary ranking/podium/MVP badges, Analytics &
+// Reports leaderboards/cycle-time/discrepancy/throughput). The person stays on
+// the roster and their raw logs are untouched — this only filters them out of
+// aggregate math, e.g. someone on extended leave or a lead who shouldn't be
+// ranked against floor staff.
+async function togglePersonnelExcluded(id, excluded) {
+  const { error } = await supabaseClient.from('personnel').update({ excluded }).eq('id', id);
+  if (error) return showToast(error.message, "error");
+  await refreshExcludedPersonnel();
+  await refreshPersonnelAdminList();
+  // Keep whichever performance views are loaded in sync immediately.
+  if (document.getElementById('bulletin-date')) refreshBulletinBoard();
+  if (document.getElementById('analytics-date')) refreshAnalyticsView();
+  showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
+}
 // Renders one card per PERSON (not per role-row) — each card labels every role
 // they hold as Main / Secondary / Third (by role_rank, defaulting untagged rows
 // to Main so older data without role_rank still displays sensibly).
@@ -5528,6 +7484,7 @@ async function togglePersonnelExcludedAll(name, excluded) {
   await refreshExcludedPersonnel();
   await refreshPersonnelAdminList();
   if (document.getElementById('bulletin-date')) refreshBulletinBoard();
+  if (document.getElementById('analytics-date')) refreshAnalyticsView();
   showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
 }
 
@@ -5623,6 +7580,30 @@ function toggleLightMode() {
   } catch (e) { /* storage unavailable — ignore */ }
 })();
 
+// --- DUTY ROSTER: minimize / expand toggle (persisted via localStorage) ---
+function toggleDutyRosterCollapse() {
+  const card = document.getElementById('duty-roster-card');
+  if (!card) return;
+  const collapsed = card.classList.toggle('collapsed');
+  const chev = document.getElementById('duty-roster-chevron');
+  if (chev) chev.innerText = collapsed ? '▸' : '▾';
+  const btn = document.getElementById('duty-roster-toggle-btn');
+  if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
+  try { localStorage.setItem('wh_duty_roster_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
+// --- TAB ORDER: minimize / expand toggle (persisted via localStorage) ---
+function toggleTabOrderCollapse() {
+  const card = document.getElementById('tab-order-card');
+  if (!card) return;
+  const collapsed = card.classList.toggle('collapsed');
+  const chev = document.getElementById('tab-order-chevron');
+  if (chev) chev.innerText = collapsed ? '▸' : '▾';
+  const btn = document.getElementById('tab-order-toggle-btn');
+  if (btn) btn.innerText = collapsed ? '+ expand' : '— minimize';
+  try { localStorage.setItem('wh_tab_order_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+}
+
 // --- ALL ACTIVE LINES (side panel): minimize / expand toggle (persisted via localStorage) ---
 function toggleSidePanelCollapse() {
   const body = document.getElementById('side-panel-body');
@@ -5673,6 +7654,166 @@ function closeScannerModal() {
 }
 
 // --- LIVE OPS ALERTS: Overdue & At-Risk tasks + idle personnel ---
+// --- ANALYTICS: Chart.js charts + heatmap + streak leaderboard ---
+const _chartInstances = {};
+function upsertChart(id, config) {
+  const canvas = document.getElementById(id);
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_chartInstances[id]) _chartInstances[id].destroy();
+  _chartInstances[id] = new Chart(canvas.getContext('2d'), config);
+}
+const CHART_AXIS_OPTS = { ticks: { color: '#647089', font: { size: 9 } }, grid: { color: '#1a2436' } };
+
+async function renderThroughputTrendChart(endDateStr) {
+  const [y, m, d] = endDateStr.split('-').map(Number);
+  const days = [];
+  for (let i = 6; i >= 0; i--) { const dt = new Date(y, m - 1, d - i); days.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`); }
+  const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
+  const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
+  const { data, error } = await supabaseClient.from('activity_logs').select('role,start_time')
+    .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString()).eq('status', 'Completed');
+  if (error) return;
+  const counts = {};
+  days.forEach(ds => counts[ds] = { Picker: 0, 'Staging Checker': 0, Puller: 0, 'Outbound Checker': 0 });
+  (data || []).forEach(log => {
+    const t = new Date(log.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    if (counts[ds] && counts[ds][log.role] !== undefined) counts[ds][log.role]++;
+  });
+  upsertChart('throughput-trend-chart', {
+    type: 'line',
+    data: {
+      labels: days.map(dd => dd.slice(5)),
+      datasets: [
+        { label: 'Picker', data: days.map(dd => counts[dd].Picker), borderColor: '#4ade80', backgroundColor: 'transparent', tension: .3 },
+        { label: 'Staging', data: days.map(dd => counts[dd]['Staging Checker']), borderColor: '#38bdf8', backgroundColor: 'transparent', tension: .3 },
+        { label: 'Puller', data: days.map(dd => counts[dd].Puller), borderColor: '#f472b6', backgroundColor: 'transparent', tension: .3 },
+        { label: 'Check', data: days.map(dd => counts[dd]['Outbound Checker']), borderColor: '#60a5fa', backgroundColor: 'transparent', tension: .3 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#93a1b8', font: { size: 10 } } } }, scales: { x: CHART_AXIS_OPTS, y: { ...CHART_AXIS_OPTS, beginAtZero: true } } }
+  });
+}
+
+async function renderLeaderboardChart(dateStr) {
+  const { startOfOpDay, endOfOpDay } = operationalDayWindowForDate(dateStr);
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,rendered_minutes,status')
+    .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString()).eq('status', 'Completed');
+  if (error) return;
+  const byPersonnel = {};
+  (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim())).forEach(l => { const k = l.personnel_name || '—'; (byPersonnel[k] = byPersonnel[k] || []).push(l); });
+  const rows = Object.entries(byPersonnel).map(([name, logs]) => { const mins = sumGroupMinutes(logs); return { name, pct: mins > 0 ? (mins / 60 / STANDARD_DAILY_HOURS) * 100 : 0 }; })
+    .filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 8);
+  upsertChart('leaderboard-chart', {
+    type: 'bar',
+    data: {
+      labels: rows.map(r => r.name),
+      datasets: [{ label: 'Productivity %', data: rows.map(r => r.pct.toFixed(1)), backgroundColor: rows.map(r => r.pct >= 100 ? '#2dd4bf' : r.pct >= 70 ? '#f59e0b' : '#f43f5e'), borderRadius: 4 }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ...CHART_AXIS_OPTS, beginAtZero: true }, y: { ticks: { color: '#93a1b8', font: { size: 9 } }, grid: { display: false } } } }
+  });
+}
+
+async function renderTruckTypeChart() {
+  // Previously uncapped — fetched every row in `shipments` on every Analytics
+  // tab load. Capped and ordered newest-first, same pattern used for the
+  // other whole-table pulls in this file (refreshPipelineSummary, etc.), so
+  // this can't balloon in cost as the table grows.
+  const { data, error } = await supabaseClient.from('shipments').select('truck_type,quantity').order('uploaded_at', { ascending: false }).limit(20000);
+  if (error) return;
+  const byTruck = {};
+  (data || []).forEach(row => { const t = row.truck_type || 'Unspecified'; byTruck[t] = (byTruck[t] || 0) + (parseFloat(row.quantity) || 0); });
+  const entries = Object.entries(byTruck).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const palette = ['#2dd4bf', '#38bdf8', '#f472b6', '#60a5fa', '#f59e0b', '#a78bfa', '#4ade80', '#f43f5e'];
+  upsertChart('truck-type-chart', {
+    type: 'doughnut',
+    data: { labels: entries.map(e => e[0]), datasets: [{ data: entries.map(e => e[1].toFixed(1)), backgroundColor: palette, borderColor: '#0a0e18', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#93a1b8', font: { size: 9 }, boxWidth: 10 } } } }
+  });
+}
+
+async function renderThroughputHeatmap() {
+  const container = document.getElementById('throughput-heatmap');
+  if (!container) return;
+  const start = new Date(); start.setDate(start.getDate() - 34);
+  const startDs = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  const { startOfOpDay } = operationalDayWindowForDate(startDs);
+  const { data, error } = await supabaseClient.from('activity_logs').select('start_time').eq('status', 'Completed').gte('start_time', startOfOpDay.toISOString());
+  if (error) { container.innerHTML = '<p class="text-[11px] text-rose-400">Failed to load heatmap.</p>'; return; }
+  const counts = {};
+  (data || []).forEach(l => {
+    const t = new Date(l.start_time);
+    const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    counts[ds] = (counts[ds] || 0) + 1;
+  });
+  const days = [];
+  for (let i = 34; i >= 0; i--) {
+    const dt = new Date(); dt.setDate(dt.getDate() - i);
+    const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    days.push({ ds, count: counts[ds] || 0, label: dt.toLocaleDateString([], { month: 'short', day: 'numeric' }) });
+  }
+  const max = Math.max(1, ...days.map(dd => dd.count));
+  const colorFor = c => { if (c === 0) return '#141c2c'; const r = c / max; return r < .33 ? '#0d4d43' : r < .66 ? '#0f8f76' : '#2dd4bf'; };
+  container.innerHTML = days.map(dd => `<span class="heatmap-cell" title="${dd.label}: ${dd.count} completed" style="background:${colorFor(dd.count)}"></span>`).join('');
+}
+
+async function refreshStreakLeaders() {
+  const grid = document.getElementById('streak-leaders-grid');
+  if (!grid) return;
+  const start = new Date(); start.setDate(start.getDate() - 13);
+  const startDs = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+  const { startOfOpDay } = operationalDayWindowForDate(startDs);
+  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,start_time,discrepancy_type')
+    .in('role', ['Staging Checker', 'Outbound Checker']).eq('status', 'Completed').gte('start_time', startOfOpDay.toISOString());
+  if (error) { grid.innerHTML = `<p class="text-[11px] text-rose-400 col-span-3">Failed to load: ${error.message}</p>`; return; }
+  const byPersonnel = {};
+  (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim())).forEach(l => {
+    const t = new Date(l.start_time); const bucket = new Date(t);
+    if (t.getHours() < 5) bucket.setDate(bucket.getDate() - 1);
+    const ds = `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`;
+    const key = l.personnel_name || '—';
+    byPersonnel[key] = byPersonnel[key] || {};
+    const hasDisc = !!(l.discrepancy_type && l.discrepancy_type.length);
+    if (byPersonnel[key][ds] === undefined) byPersonnel[key][ds] = hasDisc;
+    else if (hasDisc) byPersonnel[key][ds] = true;
+  });
+  const todayDs = defaultOperationalDateStr();
+  const streaks = Object.entries(byPersonnel).map(([name, dayMap]) => {
+    let streak = 0;
+    for (let i = 0; i < 14; i++) {
+      const dt = new Date(); dt.setDate(dt.getDate() - i);
+      const ds = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      if (dayMap[ds] === undefined) { if (ds === todayDs) continue; break; }
+      if (dayMap[ds] === true) break;
+      streak++;
+    }
+    return { name, streak };
+  }).filter(r => r.streak > 0).sort((a, b) => b.streak - a.streak).slice(0, 3);
+
+  if (!streaks.length) { grid.innerHTML = '<p class="text-[11px] text-slate-600 italic col-span-3">No active streaks yet — logged discrepancy-free days will show up here.</p>'; return; }
+  grid.innerHTML = streaks.map((s, i) => `
+    <div class="rounded-lg border border-slate-800 bg-slate-900 p-3 flex items-center justify-between">
+      <div><p class="text-xs font-semibold text-slate-200">${i === 0 ? '🔥 ' : ''}${s.name}</p><p class="text-[10px] text-slate-500">Zero-discrepancy streak</p></div>
+      <span class="streak-chip">${s.streak}d</span>
+    </div>`).join('');
+}
+
+const _origRefreshAnalyticsView = refreshAnalyticsView;
+refreshAnalyticsView = async function (...args) {
+  await _origRefreshAnalyticsView.apply(this, args);
+  const dateInput = document.getElementById('analytics-date');
+  const dateStr = (dateInput && dateInput.value) ? dateInput.value : defaultOperationalDateStr();
+  renderThroughputTrendChart(dateStr);
+  renderLeaderboardChart(dateStr);
+  renderTruckTypeChart();
+  renderThroughputHeatmap();
+  refreshStreakLeaders();
+};
+
 // --- GAMIFICATION: Daily MVP badges (one per ranking criterion, per role pool) ---
 // Computes the top personnel for EACH of the three ranking criteria independently,
 // scoped to a single role pool (groupKey: 'PICK_GROUP' or 'CHECK_GROUP') — using
@@ -5984,7 +8125,6 @@ async function fetchDutyLogsToday() {
 // duty / are outside normal duty tracking, so they're always let through
 // here regardless of their duty_logs status for the day.
 async function dutyGuardMessage(name) {
-  return null; // duty guard disabled — dispatch is never blocked by duty status
   if (!name || dutyTableMissing) return null;
   const trimmedName = name.trim();
   if (dutyBackupNames.has(trimmedName) || excludedPersonnelNames.has(trimmedName)) return null;
@@ -6171,6 +8311,7 @@ async function computeDutyMetricsForRoster(names) {
 }
 
 function fmtDutyClock(d) { return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'; }
+function fmtDutyMin(mins) { return (typeof fmtMinutesShort === 'function') ? fmtMinutesShort(mins) : `${Math.round(mins || 0)}m`; }
 
 async function refreshDutyRoster() {
   const card = document.getElementById('duty-roster-card');
@@ -6234,6 +8375,42 @@ function populateDutyRosterRoleFilterOptions() {
   const current = sel.value || 'all';
   sel.innerHTML = `<option value="all">All Roles</option>` + roles.map(r => `<option value="${r}">${r}</option>`).join('');
   if (roles.includes(current)) sel.value = current;
+}
+
+// Keeps the clickable filter pills' "active" styling in sync with the
+// current filter state — called whenever a pill is clicked or filters are
+// cleared, since the pills (unlike a <select>) don't track their own state.
+function dutyRosterSyncFilterPills() {
+  document.querySelectorAll('#duty-roster-status-pills [data-status]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === dutyRosterFilterStatus);
+  });
+  document.querySelectorAll('#duty-roster-task-pills [data-task]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.task === dutyRosterFilterTask);
+  });
+}
+function dutyRosterSetFilterStatus(v) { dutyRosterFilterStatus = v; dutyRosterSyncFilterPills(); renderDutyRosterRows(); }
+function dutyRosterSetFilterTask(v) { dutyRosterFilterTask = v; dutyRosterSyncFilterPills(); renderDutyRosterRows(); }
+function dutyRosterSetFilterRole(v) { dutyRosterFilterRole = v; renderDutyRosterRows(); }
+function dutyRosterSetSearch(v) { dutyRosterSearchTerm = (v || '').trim().toLowerCase(); renderDutyRosterRows(); }
+function dutyRosterClearFilters() {
+  dutyRosterFilterStatus = 'all'; dutyRosterFilterTask = 'all'; dutyRosterFilterRole = 'all'; dutyRosterSearchTerm = '';
+  const s = document.getElementById('duty-roster-search'); if (s) s.value = '';
+  const rl = document.getElementById('duty-roster-role-filter'); if (rl) rl.value = 'all';
+  dutyRosterSyncFilterPills();
+  renderDutyRosterRows();
+}
+// Clicking a sortable header toggles asc/desc if it's already the active
+// column, otherwise switches column with a sensible default direction
+// (name A→Z first click; numeric/status columns show the "most notable"
+// end first — worst idle, lowest productivity, longest on-duty, etc.).
+function dutyRosterSort(key) {
+  if (dutyRosterSortKey === key) {
+    dutyRosterSortDir = dutyRosterSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    dutyRosterSortKey = key;
+    dutyRosterSortDir = key === 'name' ? 'asc' : 'desc';
+  }
+  renderDutyRosterRows();
 }
 
 // Per-person "what are they doing right now" for the Duty Roster's Ongoing
