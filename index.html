@@ -125,34 +125,9 @@
   .alert-chip.idle.clickable:hover{background:rgba(219,39,119,.28);transform:translateY(-1px)}
   .alert-chip.idle.clickable:active{transform:translateY(0)}
   .alert-chip.ongoing-ok{background:rgba(56,189,248,.14);color:#7dd3fc;border:1px solid rgba(56,189,248,.4)}
-  .alert-chip.on-duty-ok{background:rgba(52,211,153,.12);color:#6ee7b7;border:1px solid rgba(52,211,153,.35)}
-  .alert-chip.off-duty{background:rgba(100,116,139,.12);color:#94a3b8;border:1px solid rgba(100,116,139,.3)}
 
-  /* --- Duty Roster: report-for-duty / break / idle / productivity monitor --- */
-  .duty-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-  .duty-dot.on{background:#2dd4bf;box-shadow:0 0 6px rgba(45,212,191,.7)}
-  .duty-dot.break{background:#fbbf24;box-shadow:0 0 6px rgba(251,191,36,.7)}
-  .duty-dot.off{background:#647089}
-  .duty-pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;font-weight:700;padding:.25rem .55rem;border-radius:9999px;white-space:nowrap}
-  .duty-pill.on{background:rgba(45,212,191,.14);color:#2dd4bf;border:1px solid rgba(45,212,191,.4)}
-  .duty-pill.break{background:rgba(251,191,36,.14);color:#fbbf24;border:1px solid rgba(251,191,36,.4)}
-  .duty-pill.off{background:rgba(100,112,137,.14);color:#93a1b8;border:1px solid rgba(100,112,137,.4)}
-  .duty-action-btn{font-size:.63rem;font-weight:700;padding:.3rem .55rem;border-radius:.4rem;border:1px solid transparent;white-space:nowrap;transition:filter .12s ease,transform .1s ease}
-  .duty-action-btn:hover{filter:brightness(1.15)}
-  .duty-action-btn:active{transform:translateY(1px)}
-  .duty-action-btn.in{background:rgba(45,212,191,.16);color:#2dd4bf;border-color:rgba(45,212,191,.4)}
-  .duty-action-btn.break-start{background:rgba(251,191,36,.16);color:#fbbf24;border-color:rgba(251,191,36,.4)}
-  .duty-action-btn.break-end{background:rgba(56,189,248,.16);color:#38bdf8;border-color:rgba(56,189,248,.4)}
-  .duty-action-btn.out{background:rgba(244,63,94,.14);color:#fb7185;border-color:rgba(244,63,94,.4)}
-  .duty-action-btn.edit{background:rgba(147,161,184,.14);color:#c1cbdc;border-color:rgba(147,161,184,.35)}
-  .duty-filter-pill{display:inline-flex;align-items:center;font-size:.65rem;font-weight:700;padding:.25rem .6rem;border-radius:9999px;white-space:nowrap;cursor:pointer;border:1px solid rgba(100,112,137,.35);color:#93a1b8;background:rgba(15,23,42,.4);transition:filter .12s ease,background .12s ease,color .12s ease}
-  .duty-filter-pill:hover{filter:brightness(1.25)}
-  .duty-filter-pill.active{background:rgba(16,185,129,.18);color:#34d399;border-color:rgba(16,185,129,.55)}
-  #duty-roster-card.collapsed #duty-roster-content{display:none}
-  #duty-roster-card.collapsed #duty-roster-chevron{transform:rotate(-90deg)}
   #tab-order-card.collapsed #tab-order-list-wrap{display:none}
   #tab-order-card.collapsed #tab-order-chevron{transform:rotate(-90deg)}
-  .duty-idle-warn{color:#fb7185;font-weight:700}
 
   /* --- Master Records: drag-and-drop personnel record move (admin only) --- */
   .aging-drag-handle{cursor:grab}
@@ -323,31 +298,6 @@
   </div>
 </div>
 
-<!-- ================= EDIT DUTY LOG MODAL (Admin / duty_edit permission) ================= -->
-<div id="duty-edit-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-  <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-lg w-full space-y-4 max-h-[90vh] overflow-y-auto">
-    <div class="flex items-center justify-between">
-      <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Edit Duty Log — <span id="duty-edit-modal-name" class="text-emerald-400"></span></h3>
-      <button onclick="closeDutyEditModal()" class="text-slate-500 hover:text-slate-300 text-lg leading-none">✕</button>
-    </div>
-    <p class="text-[11px] text-slate-500">Correct a report-for-duty, break, or report-off-duty timestamp, or add one that was missed (e.g. someone forgot to tap in). Changes apply immediately and recompute this person's on-duty/break/idle/productivity figures.</p>
-    <div id="duty-edit-rows" class="space-y-2"></div>
-    <div class="border-t border-slate-800 pt-3 space-y-2">
-      <div class="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Add Event</div>
-      <div class="grid grid-cols-3 gap-2">
-        <select id="duty-edit-new-type" class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-emerald-500">
-          <option value="IN">Report In</option>
-          <option value="BREAK_START">Break Start</option>
-          <option value="BREAK_END">Break End</option>
-          <option value="OUT">Report Out</option>
-        </select>
-        <input type="datetime-local" id="duty-edit-new-time" class="col-span-2 bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 focus:outline-none focus:border-emerald-500">
-      </div>
-      <button onclick="addDutyEventFromModal()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold py-2 rounded-lg">+ Add Event</button>
-    </div>
-    <button onclick="closeDutyEditModal()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold py-2 rounded-lg">Done</button>
-  </div>
-</div>
 <div id="aging-record-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
   <div class="bg-slate-950 border border-slate-800 rounded-xl p-6 max-w-3xl w-full space-y-4 max-h-[90vh] overflow-y-auto">
     <h3 id="aging-record-modal-title" class="text-sm font-bold text-slate-100 uppercase tracking-wider">Add Record</h3>
@@ -1058,27 +1008,6 @@ SA03" class="w-full bg-slate-900 border border-slate-800 text-[11px] font-mono r
       <div class="max-h-[340px] overflow-y-auto space-y-1" id="break-list-container"></div>
       <p class="text-[10px] text-slate-600 border-t border-slate-800/60 pt-3">Duration is derived automatically from start/end. Break windows are subtracted from worked time whenever a task's active period overlaps them.</p>
     </div>
-
-    <div id="duty-shift-window-card" class="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-4">
-      <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-400">🕕 Duty Shift Schedule</h2>
-      <p class="text-[11px] text-slate-500">Fixed shifts set by the admin — e.g. AM = 6:00 AM–3:00 PM, PM = 3:00 PM–12:00 AM. Reporting for duty anywhere inside a shift's window locks that person's schedule to the shift's official start/end (e.g. tapping in at 7:40 AM under AM still records 6:00 AM–3:00 PM). Break time is separate — see Break Windows above; it's checked automatically against whichever shift the person is on.</p>
-      <form id="duty-shift-form" onsubmit="addDutyShiftSchedule(event)" class="grid grid-cols-3 gap-2 items-end">
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">Shift Name</label>
-          <input type="text" id="duty-shift-name" placeholder="AM" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">Start</label>
-          <input type="time" id="duty-shift-start" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-500 mb-1">End</label>
-          <input type="time" id="duty-shift-end" required class="bg-slate-900 border border-slate-800 text-xs rounded-lg px-2 py-2 w-full focus:outline-none focus:border-emerald-500">
-        </div>
-        <button type="submit" class="col-span-3 bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 text-xs font-bold rounded-lg">+ Add Shift</button>
-      </form>
-      <div class="space-y-1" id="duty-shift-list-container"></div>
-    </div>
    </div>
   </section>
 
@@ -1323,6 +1252,50 @@ const SUPABASE_URL = "https://chcyjexxxrtkjyhamymq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_jUpJ_hSQUW1p0viaZr1Uow_usG9DxH_";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- EGRESS: SMALL-TABLE READ CACHE ---------------------------------------
+// personnel / staging_areas / break_settings change a
+// few times a month but were re-downloaded at login, on every admin-tab
+// entry, on every role switch and every bulletin refresh. They are now
+// read once and reused for SMALL_TABLE_TTL_MS. Any insert/update/delete/upsert
+// made through this client drops that table's cache immediately (see the
+// write guard below), so edits made in this app show up straight away; edits
+// made by someone else appear within the TTL.
+const SMALL_TABLE_TTL_MS = 15 * 60 * 1000;
+const smallTableCache = {};
+async function cachedSelect(key, buildQuery, ttlMs = SMALL_TABLE_TTL_MS) {
+  const hit = smallTableCache[key];
+  if (hit && (Date.now() - hit.at) < ttlMs) return { data: hit.data, error: null };
+  const res = await buildQuery();
+  if (!res.error) smallTableCache[key] = { at: Date.now(), data: res.data };
+  return res;
+}
+function invalidateTableCache(table) {
+  Object.keys(smallTableCache).forEach(k => { if (k === table || k.startsWith(table + ':')) delete smallTableCache[k]; });
+}
+(function guardCachedTableWrites() {
+  const CACHED = new Set(['personnel', 'staging_areas', 'break_settings']);
+  const origFrom = supabaseClient.from.bind(supabaseClient);
+  supabaseClient.from = function (table) {
+    const qb = origFrom(table);
+    if (!CACHED.has(table)) return qb;
+    ['insert', 'update', 'delete', 'upsert'].forEach(m => {
+      if (typeof qb[m] !== 'function') return;
+      const orig = qb[m].bind(qb);
+      qb[m] = function (...args) {
+        invalidateTableCache(table);
+        const builder = orig(...args);
+        if (builder && typeof builder.then === 'function') {
+          const origThen = builder.then.bind(builder);
+          builder.then = (onOk, onErr) => origThen(r => { invalidateTableCache(table); return onOk ? onOk(r) : r; }, onErr);
+        }
+        return builder;
+      };
+    });
+    return qb;
+  };
+})();
+
+
 // --- SHARED NUMBER FORMATTING ---
 // Used for every display of volume/quantity, minutes, and currency amounts:
 // always whole numbers (rounded, no decimals) with thousands separators.
@@ -1416,24 +1389,11 @@ const debouncedSidePanelSearch = gatedSearchHandler('side-panel-search', () => r
 // summary/leaderboard/report math runs. Master Records / Data Export are
 // per-shipment record views (not personnel aggregates), so exclusion does not
 // hide rows there — it only affects roll-up computations.
-//
-// Separately, `duty_backup` flags personnel who are backup-only and never
-// formally report for duty. They're dropped from the Duty Roster panel
-// entirely (both the "All Personnel" table and the Ongoing/Idle/On Duty/
-// No On Duty sidebar buckets) — that's the only thing this flag affects;
-// they still count normally toward Performance Summary unless `excluded`
-// is also set.
-//
-// REQUIRES a `duty_backup` column on the personnel table. Run once in the
-// Supabase SQL editor if it isn't there yet:
-//   alter table public.personnel add column if not exists duty_backup boolean not null default false;
 let excludedPersonnelNames = new Set();
-let dutyBackupNames = new Set();
 async function refreshExcludedPersonnel() {
-  const { data, error } = await supabaseClient.from('personnel').select('name, excluded, duty_backup');
+  const { data, error } = await cachedSelect('personnel:flags', () => supabaseClient.from('personnel').select('name, excluded'));
   if (error) { console.error(error); return; }
   excludedPersonnelNames = new Set((data || []).filter(p => p.excluded).map(p => (p.name || '').trim()));
-  dutyBackupNames = new Set((data || []).filter(p => p.duty_backup).map(p => (p.name || '').trim()));
 }
 
 // --- STATUS CHAIN: each role (besides Picker) requires the prior role's
@@ -1482,13 +1442,11 @@ async function startApp() {
   setView(firstAllowedTab());
   await setRole('Picker');
   await refreshConfiguredBreaks();
-  await loadDutyShiftSchedules();
   await refreshStagingAreas();
   await refreshExcludedPersonnel();
-  await refreshShipmentDatalist();
   await refreshPipelineSummary();
   initManualDispatchRouteOptions();
-  subscribeRealtime();
+  syncRealtime();
   // Bulletin/Performance Summary: strictly a 4-hour poll from app start, not
   // re-triggered by tab switches and not refreshed eagerly here — the board
   // stays empty/unpopulated until the first tick. See startBulletinSlowPoll().
@@ -1572,9 +1530,6 @@ function moveTabInOrder(key, direction) {
 // keys just don't correspond to any ALL_TABS entry, so they never render a
 // nav button, and userCanAccess()/the tab-rendering loop ignore them.
 const EXTRA_PERMISSIONS = [
-  { key: 'duty_edit', label: 'Edit Duty Log Times (Admin)', hint: 'Lets this user correct or backfill a personnel\'s report-for-duty, break, and report-off-duty timestamps from the Duty Roster panel.' },
-  { key: 'duty_roster_view', label: 'View Duty Roster (Admin)', hint: 'Lets this user see the Duty Roster panel at all — report-for-duty/break/idle/productivity for everyone. Not granted, the whole panel stays hidden for them.' },
-  { key: 'duty_backup_manage', label: 'Mark Personnel as Duty Backup (Personnel & Breaks)', hint: 'Lets this user flag a personnel record as "Backup" — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since backups never formally clock in.' },
   { key: 'aging_edit', label: 'Edit Master Records (legacy — no tab left)', hint: 'Master Records tab was removed, so this permission no longer has any visible effect and no longer grants Edit Shipment access either. Kept only so nothing errors for accounts that still have it. Use "Edit Shipment" below instead.' },
   { key: 'shipedit_edit', label: 'Edit Shipment (Edit Shipment)', hint: 'Lets this user search for a shipment and edit it from the Edit Shipment tab — Picker, Staging Checker, Puller, Outbound Checker, staging area, and status. This is now the only special-permission gate for Edit Shipment (independent of any other permission).' }
 ];
@@ -1677,39 +1632,6 @@ function userCanAccess(tabKey) {
   return !!currentUser && (currentUser.allowed_tabs || []).includes(tabKey);
 }
 
-// Same convention as isAdminAccount's existing "one account is always fully
-// trusted" convention below — the literal "admin" account always has it
-// implicitly, everyone else needs the 'duty_edit' special
-// permission explicitly granted from User Management. Gates the ability to
-// correct/backfill/delete recorded duty_logs timestamps.
-function userCanEditDuty() {
-  if (!currentUser) return false;
-  if (isAdminAccount()) return true;
-  return (currentUser.allowed_tabs || []).includes('duty_edit');
-}
-
-// Same convention as userCanEditDuty() above — the
-// literal "admin" account always sees it implicitly, everyone else needs the
-// 'duty_roster_view' special permission explicitly granted from User
-// Management. Gates whether the whole Duty Roster panel renders at all,
-// not just the edit/correction ability inside it.
-function userCanViewDutyRoster() {
-  if (!currentUser) return false;
-  if (isAdminAccount()) return true;
-  return (currentUser.allowed_tabs || []).includes('duty_roster_view');
-}
-
-// Same convention again — the literal "admin" account always has it
-// implicitly, everyone else needs the 'duty_backup_manage' special
-// permission explicitly granted from User Management. Gates the "Backup"
-// checkbox on the Personnel Roster (Personnel & Breaks tab) that flags
-// someone as excluded from Report In/Report Out duty tracking.
-function userCanManageDutyBackup() {
-  if (!currentUser) return false;
-  if (isAdminAccount()) return true;
-  return (currentUser.allowed_tabs || []).includes('duty_backup_manage');
-}
-
 function firstAllowedTab() {
   const found = ALL_TABS.find(t => userCanAccess(t.key));
   return found ? found.key : 'workbench';
@@ -1734,12 +1656,8 @@ function applyUserPermissions() {
   if (bulletinRefreshBtn) bulletinRefreshBtn.classList.toggle('hidden', !isAdminAccount());
   const bulletinDateInput = document.getElementById('bulletin-date');
   if (bulletinDateInput) bulletinDateInput.disabled = !isAdminAccount();
-  const dutyShiftCard = document.getElementById('duty-shift-window-card');
-  if (dutyShiftCard) dutyShiftCard.classList.toggle('hidden', !isAdminAccount());
   const tabOrderCard = document.getElementById('tab-order-card');
   if (tabOrderCard) tabOrderCard.classList.toggle('hidden', !isAdminAccount());
-  const dutyRosterCard = document.getElementById('duty-roster-card');
-  if (dutyRosterCard) dutyRosterCard.classList.toggle('hidden', !userCanViewDutyRoster());
 }
 
 // --- TAB NAVIGATION ---
@@ -1776,8 +1694,9 @@ function activateView(name) {
   // it is refreshed ONLY by the strict 4-hour interval started once in
   // startApp() (see startBulletinSlowPoll). Switching into this tab just shows
   // whatever was last pulled, even if that's up to 4 hours old.
-  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); loadDutyShiftSchedules(); }
+  if (name === 'admin') { refreshConfiguredBreaks(); refreshPersonnelAdminList(); refreshStagingAreaAdminList(); }
   if (name === 'usermgmt') loadUsers();
+  syncRealtime(); // EGRESS: sockets only while the Workbench is on screen
 }
 
 // --- USER MANAGEMENT: CRUD against the `users` table ---
@@ -1923,7 +1842,7 @@ async function setRole(roleName) {
 }
 
 async function populatePersonnelDatalist(role) {
-  const { data, error } = await supabaseClient.from('personnel').select('name').eq('role', role);
+  const { data, error } = await cachedSelect('personnel:role:' + role, () => supabaseClient.from('personnel').select('name').eq('role', role));
   if (error) return console.error(error);
   allPersonnel = data || [];
   const dl = document.getElementById('personnel-datalist');
@@ -2064,9 +1983,19 @@ async function refreshPipelineSummary() {
 }
 
 // --- SHIPMENT DATALIST + MANIFEST LOOKUP ---
+let shipmentDatalistLoaded = false;
+// EGRESS: suggestions are fetched the first time someone clicks into the shipment
+// box (and again after an upload / manual dispatch), no longer at every login.
+document.addEventListener('focusin', (e) => {
+  if (!shipmentDatalistLoaded && e.target && e.target.id === 'target-shipment-no') {
+    shipmentDatalistLoaded = true;
+    refreshShipmentDatalist();
+  }
+});
 async function refreshShipmentDatalist() {
   const { data, error } = await supabaseClient.from('shipments').select('shipment_no').limit(500);
-  if (error) return console.error(error);
+  if (error) { shipmentDatalistLoaded = false; return console.error(error); }
+  shipmentDatalistLoaded = true;
   const unique = [...new Set((data || []).map(r => r.shipment_no).filter(Boolean))];
   document.getElementById('shipment-datalist').innerHTML = unique.map(s => `<option value="${s}">`).join('');
 }
@@ -2091,6 +2020,7 @@ function onShipmentInputChange() {
 
 async function fetchShipmentManifest() {
   const shipmentNo = document.getElementById('target-shipment-no').value.trim();
+  syncRealtime(); // shipments socket only while a shipment is loaded
   if (!shipmentNo) {
     currentManifestData = [];
     return renderManifestTable();
@@ -3261,7 +3191,7 @@ function sumGroupMinutes(logs) {
 // the Performance Summary so it always lists every name on file, not just
 // people with logged activity that day.
 async function refreshPersonnelRosterNames() {
-  const { data: roster, error: rosterErr } = await supabaseClient.from('personnel').select('name, role, excluded');
+  const { data: roster, error: rosterErr } = await cachedSelect('personnel:roster', () => supabaseClient.from('personnel').select('name, role, excluded'));
   if (rosterErr) { console.error(rosterErr); return; }
   const byName = {};
   (roster || []).forEach(p => {
@@ -3841,8 +3771,8 @@ function stopBulletinSlowPoll() {
 const IDLE_LIMIT_MS = 3 * 60 * 1000;       // no mouse/keyboard for 3 min = idle -> auto-update stops
 let bulletinTickSkipped = false;           // a 4h Bulletin refresh was due while nobody was using the page
 let lastUserActivity = Date.now();
-let realtimeChannels = [];
-let realtimePausedAt = 0;
+let rtChans = {};            // table -> open channel (only what the current screen can use)
+let realtimePausedAt = 0;    // set when open sockets were closed for idle/hidden; 0 = nothing to catch up
 let egressNeedsCatchUp = false;
 
 function isTabInUse() {
@@ -3851,55 +3781,70 @@ function isTabInUse() {
     (Date.now() - lastUserActivity) < IDLE_LIMIT_MS;
 }
 
-function subscribeRealtime() {
-  if (realtimeChannels.length) return; // already live — never double-subscribe
-  realtimeChannels.push(
-    supabaseClient.channel('activity_logs-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, guardedActivityLogsRefresh)
-      .subscribe()
-  );
+function realtimeOpenCount() { return Object.keys(rtChans).length; }
 
-  // shipments.status (PICKED / STAGED / PULLED / CHECKED) drives row eligibility
-  // for the NEXT role in the chain, so it must be realtime too, not just activity_logs.
-  realtimeChannels.push(
-    supabaseClient.channel('shipments-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, guardedShipmentsRefresh)
-      .subscribe()
-  );
+// Which sockets are worth keeping open right now?
+//  - activity_logs: only on the Workbench (side panel + manifest are its only readers)
+//  - shipments:     only on the Workbench AND only while a shipment is loaded in the
+//                   manifest (that is the only thing a shipments change refreshes)
+// Every other tab (Performance Summary, Ingestion, Personnel, Edit Shipment,
+// User Management) now keeps NO realtime socket open.
+function desiredRealtime() {
+  const want = { activity_logs: false, shipments: false };
+  if (!isTabInUse() || getCurrentViewName() !== 'workbench') return want;
+  want.activity_logs = true;
+  const input = document.getElementById('target-shipment-no');
+  want.shipments = !!(input && input.value.trim());
+  return want;
+}
+
+function syncRealtime() {
+  if (!currentUser) return;
+  const want = desiredRealtime();
+  [['activity_logs', guardedActivityLogsRefresh], ['shipments', guardedShipmentsRefresh]].forEach(([table, handler]) => {
+    if (want[table] && !rtChans[table]) {
+      rtChans[table] = supabaseClient.channel(table + '-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table }, handler)
+        .subscribe();
+    } else if (!want[table] && rtChans[table]) {
+      try { supabaseClient.removeChannel(rtChans[table]); } catch (e) {}
+      delete rtChans[table];
+    }
+  });
 }
 
 function stopRealtime() {
-  const chs = realtimeChannels;
-  realtimeChannels = [];
-  chs.forEach(ch => { try { supabaseClient.removeChannel(ch); } catch (e) {} });
+  Object.values(rtChans).forEach(ch => { try { supabaseClient.removeChannel(ch); } catch (e) {} });
+  rtChans = {};
+  realtimePausedAt = 0;
 }
 
 function pauseRealtime() {
-  if (!realtimeChannels.length) return;
-  stopRealtime();
+  if (!realtimeOpenCount()) return;
+  Object.values(rtChans).forEach(ch => { try { supabaseClient.removeChannel(ch); } catch (e) {} });
+  rtChans = {};
   realtimePausedAt = Date.now();
 }
 
 function resumeRealtime() {
-  if (!currentUser || realtimeChannels.length) return;
-  const pausedFor = realtimePausedAt ? Date.now() - realtimePausedAt : 0;
-  subscribeRealtime();
-  // Events that happened while the sockets were closed were missed, so pull
-  // the one view on screen once. Quick tab flips (< 60s) don't pay for it
-  // unless a refresh was actually skipped meanwhile.
-  if (egressNeedsCatchUp || pausedFor > 0) {
+  if (!currentUser) return;
+  const wasPaused = !!realtimePausedAt;
+  realtimePausedAt = 0;
+  syncRealtime();
+  // Changes made while the sockets were closed were missed, so pull the one view
+  // on screen once.
+  if (egressNeedsCatchUp || wasPaused) {
     egressNeedsCatchUp = false;
     if (getCurrentViewName() === 'workbench') {
       refreshSidePanel();
       if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
     }
   }
-  realtimePausedAt = 0;
 }
 
 function markUserActive() {
   lastUserActivity = Date.now();
-  if (!realtimeChannels.length && isTabInUse()) resumeRealtime();
+  if ((realtimePausedAt || egressNeedsCatchUp) && isTabInUse()) resumeRealtime();
 }
 ['mousedown', 'mousemove', 'wheel', 'keydown', 'touchstart'].forEach(evt =>
   window.addEventListener(evt, markUserActive, { passive: true, capture: true }));
@@ -3908,7 +3853,7 @@ document.addEventListener('visibilitychange', () => {
   else pauseRealtime();
 });
 // Local-only check (no network) — closes the sockets once the user goes idle.
-setInterval(() => { if (realtimeChannels.length && !isTabInUse()) pauseRealtime(); }, 30 * 1000);
+setInterval(() => { if (realtimeOpenCount() && !isTabInUse()) pauseRealtime(); }, 30 * 1000);
 
 let agingRawRows = [];
 let agingSelectedSoNumbers = new Set();
@@ -5429,7 +5374,7 @@ async function deleteStagingArea(id) {
   await refreshStagingAreas();
 }
 async function refreshStagingAreaAdminList() {
-  const { data, error } = await supabaseClient.from('staging_areas').select('id,name').order('name');
+  const { data, error } = await cachedSelect('staging_areas', () => supabaseClient.from('staging_areas').select('id,name').order('name'));
   if (error) return console.error(error);
   const container = document.getElementById('staging-area-list-container');
   container.innerHTML = data.length ? data.map(a => `
@@ -5441,7 +5386,7 @@ async function refreshStagingAreaAdminList() {
 // Keeps the in-memory masterlist (used to render the required multi-select in the
 // Staging Check completion modal) in sync with the DB.
 async function refreshStagingAreas() {
-  const { data, error } = await supabaseClient.from('staging_areas').select('id,name').order('name');
+  const { data, error } = await cachedSelect('staging_areas', () => supabaseClient.from('staging_areas').select('id,name').order('name'));
   if (error) return console.error(error);
   allStagingAreas = data || [];
 }
@@ -5586,7 +5531,7 @@ async function deletePersonnel(id) {
 // they hold as Main / Secondary / Third (by role_rank, defaulting untagged rows
 // to Main so older data without role_rank still displays sensibly).
 async function refreshPersonnelAdminList() {
-  const { data, error } = await supabaseClient.from('personnel').select('id,name,role,role_rank,excluded,duty_backup').order('name');
+  const { data, error } = await cachedSelect('personnel:admin', () => supabaseClient.from('personnel').select('id,name,role,role_rank,excluded').order('name'));
   if (error) return console.error(error);
   const container = document.getElementById('personnel-list-container');
 
@@ -5600,11 +5545,9 @@ async function refreshPersonnelAdminList() {
   const rankLabel = { 1: 'Main', 2: 'Secondary', 3: 'Third', 4: 'Fourth' };
   const people = Object.values(byName).sort((a, b) => a.name.localeCompare(b.name));
 
-  const canManageBackup = userCanManageDutyBackup();
   container.innerHTML = people.length ? people.map(person => {
     const rows = [...person.rows].sort((a, b) => (a.role_rank || 1) - (b.role_rank || 1));
     const anyExcluded = rows.some(r => r.excluded);
-    const anyDutyBackup = rows.some(r => r.duty_backup);
     const roleChips = rows.map(r => {
       const label = rankLabel[r.role_rank || 1] || 'Role';
       return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border ${roleTextClass(r.role)} border-current/30 bg-slate-900">
@@ -5612,15 +5555,10 @@ async function refreshPersonnelAdminList() {
         <button onclick="deletePersonnel(${r.id})" title="Remove this role" class="text-rose-400 hover:text-rose-500 font-bold ml-1">×</button>
       </span>`;
     }).join('');
-    const backupToggle = canManageBackup ? `<label class="flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer select-none" title="Backup personnel — excluded from Report In/Report Out duty tracking and hidden from the Duty Roster panel (including the No On Duty list) entirely, since they never formally clock in.">
-          <input type="checkbox" ${anyDutyBackup ? 'checked' : ''} onchange="togglePersonnelDutyBackupAll('${person.name.replace(/'/g, "\\'")}', this.checked)" class="w-3.5 h-3.5 text-amber-500 bg-slate-900 border-slate-700 rounded focus:ring-amber-500">
-          Backup
-        </label>` : (anyDutyBackup ? `<span class="text-[10px] text-amber-500 font-semibold" title="Backup personnel — excluded from Duty Roster">Backup</span>` : '');
     return `<div class="bg-slate-900 px-3 py-2 rounded border border-slate-800/60 ${anyExcluded ? 'opacity-60' : ''}">
       <div class="flex justify-between items-center gap-2 mb-1.5">
         <span class="text-slate-200 font-semibold text-xs ${anyExcluded ? 'line-through' : ''}">${person.name}</span>
         <div class="flex items-center gap-2 flex-shrink-0">
-          ${backupToggle}
           <label class="flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer select-none" title="Exclude this person from every performance computation (Performance Summary + Analytics & Reports)">
             <input type="checkbox" ${anyExcluded ? 'checked' : ''} onchange="togglePersonnelExcludedAll('${person.name.replace(/'/g, "\\'")}', this.checked)" class="w-3.5 h-3.5 text-rose-600 bg-slate-900 border-slate-700 rounded focus:ring-rose-500">
             Exclude
@@ -5630,20 +5568,6 @@ async function refreshPersonnelAdminList() {
       <div class="flex flex-wrap gap-1.5">${roleChips}</div>
     </div>`;
   }).join('') : '<p class="text-[11px] text-slate-600 italic">No personnel on file yet.</p>';
-}
-
-// Applies the Backup toggle to every role-row this person holds at once
-// (duty_backup is a per-PERSON concept even though roles are stored per-row).
-// Gated behind userCanManageDutyBackup() in the UI, but double-checked here
-// too in case of stale DOM state.
-async function togglePersonnelDutyBackupAll(name, dutyBackup) {
-  if (!userCanManageDutyBackup()) return showToast("You don't have permission to manage Duty Backup. Ask an admin to grant it in User Management.", "error");
-  const { error } = await supabaseClient.from('personnel').update({ duty_backup: dutyBackup }).eq('name', name);
-  if (error) return showToast(error.message, "error");
-  await refreshExcludedPersonnel();
-  await refreshPersonnelAdminList();
-  if (document.getElementById('duty-roster-card')) refreshDutyRoster();
-  showToast(dutyBackup ? "Marked as Backup — excluded from Duty Roster." : "Re-included in Duty Roster.", "success");
 }
 
 // Applies the Exclude toggle to every role-row this person holds at once, since
@@ -5679,7 +5603,7 @@ async function deleteBreakRule(id) {
   await refreshConfiguredBreaks();
 }
 async function refreshConfiguredBreaks() {
-  const { data, error } = await supabaseClient.from('break_settings').select('*');
+  const { data, error } = await cachedSelect('break_settings', () => supabaseClient.from('break_settings').select('*'));
   if (error) return console.error(error);
   configuredBreaks = data || [];
   const container = document.getElementById('break-list-container');
@@ -5722,17 +5646,6 @@ function toggleLightMode() {
       const btn = document.getElementById('side-panel-collapse-btn');
       if (body) body.classList.add('hidden');
       if (btn) btn.innerText = '▸';
-    }
-    // Duty Roster defaults to collapsed (least time-critical panel on the
-    // Workbench) — the markup already starts collapsed, so only override it
-    // when the person has explicitly expanded it before (stored as '0').
-    if (localStorage.getItem('wh_duty_roster_collapsed') === '0') {
-      const card = document.getElementById('duty-roster-card');
-      if (card) card.classList.remove('collapsed');
-      const chev = document.getElementById('duty-roster-chevron');
-      if (chev) chev.innerText = '▾';
-      const btn = document.getElementById('duty-roster-toggle-btn');
-      if (btn) btn.innerText = '— minimize';
     }
     // Tab Order also defaults to collapsed/minimized — the markup already
     // starts collapsed, so only override it when the person has explicitly
@@ -5843,752 +5756,6 @@ refreshBulletinBoard = async function (...args) {
   await _origRefreshBulletinBoard.apply(this, args);
   updateMvpBadge();
 };
-
-
-// =====================================================================
-// --- DUTY ROSTER: report-for-duty clock, so idle time / break time /
-// productivity are measured against actual duty hours instead of just the
-// gaps between logged tasks.
-//
-// REQUIRES two tables in Supabase. Run this once in the SQL editor:
-//
-//   create table public.duty_logs (
-//     id bigint generated always as identity primary key,
-//     personnel_name text not null,
-//     role text,
-//     event_type text not null check (event_type in ('IN','BREAK_START','BREAK_END','OUT')),
-//     event_time timestamptz not null default now(),
-//     shift_name text,
-//     scheduled_start timestamptz,
-//     scheduled_end timestamptz,
-//     reported_by text,
-//     created_at timestamptz not null default now()
-//   );
-//
-//   -- Already have duty_logs from before this update? Just add the three
-//   -- new columns instead of recreating the table:
-//   -- alter table public.duty_logs add column if not exists shift_name text;
-//   -- alter table public.duty_logs add column if not exists scheduled_start timestamptz;
-//   -- alter table public.duty_logs add column if not exists scheduled_end timestamptz;
-//
-//   -- Admin-configured fixed shift schedules (e.g. AM 6:00 AM–3:00 PM,
-//   -- PM 3:00 PM–12:00 AM). Reporting for duty anywhere inside a shift's
-//   -- start–end window locks that person's recorded time (and downstream
-//   -- on-duty/idle math) to the shift's official start/end instead of
-//   -- their literal tap time — see resolveDutyShiftForTime() below.
-//   -- Replaces the old, never-actually-wired duty_shift_settings table.
-//   create table public.duty_shift_schedules (
-//     id bigint generated always as identity primary key,
-//     shift_name text not null unique,
-//     start_time time not null,
-//     end_time time not null,
-//     created_at timestamptz not null default now()
-//   );
-//   insert into public.duty_shift_schedules (shift_name, start_time, end_time) values
-//     ('AM', '06:00', '15:00'),
-//     ('PM', '15:00', '00:00')
-//   on conflict (shift_name) do nothing;
-//
-//   -- RLS: "new row violates row-level security policy" means RLS is ON
-//   -- but no policy allows the anon key through. This app doesn't use
-//   -- Supabase Auth (login is a custom RPC — see verify_login), so every
-//   -- other table (activity_logs, personnel, break_settings, ...) is
-//   -- presumably wide open to anon; mirror that here:
-//   alter table public.duty_logs enable row level security;
-//   create policy "duty_logs_select" on public.duty_logs for select using (true);
-//   create policy "duty_logs_insert" on public.duty_logs for insert with check (true);
-//   create policy "duty_logs_update" on public.duty_logs for update using (true) with check (true);
-//   create policy "duty_logs_delete" on public.duty_logs for delete using (true);
-//
-//   alter table public.duty_shift_schedules enable row level security;
-//   create policy "duty_shift_schedules_select" on public.duty_shift_schedules for select using (true);
-//   create policy "duty_shift_schedules_insert" on public.duty_shift_schedules for insert with check (true);
-//   create policy "duty_shift_schedules_update" on public.duty_shift_schedules for update using (true) with check (true);
-//   create policy "duty_shift_schedules_delete" on public.duty_shift_schedules for delete using (true);
-//
-//   -- (Or, if RLS is simply disabled on your other tables instead of
-//   -- policy-gated, just: alter table public.duty_logs disable row level
-//   -- security; -- and the same for duty_shift_schedules.)
-//
-// Until these tables exist, every call below fails gracefully (caught,
-// logged to console, roster shows a setup notice) so nothing else in the
-// app breaks — dispatch enforcement (dutyGuardMessage) also simply stops
-// blocking, same "missing table = feature quietly off" convention
-// idle_dismissals already uses above.
-//
-// BREAK TIME IS NOW FULLY AUTOMATIC — there is no personnel-facing Start
-// Break / End Break action anymore. A person's break minutes (and live
-// "On Break" status) are derived by overlapping their on-duty span against
-// the admin-configured Break Windows (the same break_settings table/logic
-// already used to subtract break time from task target hours elsewhere in
-// the app — see computeBreakOverlapMinutes / autoBreakSpansForDuty). The
-// BREAK_START/BREAK_END event types still exist for one-off admin
-// corrections via the Edit Duty Log modal, but nothing creates them
-// automatically anymore.
-// =====================================================================
-
-let dutyLogsToday = [];       // cached today's duty_logs rows, refreshed on a timer + realtime
-let dutyTableMissing = false; // flips true the first time a query 42P01s, so we stop hammering it and show one clear setup message
-let dutyRosterPeople = [];    // [{name, roles:[...]}] — EVERY personnel across EVERY role (not just currentRole), deduped by name
-let dutyShiftSchedules = [];      // [{id, shift_name, start_time, end_time}] — admin-configured fixed shifts (e.g. AM/PM)
-let dutyShiftTableMissing = false; // same "missing table = feature quietly off" convention as dutyTableMissing
-
-// The Duty Roster tracks the whole company, not just whichever role tab is
-// currently selected on the Workbench — a Picker and an Outbound Checker
-// both need to report for duty. Pulls the full `personnel` table directly
-// (same source as populatePersonnelDatalist) rather than reusing the
-// role-scoped `allPersonnel` global.
-let _personnelRosterFetchedAt = 0;
-async function fetchAllPersonnelRoster() {
-  // Personnel almost never changes minute-to-minute, but this was being
-  // re-fetched in full on every ops-alert AND duty-roster tick (every 30s
-  // each, previously). A short cache avoids that — worst case a newly added
-  // person takes up to a minute to appear in these two panels.
-  if (dutyRosterPeople.length && (Date.now() - _personnelRosterFetchedAt) < 60000) return dutyRosterPeople;
-  const { data, error } = await supabaseClient.from('personnel').select('name, role, role_rank, excluded, duty_backup');
-  if (error) { console.error('personnel roster fetch failed:', error.message); return dutyRosterPeople; }
-  const byName = {};
-  (data || []).forEach(p => {
-    const key = (p.name || '').trim();
-    if (!key) return;
-    if (!byName[key]) byName[key] = { roles: new Set(), primaryRole: null, primaryRank: Infinity };
-    byName[key].roles.add(p.role);
-    // Primary Role = the role with the lowest role_rank (untagged rows default
-    // to rank 1 / "Main", matching the same convention used on the Personnel
-    // Roster admin list).
-    const rank = p.role_rank || 1;
-    if (rank < byName[key].primaryRank) { byName[key].primaryRank = rank; byName[key].primaryRole = p.role; }
-  });
-  dutyRosterPeople = Object.entries(byName)
-    .map(([name, v]) => ({ name, roles: [...v.roles], primaryRole: v.primaryRole }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  _personnelRosterFetchedAt = Date.now();
-  return dutyRosterPeople;
-}
-
-function rolesForDutyName(name) {
-  const p = dutyRosterPeople.find(x => x.name === name);
-  return p ? p.roles.join(', ') : null;
-}
-
-// One duty session is tracked per PERSON (not per role) — someone who works
-// Picker in the morning and Puller in the afternoon still only reports for
-// duty once. `role` on each row is just which stage they were on when they
-// tapped the button, kept for record-keeping.
-function dutyEventsForName(name) {
-  const n = (name || '').trim().toLowerCase();
-  return dutyLogsToday.filter(e => (e.personnel_name || '').trim().toLowerCase() === n)
-    .sort((a, b) => new Date(a.event_time) - new Date(b.event_time));
-}
-
-// Merges overlapping/adjacent [start,end] Date pairs into the smallest
-// non-overlapping set — used so manual break corrections and
-// auto-detected break windows never double-count the same minutes.
-function mergeSpans(spans) {
-  if (!spans.length) return [];
-  const sorted = spans.slice().sort((a, b) => a[0] - b[0]);
-  const merged = [sorted[0].slice()];
-  for (let i = 1; i < sorted.length; i++) {
-    const [s, e] = sorted[i];
-    const last = merged[merged.length - 1];
-    if (s <= last[1]) { if (e > last[1]) last[1] = e; }
-    else merged.push([s, e]);
-  }
-  return merged;
-}
-
-// Break spans automatically derived from the admin-configured Break Windows
-// (break_settings — the same table/logic the app already uses to subtract
-// break time from task target hours) intersected with a person's on-duty
-// span(s) for the day. This is what makes Duty Roster break time fully
-// automatic: no Start Break/End Break tap needed — if a configured window
-// (e.g. 10:00–10:30, 12:00–13:00) falls inside someone's on-duty time, it
-// counts as their break.
-function autoBreakSpansForDuty(onDutySpans) {
-  const spans = [];
-  onDutySpans.forEach(([dutyS, dutyE]) => {
-    const dayStr = dutyS.toISOString().slice(0, 10);
-    (configuredBreaks || []).forEach(b => {
-      if (!b.start_time || !b.end_time) return;
-      const bs = new Date(`${dayStr}T${b.start_time}`);
-      let be = new Date(`${dayStr}T${b.end_time}`);
-      if (be <= bs) be.setDate(be.getDate() + 1); // overnight break window
-      const os = new Date(Math.max(dutyS, bs));
-      const oe = new Date(Math.min(dutyE, be));
-      if (oe > os) spans.push([os, oe]);
-    });
-  });
-  return spans;
-}
-
-// Walks a person's IN/BREAK_START/BREAK_END/OUT events chronologically and
-// returns their current status plus every on-duty span and break span for
-// the day (spans, not just a running total, so callers can both sum minutes
-// AND show "since HH:MM"). An open on-duty span (no matching OUT yet) is
-// closed at "now" so live badges keep counting up between refreshes.
-//
-// Break spans/status are now fully automatic — see autoBreakSpansForDuty()
-// above — merged with any manual BREAK_START/BREAK_END pairs an admin
-// backfilled for a one-off correction via the Edit Duty Log modal.
-function computeDutySpans(events) {
-  let dutyStart = null;
-  const onDutySpans = [];
-  const manualBreakSpans = [];
-  let manualBreakStart = null;
-  // firstIn: the very first Report In of the day (Time Reported In on the
-  // Duty Roster table). lastOut: the most recent Report Out of the day
-  // (Time Reported Out) — only meaningful once the person has actually
-  // reported off; cleared back to null below while they're still on duty.
-  let firstIn = null;
-  let lastOut = null;
-  events.forEach(e => {
-    const t = new Date(e.event_time);
-    if (e.event_type === 'IN') { if (!dutyStart) dutyStart = t; if (!firstIn) firstIn = t; }
-    else if (e.event_type === 'BREAK_START') { if (dutyStart && !manualBreakStart) manualBreakStart = t; }
-    else if (e.event_type === 'BREAK_END') { if (manualBreakStart) { manualBreakSpans.push([manualBreakStart, t]); manualBreakStart = null; } }
-    else if (e.event_type === 'OUT') {
-      if (manualBreakStart) { manualBreakSpans.push([manualBreakStart, t]); manualBreakStart = null; }
-      if (dutyStart) { onDutySpans.push([dutyStart, t]); dutyStart = null; }
-      lastOut = t;
-    }
-  });
-
-  const now = new Date();
-  const stillOnDuty = !!dutyStart;
-  if (dutyStart) onDutySpans.push([dutyStart, now]);
-  if (manualBreakStart) manualBreakSpans.push([manualBreakStart, now]);
-  if (stillOnDuty) lastOut = null; // currently on duty again after that OUT — not "reported out" for the day anymore
-
-  const breakSpans = mergeSpans([...manualBreakSpans, ...autoBreakSpansForDuty(onDutySpans)]);
-
-  const since = events.length ? new Date(events[events.length - 1].event_time) : null;
-  let status = 'off';
-  if (stillOnDuty) {
-    // "On break" is purely time-of-day driven now: on duty AND the current
-    // moment falls inside a merged break span (auto window or manual override).
-    const onBreakNow = breakSpans.some(([s, e]) => now >= s && now < e);
-    status = onBreakNow ? 'break' : 'on';
-  }
-  return { onDutySpans, breakSpans, status, since, firstIn, lastOut };
-}
-
-function sumSpanMinutes(spans) {
-  return spans.reduce((s, [a, b]) => s + Math.max(0, (b - a) / 60000), 0);
-}
-
-// Today's operational-day window, same helper the rest of the app uses so
-// "today" always lines up with the same 5am-to-5am (or whatever's
-// configured) boundary as every other idle/productivity figure on screen.
-function todayOpDayWindow() {
-  return operationalDayWindowForDate(defaultOperationalDateStr());
-}
-
-async function fetchDutyLogsToday() {
-  if (dutyTableMissing) return dutyLogsToday;
-  const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
-  const { data, error } = await supabaseClient.from('duty_logs').select('id,personnel_name,event_type,event_time')
-    .gte('event_time', startOfOpDay.toISOString()).lte('event_time', endOfOpDay.toISOString())
-    .order('event_time');
-  if (error) {
-    if (error.code === '42P01' || /does not exist/i.test(error.message || '')) dutyTableMissing = true;
-    console.error('duty_logs fetch failed:', error.message);
-    return dutyLogsToday;
-  }
-  dutyLogsToday = data || [];
-  return dutyLogsToday;
-}
-
-// Blocks dispatch (startRow / commitJobTransaction) unless the named
-// operator is actually reported "on" for the day. Fetches a fresh, narrow
-// slice (just this person's rows) instead of trusting the cached roster
-// list, so a duty action from a moment ago can never race a dispatch click.
-// Returns null (proceed) if the duty table isn't set up yet or the name is
-// blank/invalid — those cases are left to the existing validation checks.
-//
-// Backup (duty_backup) and Excluded personnel never formally report for
-// duty / are outside normal duty tracking, so they're always let through
-// here regardless of their duty_logs status for the day.
-async function dutyGuardMessage(name) {
-  return null; // duty guard disabled — dispatch is never blocked by duty status
-  if (!name || dutyTableMissing) return null;
-  const trimmedName = name.trim();
-  if (dutyBackupNames.has(trimmedName) || excludedPersonnelNames.has(trimmedName)) return null;
-  try {
-    const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
-    const { data, error } = await supabaseClient.from('duty_logs').select('personnel_name,event_type,event_time')
-      .ilike('personnel_name', name.trim())
-      .gte('event_time', startOfOpDay.toISOString()).lte('event_time', endOfOpDay.toISOString())
-      .order('event_time');
-    if (error) { if (error.code === '42P01') dutyTableMissing = true; return null; }
-    const { status } = computeDutySpans(data || []);
-    if (status === 'off') return `${name} hasn't reported for duty yet. Report them in from the Duty Roster panel first.`;
-    if (status === 'break') return `${name} is currently on break. End their break on the Duty Roster panel before starting a new task.`;
-    return null;
-  } catch (e) { return null; }
-}
-
-// --- ADMIN: fixed AM/PM (or however many) duty shift schedules ---
-async function loadDutyShiftSchedules() {
-  const { data, error } = await supabaseClient.from('duty_shift_schedules').select('*').order('start_time');
-  if (error) {
-    if (error.code === '42P01' || /does not exist/i.test(error.message || '')) dutyShiftTableMissing = true;
-    console.error('duty_shift_schedules fetch failed:', error.message);
-    renderDutyShiftSchedules();
-    return;
-  }
-  dutyShiftTableMissing = false;
-  dutyShiftSchedules = data || [];
-  renderDutyShiftSchedules();
-}
-
-function renderDutyShiftSchedules() {
-  const container = document.getElementById('duty-shift-list-container');
-  if (!container) return;
-  if (dutyShiftTableMissing) {
-    container.innerHTML = `<p class="text-[10px] text-amber-400 italic">Not set up yet — create the <code>duty_shift_schedules</code> table (see code comments near the DUTY ROSTER section) to enable fixed shift schedules.</p>`;
-    return;
-  }
-  container.innerHTML = dutyShiftSchedules.length ? dutyShiftSchedules.map(s => `
-    <div class="flex justify-between items-center bg-slate-900 px-3 py-1.5 rounded text-xs border border-slate-800/60">
-      <span class="text-slate-300 font-medium">${s.shift_name}</span>
-      <div class="flex items-center gap-3">
-        <span class="font-mono text-slate-500">${s.start_time}–${s.end_time}</span>
-        <button onclick="deleteDutyShiftSchedule(${s.id})" class="text-rose-400 hover:text-rose-500 font-bold">×</button>
-      </div>
-    </div>`).join('') : '<p class="text-[10px] text-slate-600 italic">No shift schedules configured yet — personnel will be credited at their literal report-in time until at least one is added.</p>';
-}
-
-async function addDutyShiftSchedule(e) {
-  e.preventDefault();
-  const name = document.getElementById('duty-shift-name').value.trim();
-  const start = document.getElementById('duty-shift-start').value;
-  const end = document.getElementById('duty-shift-end').value;
-  if (!name || !start || !end) return;
-  const { error } = await supabaseClient.from('duty_shift_schedules').insert([{ shift_name: name, start_time: start, end_time: end }]);
-  if (error) return showToast(error.message, "error");
-  document.getElementById('duty-shift-form').reset();
-  await loadDutyShiftSchedules();
-}
-
-async function deleteDutyShiftSchedule(id) {
-  await supabaseClient.from('duty_shift_schedules').delete().eq('id', id);
-  await loadDutyShiftSchedules();
-}
-
-// Given a JS Date, finds the admin-configured shift whose start–end window
-// contains it and returns the shift plus its resolved start/end as real
-// Date objects for THAT calendar day — handling a shift that crosses
-// midnight (e.g. PM 3:00 PM–12:00 AM) by rolling its end into the next
-// calendar day rather than treating 00:00 as "before" its own start.
-// Returns null if no configured shift covers this moment (e.g. reporting
-// in at 2 AM with only AM/PM configured) — callers fall back to the
-// literal tap time in that case, same as before this feature existed.
-function resolveDutyShiftForTime(t) {
-  const dayStr = t.toISOString().slice(0, 10);
-  for (const s of dutyShiftSchedules) {
-    if (!s.start_time || !s.end_time) continue;
-    const start = new Date(`${dayStr}T${s.start_time}`);
-    let end = new Date(`${dayStr}T${s.end_time}`);
-    if (end <= start) end.setDate(end.getDate() + 1);
-    if (t >= start && t < end) return { ...s, resolvedStart: start, resolvedEnd: end };
-  }
-  return null;
-}
-
-async function reportForDuty(name) {
-  if (!dutyRosterPeople.some(p => p.name === name)) return showToast(`"${name}" is not on the personnel roster.`, "error");
-  const events = dutyEventsForName(name);
-  const { status } = computeDutySpans(events);
-  if (status !== 'off') return showToast(`${name} is already reported in for today.`, "info");
-
-  const now = new Date();
-  const shift = resolveDutyShiftForTime(now);
-  const payload = { personnel_name: name, role: rolesForDutyName(name), event_type: 'IN' };
-  if (shift) {
-    // Fixed-schedule crediting: tapping in anywhere inside a configured
-    // shift's start–end window locks the recorded time to that shift's
-    // official start (e.g. AM = 6:00 AM–3:00 PM → tap at 7:40 AM still
-    // records/credits 6:00 AM), and stamps the shift name + scheduled end
-    // for display and for downstream idle/productivity math.
-    payload.event_time = shift.resolvedStart.toISOString();
-    payload.shift_name = shift.shift_name;
-    payload.scheduled_start = shift.resolvedStart.toISOString();
-    payload.scheduled_end = shift.resolvedEnd.toISOString();
-  }
-  const { error } = await supabaseClient.from('duty_logs').insert([payload]);
-  if (error) return showToast(dutyTableMissing || error.code === '42P01'
-    ? "Duty Roster isn't set up yet — ask an admin to create the duty_logs table (see code comments)."
-    : "Could not report for duty: " + error.message, "error");
-  showToast(shift
-    ? `${name} reported for duty — ${shift.shift_name} schedule (${fmtDutyClock(shift.resolvedStart)}–${fmtDutyClock(shift.resolvedEnd)}).`
-    : `${name} reported for duty.`, "success");
-  await refreshDutyRoster();
-}
-
-
-// Ongoing-task check across EVERY role a person might hold (personnelHasOngoing
-// is role-scoped and meant for the single-role dispatch flow) — reporting off
-// duty needs to know about an ongoing Picker task just as much as an ongoing
-// Puller one.
-async function personnelHasOngoingAnyRole(name) {
-  const { data, error } = await supabaseClient.from('activity_logs').select('id')
-    .eq('personnel_name', name).eq('status', 'Ongoing');
-  if (error) { console.error(error); return false; }
-  return (data || []).length > 0;
-}
-
-async function reportOffDuty(name) {
-  const events = dutyEventsForName(name);
-  const { status } = computeDutySpans(events);
-  if (status === 'off') return showToast(`${name} is already off duty.`, "info");
-  if (await personnelHasOngoingAnyRole(name)) {
-    return showToast(`${name} still has an ongoing task. Pause or complete it before reporting off duty.`, "error");
-  }
-  const ok = await showConfirm(`Report ${name} off duty for the day? This closes out their duty, break and idle-time totals for today.`);
-  if (!ok) return;
-  const { error } = await supabaseClient.from('duty_logs').insert([{ personnel_name: name, role: rolesForDutyName(name), event_type: 'OUT' }]);
-  if (error) return showToast("Could not report off duty: " + error.message, "error");
-  showToast(`${name} reported off duty.`, "success");
-  await refreshDutyRoster();
-}
-
-// Per-person duty metrics for today: on-duty minutes (wall clock from report
-// -in to report-out/now, credited to the fixed shift start/end when a
-// configured shift schedule matched at report-in time), break minutes (now
-// fully automatic — configured Break Windows overlapping the on-duty span,
-// see computeDutySpans/autoBreakSpansForDuty), worked minutes (sum of
-// rendered_minutes on today's Completed tasks, across EVERY role that
-// person worked — same dedupe-by-batch helper the Performance Summary uses
-// so a multi-line batch isn't counted multiple times), idle minutes
-// (on-duty minus break minus worked, i.e. clocked in, not on break, and not
-// actually working a task), and productivity % (worked ÷ (on-duty minus break)).
-async function computeDutyMetricsForRoster(names) {
-  const { startOfOpDay, endOfOpDay } = todayOpDayWindow();
-  const { data: logs, error } = await supabaseClient.from('activity_logs')
-    .select('personnel_name,role,status,start_time,end_time,rendered_minutes')
-    .eq('status', 'Completed')
-    .gte('start_time', startOfOpDay.toISOString()).lte('start_time', endOfOpDay.toISOString());
-  const workedByName = {};
-  if (!error) {
-    const byName = {};
-    (logs || []).forEach(l => { const k = (l.personnel_name || '').trim(); (byName[k] = byName[k] || []).push(l); });
-    Object.entries(byName).forEach(([k, rows]) => { workedByName[k] = sumGroupMinutes(rows); });
-  }
-  return names.map(name => {
-    const events = dutyEventsForName(name);
-    const { onDutySpans, breakSpans, status, since, firstIn, lastOut } = computeDutySpans(events);
-    const onDutyMinutes = sumSpanMinutes(onDutySpans);
-    const breakMinutes = sumSpanMinutes(breakSpans);
-    const workedMinutes = workedByName[(name || '').trim()] || 0;
-    const availableMinutes = Math.max(0, onDutyMinutes - breakMinutes);
-    const idleMinutes = Math.max(0, availableMinutes - workedMinutes);
-    const productivityPct = availableMinutes > 0.5 ? Math.min(100, (workedMinutes / availableMinutes) * 100) : null;
-    // The fixed shift (if any) was resolved and stamped on the IN event at
-    // report-in time — pull it straight off that event rather than
-    // re-resolving now, so it stays correct even if admin edits the shift
-    // schedule list later in the day.
-    const inEvent = events.find(e => e.event_type === 'IN' && e.shift_name);
-    const shiftName = inEvent ? inEvent.shift_name : null;
-    const scheduledStart = inEvent && inEvent.scheduled_start ? new Date(inEvent.scheduled_start) : null;
-    const scheduledEnd = inEvent && inEvent.scheduled_end ? new Date(inEvent.scheduled_end) : null;
-    return { name, status, since, firstIn, lastOut, onDutyMinutes, breakMinutes, idleMinutes, workedMinutes, productivityPct, shiftName, scheduledStart, scheduledEnd };
-  });
-}
-
-function fmtDutyClock(d) { return d ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'; }
-
-async function refreshDutyRoster() {
-  const card = document.getElementById('duty-roster-card');
-  if (card) card.classList.toggle('hidden', !userCanViewDutyRoster());
-  if (!userCanViewDutyRoster()) return; // no permission — don't even fetch
-
-  const body = document.getElementById('duty-roster-body');
-  if (!body) return;
-
-  if (dutyTableMissing) {
-    body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-amber-400 italic">Duty Roster isn't set up yet — create the <code>duty_logs</code> table in Supabase (see code comments near the DUTY ROSTER section) to enable report-for-duty tracking.</td></tr>`;
-    return;
-  }
-
-  await fetchAllPersonnelRoster();
-  // Backup personnel never formally report for duty, so they're dropped
-  // from this table entirely rather than showing up stuck at "Off Duty"
-  // with nothing to report.
-  const rosterPeople = dutyRosterPeople.filter(p => !dutyBackupNames.has(p.name));
-  const names = rosterPeople.map(p => p.name);
-  if (!names.length) {
-    body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic">No personnel on file yet — add them under Personnel &amp; Breaks first.</td></tr>`;
-    return;
-  }
-
-  await fetchDutyLogsToday();
-  if (dutyTableMissing) return refreshDutyRoster();
-
-  const metrics = await computeDutyMetricsForRoster(names);
-  dutyRosterOngoingCache = await fetchOngoingTasksForRoster(names);
-  const canEdit = userCanEditDuty();
-
-  const roleLabel = document.getElementById('duty-roster-role-label');
-  if (roleLabel) {
-    const onCount = metrics.filter(m => m.status === 'on').length;
-    const breakCount = metrics.filter(m => m.status === 'break').length;
-    roleLabel.innerText = `(${onCount} on duty · ${breakCount} on break · ${metrics.length} total)`;
-  }
-
-  dutyRosterMetricsCache = metrics;
-  populateDutyRosterRoleFilterOptions();
-  renderDutyRosterRows();
-}
-
-// --- Duty Roster: filter + sort state (client-side, no re-fetch needed) ---
-let dutyRosterMetricsCache = [];
-let dutyRosterOngoingCache = {}; // personnel_name -> [{role, so_number}] currently Ongoing, refreshed with the rest of the roster
-let dutyRosterFilterStatus = 'all';   // 'all' | 'on' | 'break' | 'off'
-let dutyRosterFilterTask = 'all';     // 'all' | 'idle' | 'busy'
-let dutyRosterFilterRole = 'all';
-let dutyRosterSearchTerm = '';
-let dutyRosterSortKey = 'name';       // name | status | reportedIn | reportedOut
-let dutyRosterSortDir = 'asc';
-
-// Role dropdown is populated dynamically since roles vary per deployment
-// (Picker/STG Checker/Puller/OTB Checker etc.) rather than hardcoded.
-function populateDutyRosterRoleFilterOptions() {
-  const sel = document.getElementById('duty-roster-role-filter');
-  if (!sel) return;
-  const roles = [...new Set(dutyRosterPeople.flatMap(p => p.roles || []))].sort();
-  const current = sel.value || 'all';
-  sel.innerHTML = `<option value="all">All Roles</option>` + roles.map(r => `<option value="${r}">${r}</option>`).join('');
-  if (roles.includes(current)) sel.value = current;
-}
-
-// Per-person "what are they doing right now" for the Duty Roster's Ongoing
-// Task column — pulled fresh each time the panel is refreshed (same
-// refresh-button-only cadence as the rest of the roster, no polling).
-// Groups multiple Ongoing rows for the same person (e.g. a multi-line
-// picking batch) into one summary instead of listing each SO separately.
-async function fetchOngoingTasksForRoster(names) {
-  const byName = {};
-  if (!names.length) return byName;
-  const { data, error } = await supabaseClient.from('activity_logs')
-    .select('personnel_name,role,so_number').eq('status', 'Ongoing').in('personnel_name', names);
-  if (error) { console.error('fetchOngoingTasksForRoster failed:', error.message); return byName; }
-  (data || []).forEach(row => {
-    const name = (row.personnel_name || '').trim();
-    if (!name) return;
-    (byName[name] = byName[name] || []).push(row);
-  });
-  return byName;
-}
-
-function dutyRosterTaskCell(name) {
-  const rows = dutyRosterOngoingCache[name];
-  if (!rows || !rows.length) return `<span class="text-slate-600 italic">Idle</span>`;
-  const roles = [...new Set(rows.map(r => r.role).filter(Boolean))];
-  const soList = rows.map(r => r.so_number).filter(Boolean);
-  const roleLabel = roles.length ? roles.join(' + ') : 'Task';
-  const countBit = soList.length > 1 ? ` · ${soList.length} SOs` : (soList[0] ? ` · ${soList[0]}` : '');
-  const titleAttr = soList.length ? ` title="${soList.join(', ')}"` : '';
-  return `<span class="${roleTextClass(roles[0])} font-semibold"${titleAttr}>${roleLabel}${countBit}</span>`;
-}
-
-function renderDutyRosterRows() {
-  const body = document.getElementById('duty-roster-body');
-  if (!body) return;
-  const canEdit = userCanEditDuty();
-
-  let rows = dutyRosterMetricsCache.filter(m => {
-    if (dutyRosterFilterStatus !== 'all' && m.status !== dutyRosterFilterStatus) return false;
-    if (dutyRosterFilterTask !== 'all') {
-      const isBusy = !!(dutyRosterOngoingCache[m.name] && dutyRosterOngoingCache[m.name].length);
-      if (dutyRosterFilterTask === 'idle' && isBusy) return false;
-      if (dutyRosterFilterTask === 'busy' && !isBusy) return false;
-    }
-    if (dutyRosterSearchTerm && !m.name.toLowerCase().includes(dutyRosterSearchTerm)) return false;
-    if (dutyRosterFilterRole !== 'all') {
-      const person = dutyRosterPeople.find(p => p.name === m.name);
-      if (!person || !(person.roles || []).includes(dutyRosterFilterRole)) return false;
-    }
-    return true;
-  });
-
-  const dir = dutyRosterSortDir === 'asc' ? 1 : -1;
-  const statusOrder = { on: 0, break: 1, off: 2 };
-  rows = rows.slice().sort((a, b) => {
-    switch (dutyRosterSortKey) {
-      case 'status': return (statusOrder[a.status] - statusOrder[b.status]) * dir;
-      case 'reportedIn': return ((a.firstIn ? a.firstIn.getTime() : -Infinity) - (b.firstIn ? b.firstIn.getTime() : -Infinity)) * dir;
-      case 'reportedOut': return ((a.lastOut ? a.lastOut.getTime() : -Infinity) - (b.lastOut ? b.lastOut.getTime() : -Infinity)) * dir;
-      default: return a.name.localeCompare(b.name) * dir;
-    }
-  });
-
-  const countEl = document.getElementById('duty-roster-filter-count');
-  if (countEl) {
-    const filtered = dutyRosterFilterStatus !== 'all' || dutyRosterFilterTask !== 'all' || dutyRosterFilterRole !== 'all' || dutyRosterSearchTerm;
-    countEl.innerText = filtered ? `Showing ${rows.length} of ${dutyRosterMetricsCache.length}` : '';
-  }
-
-  document.querySelectorAll('#duty-roster-card th[data-sort-key]').forEach(th => {
-    const active = th.dataset.sortKey === dutyRosterSortKey;
-    th.innerHTML = th.dataset.label + (active ? (dutyRosterSortDir === 'asc' ? ' ▲' : ' ▼') : '');
-  });
-
-  if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500 italic">No personnel match the current filter.</td></tr>`;
-    return;
-  }
-
-  body.innerHTML = rows.map(m => {
-    const person = dutyRosterPeople.find(p => p.name === m.name);
-    const primaryRoleCell = person && person.primaryRole ? `<span class="${roleTextClass(person.primaryRole)} text-[10px] font-semibold">${person.primaryRole}</span>` : '<span class="text-slate-600">—</span>';
-    const pill = `<span class="duty-pill ${m.status}"><span class="duty-dot ${m.status}"></span>${m.status === 'on' ? 'On Duty' : m.status === 'break' ? 'On Break' : 'Off Duty'}</span>`;
-    const nameAttr = m.name.replace(/'/g, "\\'");
-    // Break is fully automatic now (derived from the configured Break
-    // Windows overlapping on-duty time — see computeDutySpans), so there's
-    // no personnel-facing Start Break/End Break action anymore; both "on"
-    // and "break" status just get Report Off Duty.
-    let actions = '';
-    if (m.status === 'off') {
-      actions = `<button class="duty-action-btn in" onclick="reportForDuty('${nameAttr}')">Report for Duty</button>`;
-    } else {
-      actions = `<button class="duty-action-btn out" onclick="reportOffDuty('${nameAttr}')">Report Off Duty</button>`;
-    }
-    if (canEdit) actions += `<button class="duty-action-btn edit" title="Correct recorded duty times" onclick="openDutyEditModal('${nameAttr}')">✎ Edit</button>`;
-    return `<tr>
-      <td class="p-2 font-semibold text-slate-200">${m.name}</td>
-      <td class="p-2">${primaryRoleCell}</td>
-      <td class="p-2 text-center">${pill}</td>
-      <td class="p-2 text-center">${dutyRosterTaskCell(m.name)}</td>
-      <td class="p-2 text-center font-mono text-slate-400">${fmtDutyClock(m.firstIn)}</td>
-      <td class="p-2 text-center font-mono text-slate-400">${fmtDutyClock(m.lastOut)}</td>
-      <td class="p-2"><div class="flex items-center justify-center gap-1.5 flex-wrap">${actions}</div></td>
-    </tr>`;
-  }).join('');
-}
-
-// Duty Roster intentionally has no realtime subscription or polling timer —
-// it only fetches data when the ⟳ refresh button is clicked, or right after
-// a user's own action inside the panel (report for duty, edit a duty time,
-// etc.) so they see the result of what they just did.
-
-// --- ADMIN: correct or backfill recorded duty_logs timestamps ---
-// Gated behind userCanEditDuty() (the literal "admin" account, or anyone
-// granted the 'duty_edit' special permission from User Management — see
-// EXTRA_PERMISSIONS). Lets an admin fix a wrong report-for-duty/break/
-// report-off-duty time, delete a mistaken tap, or backfill an event someone
-// forgot to log, directly from the Duty Roster panel.
-const DUTY_EVENT_LABELS = { IN: 'Report In', BREAK_START: 'Break Start', BREAK_END: 'Break End', OUT: 'Report Out' };
-let dutyEditModalName = null;
-
-function openDutyEditModal(name) {
-  if (!userCanEditDuty()) return showToast("You don't have permission to edit duty log times. Ask an admin to grant it in User Management.", "error");
-  dutyEditModalName = name;
-  document.getElementById('duty-edit-modal-name').innerText = name;
-  document.getElementById('duty-edit-new-time').value = '';
-  document.getElementById('duty-edit-modal').classList.remove('hidden');
-  renderDutyEditRows();
-}
-function closeDutyEditModal() {
-  document.getElementById('duty-edit-modal').classList.add('hidden');
-  dutyEditModalName = null;
-}
-
-// datetime-local inputs have no timezone — read/written as the browser's
-// local time, same convention every other date/time input in this app uses.
-function isoToLocalInputValue(iso) {
-  const d = new Date(iso);
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-function localInputValueToIso(val) { return new Date(val).toISOString(); }
-
-function renderDutyEditRows() {
-  const container = document.getElementById('duty-edit-rows');
-  if (!container || !dutyEditModalName) return;
-  const events = dutyEventsForName(dutyEditModalName);
-  if (!events.length) {
-    container.innerHTML = '<p class="text-[11px] text-slate-600 italic">No duty events recorded today for this person yet.</p>';
-    return;
-  }
-  container.innerHTML = events.map(e => `
-    <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg p-2">
-      <select onchange="updateDutyEventType(${e.id}, this.value)" class="bg-slate-950 border border-slate-800 text-xs rounded px-1.5 py-1.5 focus:outline-none focus:border-emerald-500">
-        ${Object.entries(DUTY_EVENT_LABELS).map(([k, l]) => `<option value="${k}" ${k === e.event_type ? 'selected' : ''}>${l}</option>`).join('')}
-      </select>
-      <input type="datetime-local" value="${isoToLocalInputValue(e.event_time)}" onchange="updateDutyEventTime(${e.id}, this.value)" class="flex-1 bg-slate-950 border border-slate-800 text-xs rounded px-1.5 py-1.5 focus:outline-none focus:border-emerald-500">
-      <button onclick="deleteDutyEvent(${e.id})" title="Delete this event" class="text-rose-400 hover:text-rose-300 text-sm px-1">✕</button>
-    </div>`).join('');
-}
-
-async function updateDutyEventType(id, newType) {
-  const { error } = await supabaseClient.from('duty_logs').update({ event_type: newType }).eq('id', id);
-  if (error) return showToast("Could not update event: " + error.message, "error");
-  await fetchDutyLogsToday(); renderDutyEditRows(); await refreshDutyRoster();
-  showToast("Duty event updated.", "success");
-}
-async function updateDutyEventTime(id, localVal) {
-  if (!localVal) return;
-  const { error } = await supabaseClient.from('duty_logs').update({ event_time: localInputValueToIso(localVal) }).eq('id', id);
-  if (error) return showToast("Could not update event time: " + error.message, "error");
-  await fetchDutyLogsToday(); renderDutyEditRows(); await refreshDutyRoster();
-  showToast("Duty time updated.", "success");
-}
-async function deleteDutyEvent(id) {
-  const ok = await showConfirm("Delete this duty event? This cannot be undone.");
-  if (!ok) return;
-  const { error } = await supabaseClient.from('duty_logs').delete().eq('id', id);
-  if (error) return showToast("Could not delete event: " + error.message, "error");
-  await fetchDutyLogsToday(); renderDutyEditRows(); await refreshDutyRoster();
-  showToast("Duty event deleted.", "success");
-}
-async function addDutyEventFromModal() {
-  if (!dutyEditModalName) return;
-  const type = document.getElementById('duty-edit-new-type').value;
-  const timeVal = document.getElementById('duty-edit-new-time').value;
-  if (!timeVal) return showToast("Pick a date & time first.", "error");
-  const { error } = await supabaseClient.from('duty_logs').insert([{
-    personnel_name: dutyEditModalName, role: rolesForDutyName(dutyEditModalName),
-    event_type: type, event_time: localInputValueToIso(timeVal)
-  }]);
-  if (error) return showToast("Could not add event: " + error.message, "error");
-  document.getElementById('duty-edit-new-time').value = '';
-  await fetchDutyLogsToday(); renderDutyEditRows(); await refreshDutyRoster();
-  showToast("Duty event added.", "success");
-}
-
-// --- Wire the Duty Roster's "must be on duty" dispatch guard into role
-// switching and task-start actions. (Refreshing the panel's own data on
-// role switch was removed — the Duty Roster now only fetches on its ⟳
-// refresh button, not automatically.)
-const _origStartRowForDuty = startRow;
-startRow = async function (...args) {
-  const operator = document.getElementById('operator-input').value.trim();
-  const guard = await dutyGuardMessage(operator);
-  if (guard) return showToast(guard, "error");
-  return _origStartRowForDuty.apply(this, args);
-};
-
-const _origCommitJobTransactionForDuty = commitJobTransaction;
-commitJobTransaction = async function (...args) {
-  const operator = document.getElementById('operator-input').value.trim();
-  const guard = await dutyGuardMessage(operator);
-  if (guard) { closeDispatchModal(); return showToast(guard, "error"); }
-  return _origCommitJobTransactionForDuty.apply(this, args);
-};
-
-// Resuming a paused task is also "starting work" for duty-guard purposes —
-// without this, someone could report off duty (or never report in at all)
-// and still resume a task that was left Paused from an earlier session.
-const _origResumeRowForDuty = resumeRow;
-resumeRow = async function (...args) {
-  const i = args[0];
-  const log = currentManifestData[i] && currentManifestData[i]._log;
-  const operator = log ? log.personnel_name : '';
-  const guard = await dutyGuardMessage(operator);
-  if (guard) return showToast(guard, "error");
-  return _origResumeRowForDuty.apply(this, args);
-};
-
 
 </script>
 </body>
