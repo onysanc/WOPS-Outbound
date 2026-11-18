@@ -1460,10 +1460,22 @@ function roleBadgeClass(role) { return (ROLE_COLORS[role] || {}).badge || 'bg-sl
 // Once attemptLogin() succeeds, startApp() runs this same sequence.
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-username').focus();
-  tryRememberedLogin();
+  // EGRESS: a browser-restored / background-opened tab shouldn't silently
+  // log in and pull the startup data set; wait until it is actually shown.
+  if (document.visibilityState === 'visible') {
+    tryRememberedLogin();
+  } else {
+    const onFirstVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', onFirstVisible);
+      tryRememberedLogin();
+    };
+    document.addEventListener('visibilitychange', onFirstVisible);
+  }
 });
 
 async function startApp() {
+  lastUserActivity = Date.now();
   applyUserPermissions();
   setView(firstAllowedTab());
   await setRole('Picker');
@@ -1646,6 +1658,8 @@ async function attemptLogin(e) {
 }
 
 function logoutUser() {
+  stopRealtime();
+  stopBulletinSlowPoll();
   currentUser = null;
   forgetRememberedUser();
   document.getElementById('app-shell').classList.add('hidden');
@@ -3692,7 +3706,14 @@ function computeGroupDayMetrics(dayLogsAll, groupKey, groupRoles) {
 function makeEgressGuardedRefresh(fn, { debounceMs = 800, minGapMs = 4000 } = {}) {
   let timer = null;
   let lastRun = 0;
-  const runNow = () => { lastRun = Date.now(); timer = null; fn(); };
+  const runNow = () => {
+    timer = null;
+    // EGRESS: nobody is looking (tab hidden / idle) -> don't hit the DB. The
+    // view catches itself up when the user comes back (see resumeRealtime()).
+    if (!isTabInUse()) { egressNeedsCatchUp = true; return; }
+    lastRun = Date.now();
+    fn();
+  };
   return function guarded(...args) {
     if (timer) clearTimeout(timer);
     const wait = Math.max(debounceMs, minGapMs - (Date.now() - lastRun));
@@ -3765,24 +3786,97 @@ const BULLETIN_SLOW_POLL_MS = 4 * 60 * 60 * 1000; // 4 hours
 function startBulletinSlowPoll() {
   stopBulletinSlowPoll();
   bulletinSlowPollTimer = setInterval(() => {
-    if (getCurrentViewName() === 'bulletin') refreshBulletinBoard();
+    if (getCurrentViewName() !== 'bulletin') return;
+    if (isTabInUse()) refreshBulletinBoard();
+    else bulletinTickSkipped = true; // runs once on the user's next mouse/keyboard touch
   }, BULLETIN_SLOW_POLL_MS);
 }
 function stopBulletinSlowPoll() {
   if (bulletinSlowPollTimer) { clearInterval(bulletinSlowPollTimer); bulletinSlowPollTimer = null; }
 }
 
+// --- EGRESS: AUTOMATIC TRAFFIC ONLY WHILE THE SITE IS IN USE ---------------
+// "In use" = tab is visible AND the user touched the page within
+// IDLE_LIMIT_MS. Outside that, the realtime websockets are closed (a
+// postgres_changes subscription streams EVERY row change of the table to
+// EVERY open tab, whether or not anyone is looking) and no background
+// refetch runs. When the user comes back, one catch-up fetch of the visible
+// view is made, then realtime resumes.
+const IDLE_LIMIT_MS = 3 * 60 * 1000;       // no mouse/keyboard for 3 min = idle -> auto-update stops
+let bulletinTickSkipped = false;           // a 4h Bulletin refresh was due while nobody was using the page
+let lastUserActivity = Date.now();
+let realtimeChannels = [];
+let realtimePausedAt = 0;
+let egressNeedsCatchUp = false;
+
+function isTabInUse() {
+  return !!currentUser &&
+    document.visibilityState === 'visible' &&
+    (Date.now() - lastUserActivity) < IDLE_LIMIT_MS;
+}
+
 function subscribeRealtime() {
-  supabaseClient.channel('activity_logs-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, guardedActivityLogsRefresh)
-    .subscribe();
+  if (realtimeChannels.length) return; // already live — never double-subscribe
+  realtimeChannels.push(
+    supabaseClient.channel('activity_logs-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs' }, guardedActivityLogsRefresh)
+      .subscribe()
+  );
 
   // shipments.status (PICKED / STAGED / PULLED / CHECKED) drives row eligibility
   // for the NEXT role in the chain, so it must be realtime too, not just activity_logs.
-  supabaseClient.channel('shipments-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, guardedShipmentsRefresh)
-    .subscribe();
+  realtimeChannels.push(
+    supabaseClient.channel('shipments-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' }, guardedShipmentsRefresh)
+      .subscribe()
+  );
 }
+
+function stopRealtime() {
+  const chs = realtimeChannels;
+  realtimeChannels = [];
+  chs.forEach(ch => { try { supabaseClient.removeChannel(ch); } catch (e) {} });
+}
+
+function pauseRealtime() {
+  if (!realtimeChannels.length) return;
+  stopRealtime();
+  realtimePausedAt = Date.now();
+}
+
+function resumeRealtime() {
+  if (!currentUser || realtimeChannels.length) return;
+  const pausedFor = realtimePausedAt ? Date.now() - realtimePausedAt : 0;
+  subscribeRealtime();
+  // Events that happened while the sockets were closed were missed, so pull
+  // the one view on screen once. Quick tab flips (< 60s) don't pay for it
+  // unless a refresh was actually skipped meanwhile.
+  if (egressNeedsCatchUp || pausedFor > 0) {
+    egressNeedsCatchUp = false;
+    if (getCurrentViewName() === 'workbench') {
+      refreshSidePanel();
+      if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
+    }
+  }
+  if (bulletinTickSkipped && getCurrentViewName() === 'bulletin') {
+    bulletinTickSkipped = false;
+    refreshBulletinBoard();
+  }
+  realtimePausedAt = 0;
+}
+
+function markUserActive() {
+  lastUserActivity = Date.now();
+  if (!realtimeChannels.length && isTabInUse()) resumeRealtime();
+}
+['mousedown', 'mousemove', 'wheel', 'keydown', 'touchstart'].forEach(evt =>
+  window.addEventListener(evt, markUserActive, { passive: true, capture: true }));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') markUserActive();
+  else pauseRealtime();
+});
+// Local-only check (no network) — closes the sockets once the user goes idle.
+setInterval(() => { if (realtimeChannels.length && !isTabInUse()) pauseRealtime(); }, 30 * 1000);
 
 let agingRawRows = [];
 let agingSelectedSoNumbers = new Set();
