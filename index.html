@@ -766,7 +766,9 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <label class="text-[11px] text-slate-400 font-semibold">Activity Day</label>
-        <input type="date" id="bulletin-date" onchange="refreshBulletinBoard()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500">
+        <input type="date" id="bulletin-date" onchange="refreshBulletinBoard()" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-emerald-500 disabled:opacity-50">
+        <button id="bulletin-refresh-btn" onclick="refreshBulletinBoard()" class="hidden text-[10px] font-bold px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-600 whitespace-nowrap">↻ Refresh Data</button>
+        <span id="bulletin-last-refreshed" class="text-[10px] text-slate-500 font-mono">Not loaded — admin refreshes manually</span>
 
         <button onclick="exportSectionToPDF('view-bulletin')" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 whitespace-nowrap">🖶 Export PDF Summary</button>
       </div>
@@ -1490,7 +1492,7 @@ async function startApp() {
   // Bulletin/Performance Summary: strictly a 4-hour poll from app start, not
   // re-triggered by tab switches and not refreshed eagerly here — the board
   // stays empty/unpopulated until the first tick. See startBulletinSlowPoll().
-  startBulletinSlowPoll();
+  // Bulletin data is manual/admin-only now — no poll is started (see refreshBulletinBoard()).
 }
 
 // --- LOGIN / USER MANAGEMENT ---
@@ -1728,6 +1730,10 @@ function applyUserPermissions() {
   });
   const breakCard = document.getElementById('break-scheduler-card');
   if (breakCard) breakCard.classList.toggle('hidden', !isAdminAccount());
+  const bulletinRefreshBtn = document.getElementById('bulletin-refresh-btn');
+  if (bulletinRefreshBtn) bulletinRefreshBtn.classList.toggle('hidden', !isAdminAccount());
+  const bulletinDateInput = document.getElementById('bulletin-date');
+  if (bulletinDateInput) bulletinDateInput.disabled = !isAdminAccount();
   const dutyShiftCard = document.getElementById('duty-shift-window-card');
   if (dutyShiftCard) dutyShiftCard.classList.toggle('hidden', !isAdminAccount());
   const tabOrderCard = document.getElementById('tab-order-card');
@@ -3268,6 +3274,10 @@ async function refreshPersonnelRosterNames() {
 }
 
 async function refreshBulletinBoard() {
+  // EGRESS: Performance Summary data is MANUAL and ADMIN-ONLY. Nothing calls this
+  // automatically any more (no 4-hour poll, no tab-entry/return catch-up).
+  if (!isAdminAccount()) return;
+  bulletinTrendCache = { key: null, promise: null };
   const dateInput = document.getElementById('bulletin-date');
   if (dateInput && !dateInput.value) dateInput.value = defaultOperationalDateStr();
   const dateStr = dateInput ? dateInput.value : defaultOperationalDateStr();
@@ -3281,7 +3291,10 @@ async function refreshBulletinBoard() {
 
   await refreshPersonnelRosterNames();
 
-  renderBulletinBoard();
+  bulletinTrendFetchAllowed = true;
+  try { renderBulletinBoard(); } finally { bulletinTrendFetchAllowed = false; }
+  const stamp = document.getElementById('bulletin-last-refreshed');
+  if (stamp) stamp.innerText = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Two independent role pools: Picker+Puller share one leaderboard, Staging
@@ -3315,6 +3328,7 @@ let bulletinAutoTimers = { PICK_GROUP: null, CHECK_GROUP: null };
 function startBulletinAutoRotate(groupKey) {
   if (bulletinAutoTimers[groupKey]) clearInterval(bulletinAutoTimers[groupKey]);
   bulletinAutoTimers[groupKey] = setInterval(() => {
+    if (getCurrentViewName() !== 'bulletin' || document.visibilityState !== 'visible') return;
     const cur = BULLETIN_AUTO_METRICS.indexOf(bulletinRankMetric[groupKey]);
     const next = BULLETIN_AUTO_METRICS[(cur === -1 ? 0 : cur + 1) % BULLETIN_AUTO_METRICS.length];
     bulletinRankMetric[groupKey] = next;
@@ -3602,6 +3616,15 @@ const CHART_AXIS_OPTS = { ticks: { color: '#647089', font: { size: 9 } }, grid: 
 // pool per operational day, ending at the selected Activity Day. Reuses the same
 // per-day building blocks as the leaderboard (sumGroupMinutes, averageSpeedPctForLogs)
 // so the trend agrees with the day-of numbers shown in the podium cards. ---
+// EGRESS FIX: renderBulletinGroupBoard() -> renderBulletinTrendChart() used to run
+// a 14-day activity_logs query on EVERY render, and the 10-second auto-rotate
+// renders each board, so every open tab was downloading that whole window
+// twice every 10 seconds. The window is now fetched once (shared by both
+// boards) and reused until refreshBulletinBoard() clears it (4-hour poll,
+// date change, manual refresh).
+let bulletinTrendCache = { key: null, promise: null };
+let bulletinTrendFetchAllowed = false; // true only while an admin's manual refresh is rendering
+
 async function renderBulletinTrendChart(groupKey) {
   const suffix = groupKey === 'PICK_GROUP' ? 'PICK' : 'CHECK';
   const canvas = document.getElementById(`bulletin-trend-chart-${suffix}`);
@@ -3614,10 +3637,24 @@ async function renderBulletinTrendChart(groupKey) {
   const rangeStart = operationalDayWindowForDate(days[0]).startOfOpDay;
   const rangeEnd = operationalDayWindowForDate(days[days.length - 1]).endOfOpDay;
 
-  const { data, error } = await supabaseClient.from('activity_logs').select('personnel_name,role,status,start_time,end_time,rendered_minutes,target_hours,total_qty,discrepancy_qty,so_number')
-    .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString());
-  if (error) { console.error(error); return; }
-  const logs = (data || []).filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
+  const trendKey = days[0] + '|' + days[days.length - 1];
+  let rawTrend;
+  if (bulletinTrendCache.key === trendKey && bulletinTrendCache.promise) {
+    rawTrend = await bulletinTrendCache.promise;
+  } else if (!bulletinTrendFetchAllowed) {
+    return; // rotation / redraw never fetches — only the admin's manual refresh does
+  } else {
+    const pending = supabaseClient.from('activity_logs').select('personnel_name,role,status,start_time,end_time,rendered_minutes,target_hours,total_qty,discrepancy_qty,so_number')
+      .gte('start_time', rangeStart.toISOString()).lte('start_time', rangeEnd.toISOString())
+      .then(({ data, error }) => {
+        if (error) { console.error(error); bulletinTrendCache = { key: null, promise: null }; return null; }
+        return data || [];
+      });
+    bulletinTrendCache = { key: trendKey, promise: pending };
+    rawTrend = await pending;
+  }
+  if (!rawTrend) return;
+  const logs = rawTrend.filter(l => !excludedPersonnelNames.has((l.personnel_name || '').trim()));
 
   // Bucket every log into its operational day (05:00–04:59 window).
   const byDay = {};
@@ -3745,7 +3782,6 @@ async function refreshLiveViews({ manifest = false } = {}) {
     await refreshSidePanel();
     if (manifest) await fetchShipmentManifest();
   }
-  if (view === 'bulletin') await refreshBulletinBoard();
   if (view === 'adminops') await refreshPipelineSummary();
 }
 
@@ -3857,10 +3893,6 @@ function resumeRealtime() {
       refreshSidePanel();
       if (document.getElementById('target-shipment-no').value.trim()) fetchShipmentManifest();
     }
-  }
-  if (bulletinTickSkipped && getCurrentViewName() === 'bulletin') {
-    bulletinTickSkipped = false;
-    refreshBulletinBoard();
   }
   realtimePausedAt = 0;
 }
@@ -5621,7 +5653,6 @@ async function togglePersonnelExcludedAll(name, excluded) {
   if (error) return showToast(error.message, "error");
   await refreshExcludedPersonnel();
   await refreshPersonnelAdminList();
-  if (document.getElementById('bulletin-date')) refreshBulletinBoard();
   showToast(excluded ? "Excluded from all computations." : "Re-included in computations.", "success");
 }
 
